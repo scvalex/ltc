@@ -1,37 +1,87 @@
-Less Than c
-===========
-
 Objective
 ---------
 
-The ultimate goal of LTc is to develop a replicated key-value store
-optimised for the case where the nodes are connected by an
-intermittent, high-bandwidth, high-latency link.
-
-By high-latency, we mean that the round-trip time between nodes is
-measured in minutes, rather than in milliseconds.
+The ultimate goal of LTc[^ltc] is to develop an
+eventually-consistent[^cap], replicated key-value store optimised for
+the case where the nodes are connected by an intermittent,
+high-bandwidth, high-latency link.
 
 By intermittent, we mean that the link between nodes will be down
 regularly for hours at a time.
 
-Additionally, LTc should be able to store terabytes of data.
+By high-latency, we mean that the round-trip time between nodes is
+measured in minutes, rather than in milliseconds.
 
-Motivation
+Additionally, LTc should be able to store terabytes of data[^wikisize].
+
+[^ltc]: As in, less than the speed of light in vacuum, which is the
+upper bound on the speed of communications in our universe.
+
+[^cap]: We are aiming for the Availability and Partitioning-tolerance
+parts of CAP.
+
+[^wikisize]: For comparison, Wikipedia compressed is `8.7` GB.
+
+Background
 ----------
 
-This should explain why the problem and the objective that you are
-trying to achieve is interesting and important.
+There are quite a number of similar projects (Mnesia, CouchDB,
+MongoDB, Membase, Yahoo Sherpa, Project Voldemort), but none solve
+quite the same problem as LTc.  Specifically, none will work when the
+links connecting the nodes are intermittent and high-latency.
 
-Challenges and Issues to be Solved
-----------------------------------
+Implementation
+--------------
 
-This should explain why the objective is difficult to achieve (see
-Project Assessment) and is an initial analysis of the (sub-)problems
-you will need to solve.
+### Phase 0
 
-Approach
---------
+> Deadline: end of October
 
-This offers some idea on how you plan to tackle the problem and to
-address the issues previously described. It does not need to describe
-specific solutions but their intuitive idea.
+Research and document exactly what issues are likely to be encountered
+when two communicating systems are physically separated by large
+distances.  Specifically, determine why TCP would not work (and at
+what point in breaks down), whether UDP or another existing protocol
+would work, and how "intermittent" the connection is likely to be.
+
+### Phase 1
+
+> Deadline: end of November
+
+Develop an on-disk key-value data-store designed for a modern Linux
+system running on modern hardware.  By modern Linux system, we mean
+that the data-store should make use of features such as the
+file-system cache, the IO scheduler's elevator lifting, and automatic
+memory paging.  The solution to this phase is very likely to be
+"whatever CouchDB/MongoDB/something does".
+
+Additionally, develop a benchmark to compare different implementations
+of the data-store.
+
+### Phase 2
+
+> Deadline: end of January
+
+Find out how NASA and ESA are currently getting information to and
+from the Mars orbiters and rovers.  Invent and implement a
+synchronization protocol for the replicated nodes.  This will probably
+involve sending large sets of updates at once.  Entries will probably
+need to be versioned with a scheme like vector-clocks.
+
+### Phase 3
+
+> Deadline: end of March
+
+Since we are unlikely to get access to a computer far enough to test
+LTc's synchronization, develop a Linux kernel module that creates a
+loopback network device that is high-latency and intermittent.  Using
+this, test and tune the synchronization algorithm.
+
+### Phase 4
+
+> Deadline: end of June
+
+Develop an easy-to-use monitoring and statistics interface for LTc.
+Use the statistics to automatically tune the synchronization algorithm
+(e.g. we probably want different behaviours if the other node is 100ms
+away, and if it is 30min away).  Polish everything and come up with a
+convincing demo.
