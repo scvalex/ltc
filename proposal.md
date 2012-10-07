@@ -20,7 +20,8 @@ upper bound on the speed of communications in our universe.
 [^cap]: We are aiming for the Availability and Partitioning-tolerance
 parts of CAP.
 
-[^wikisize]: For comparison, Wikipedia compressed is `8.7` GB.
+[^wikisize]: For comparison, English Wikipedia takes 38 GB
+uncompressed.
 
 Background
 ----------
