@@ -13,3 +13,5 @@ Keybindings:
 *** TODO Bazaar's Transfer Protocol (what not to do)
 *** TODO Darcs' Transfer Protocol (what not to do)
 *** TODO Rsync protocol
+*** TODO Look at the theory behind transactions
+*** TODO Look at patch theory (Darcs)
