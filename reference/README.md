@@ -6,7 +6,7 @@ Background Reading
 
 ### Subversion's Delta Editor: Interface As Ontology
 
-> [subversion-delta-editor.pdf](subversion-delta-editor.pdf)
+> [subversion-delta-editor.pdf](https://github.com/scvalex/ltc/blob/master/reference/subversion-delta-editor.pdf)
 
 Subversion has a client/server model.  The server holds all the
 history for a repository, while clients only have "working
@@ -30,7 +30,7 @@ and commit operations can be done through a single RPC call.
 
 ### Git Internals -- Transfer Protocols
 
-> [git-transfer.pdf](git-transfer.pdf)
+> [git-transfer.pdf](https://github.com/scvalex/ltc/blob/master/reference/git-transfer.pdf)
 
 Git separates the task of downloading/uploading the changes, and
 updating the working tree.  Only the transfer part is interesting to
