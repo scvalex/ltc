@@ -2,7 +2,14 @@ Keybindings:
  - C-c C-t :: Cycle through TODO state
 
 * To Read
-** [0/1] Background Reading
+** [2/8] Background Reading
+*** DONE Subversion's Transfer Protocol
+*** DONE Git's Transfer Protocol
 *** TODO CouchDB's right-growing tree
     CouchDB's right-growing tree seems a lot like Subversion's server
     repository.
+*** TODO Mercurial's Transfer Protocol
+*** TODO Monotone's Transfer Protocol (what not to do?)
+*** TODO Bazaar's Transfer Protocol (what not to do)
+*** TODO Darcs' Transfer Protocol (what not to do)
+*** TODO Rsync protocol
