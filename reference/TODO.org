@@ -1,0 +1,8 @@
+Keybindings:
+ - C-c C-t :: Cycle through TODO state
+
+* To Read
+** [0/1] Background Reading
+*** TODO CouchDB's right-growing tree
+    CouchDB's right-growing tree seems a lot like Subversion's server
+    repository.
