@@ -23,8 +23,15 @@ parts of CAP.
 [^wikisize]: For comparison, English Wikipedia takes 38 GB
 uncompressed.
 
-Background
+Motivation
 ----------
+
+The recent advent of NoSQL databases show that there are uses for
+distributed databases that are not relational or fully consistent, and
+that do not support ACID transactions.  Given the relative infancy of
+the field, I suspect there is room for improvement in how current
+systems propagate updates between nodes (especially if you relax the
+consistency guarantee between nodes).
 
 There are quite a number of similar projects (Mnesia, CouchDB,
 MongoDB, Membase, Yahoo Sherpa, Project Voldemort), but none solve
@@ -52,8 +59,13 @@ Develop an on-disk key-value data-store designed for a modern Linux
 system running on modern hardware.  By modern Linux system, we mean
 that the data-store should make use of features such as the
 file-system cache, the IO scheduler's elevator lifting, and automatic
-memory paging.  The solution to this phase is very likely to be
-"whatever CouchDB/MongoDB/something does".
+memory paging.
+
+Since this is only a key-value store, without support for
+transactions, it should not be too difficult to implement.  For
+instance, CouchDB's on-disk format is an append-only B+-tree; if all
+else fails, that should be enough for LTc, and it could probably be
+written and tested in a week.
 
 Additionally, develop a benchmark to compare different implementations
 of the data-store.
@@ -70,7 +82,7 @@ need to be versioned with a scheme like vector-clocks.
 
 ### Phase 3
 
-> Deadline: end of March
+> Deadline: mid March
 
 Since we are unlikely to get access to a computer far enough to test
 LTc's synchronization, develop a Linux kernel module that creates a
@@ -79,7 +91,7 @@ this, test and tune the synchronization algorithm.
 
 ### Phase 4
 
-> Deadline: end of June
+> Deadline: mid May
 
 Develop an easy-to-use monitoring and statistics interface for LTc.
 Use the statistics to automatically tune the synchronization algorithm
