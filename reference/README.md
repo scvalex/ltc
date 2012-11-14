@@ -39,3 +39,16 @@ us.
 In order to exchange changes, Git queries the remote for its
 references, then walks through the commits, downloading or uploading
 changes.  This is all done with many separate requests.
+
+### Two Cons against NoSQL
+
+> [two-cons-nosql.pdf](https://github.com/scvalex/ltc/blob/master/reference/two-cons-nosql.pdf)
+
+The author notes two current issues with NoSQL databases:
+
+ * it's hard to transfer data from one NoSQL product into another, and
+
+ * there's no standard way to access a NoSQL data-store.
+
+The author then proceeds to interview several people who explain how
+his issues are fictive, or only true in some narrow sense.
