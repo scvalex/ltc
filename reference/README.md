@@ -52,3 +52,10 @@ The author notes two current issues with NoSQL databases:
 
 The author then proceeds to interview several people who explain how
 his issues are fictive, or only true in some narrow sense.
+
+### On Eventual Consistency– An interview with Justin Sheehy
+
+> [eventual-consistency-justin-sheehy.pdf](https://github.com/scvalex/ltc/blob/master/reference/eventual-consistency-justin-sheehy.pdf)
+
+An interview with the CTO of Basho Technologies, where he talks about
+Riak, eventual consistency, and uses of document-stores.
