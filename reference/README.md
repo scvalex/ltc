@@ -53,9 +53,18 @@ The author notes two current issues with NoSQL databases:
 The author then proceeds to interview several people who explain how
 his issues are fictive, or only true in some narrow sense.
 
-### On Eventual Consistency– An interview with Justin Sheehy
+### On Eventual Consistency – An interview with Justin Sheehy
 
 > [eventual-consistency-justin-sheehy.pdf](https://github.com/scvalex/ltc/blob/master/reference/eventual-consistency-justin-sheehy.pdf)
 
 An interview with the CTO of Basho Technologies, where he talks about
 Riak, eventual consistency, and uses of document-stores.
+
+### On Eventual Consistency - An interview with Monty Widenius
+
+> [eventual-consistency-monty-widenius.pdf](https://github.com/scvalex/ltc/blob/master/reference/eventual-consistency-monty-widenius.pdf)
+
+An interview with the author of MySQL (who forked MariaDB), where he
+explains how eventual consistency is not what he'd want in many
+circumstances.  This is mostly a response to the Basho interview
+above.
