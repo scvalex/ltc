@@ -1,1 +1,3 @@
 .cr
+cabal-dev/
+dist/
