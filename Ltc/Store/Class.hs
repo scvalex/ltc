@@ -11,10 +11,10 @@ type Value = ByteString
 type Version = Int
 
 class Store a where
-    data ConnectParameters :: *
+    data ConnectParameters a :: *
 
-    connect :: ConnectParameters -> IO (Maybe a)
-    close :: a -> IO (Maybe ())
+    open :: ConnectParameters a -> IO a
+    close :: a -> IO ()
 
     get :: a -> Key -> Version -> IO (Maybe Value)
     getLatest :: a -> Key -> IO (Maybe (Value, Version))
