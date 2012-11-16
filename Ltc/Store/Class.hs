@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Ltc.Store.Class (
-        Store(..)
+        Store(..), Key, Value, Version
     ) where
 
 import Data.ByteString ( ByteString )
@@ -19,6 +19,6 @@ class Store a where
     get :: a -> Key -> Version -> IO (Maybe Value)
     getLatest :: a -> Key -> IO (Maybe (Value, Version))
 
-    set :: a -> Key -> Value -> IO (Maybe Version)
+    set :: a -> Key -> Value -> IO Version
 
     del :: a -> Key -> IO (Maybe Version)
