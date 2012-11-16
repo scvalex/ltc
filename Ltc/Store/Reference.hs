@@ -5,6 +5,9 @@ module Ltc.Store.Reference (
     ) where
 
 import Control.Monad ( when )
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy.Char8 as BL
+import Data.Digest.Pure.SHA ( sha1, showDigest )
 import Ltc.Store.Class ( Store(..), Key, Value, Version )
 import System.Directory ( createDirectory, doesDirectoryExist )
 import System.FilePath ( (</>) )
@@ -53,9 +56,11 @@ doClose _handle = do
     return ()
 
 doSet :: Reference -> Key -> Value -> IO Version
-doSet _reference key _value = do
+doSet reference key value = do
     debugM tag (printf "set %s" key)
-    undefined
+    let keyHash = showDigest (sha1 (BL.pack key))
+    BS.writeFile (getLocation reference </> "store" </> keyHash) value
+    return 0
 
 initStore :: FilePath -> IO ()
 initStore loc = do

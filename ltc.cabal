@@ -22,6 +22,7 @@ Source-repository head
   Location:             https://github.com/scvalex/ltc.git
 
 Library
-  Build-depends:        base >= 4 && < 5, bytestring, directory, filepath, hslogger
+  Build-depends:        base >= 4 && < 5, bytestring, directory, filepath, hslogger,
+                        SHA
   Ghc-options:          -Wall
   Exposed-modules:      Ltc.Store
