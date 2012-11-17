@@ -68,3 +68,11 @@ An interview with the author of MySQL (who forked MariaDB), where he
 explains how eventual consistency is not what he'd want in many
 circumstances.  This is mostly a response to the Basho interview
 above.
+
+### Riak SmartMachine Benchmark: The Technical Details
+
+> [riak-benchmark.pdf](https://github.com/scvalex/ltc/blob/master/reference/riak-benchmark.pdf)
+
+Joyent bencharked Riak under a variety of loads.  The found that:
+"Riak behaves predictably under high loads", "Riak demonstrates
+stability under high loads", "Riak demonstrates linear scalability".
