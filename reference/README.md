@@ -96,3 +96,12 @@ over HTTP or over an SSH pipe.
 
 It's over-complicated and over-engineered as hell.  Comparing the way
 it works to git is really an eye-opening experience.
+
+### Darcs Optimized HTTP
+
+> [darcs-http.pdf](https://github.com/scvalex/ltc/blob/master/reference/darcs-http.pdf)
+
+In order to minimize the number of round-trips, the current "pristine"
+repo is packed into a tarball, and all the patches are packed into a
+different tarball.  This way, to get cracking you only need the first
+tarball, and to get everything you need both tarballs.
