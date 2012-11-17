@@ -76,3 +76,9 @@ above.
 Joyent bencharked Riak under a variety of loads.  The found that:
 "Riak behaves predictably under high loads", "Riak demonstrates
 stability under high loads", "Riak demonstrates linear scalability".
+
+### Delay-tolerant networking
+
+> <https://en.wikipedia.org/w/index.php?title=Delay-tolerant_networking&oldid=522645285>
+
+DTN is basically normal networking will lots of store-and-forward hops.
