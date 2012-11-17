@@ -1,10 +1,12 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, ScopedTypeVariables, TupleSections #-}
 
 module Ltc.Store.Reference (
         Reference, ConnectParameters(..)
     ) where
 
-import Control.Monad ( when )
+import Control.Applicative
+import qualified Control.Exception as CE
+import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Digest.Pure.SHA ( sha1, showDigest )
 import Ltc.Store.Class ( Store(..), Key, Value, Version )
@@ -16,8 +18,8 @@ import Text.Printf ( printf )
 formatString :: String
 formatString = "reference"
 
-version :: Int
-version = 1
+storeVersion :: Int
+storeVersion = 1
 
 tag :: String
 tag = "Reference"
@@ -35,8 +37,8 @@ instance Store Reference where
 
     close handle = doClose handle
 
-    get _handle _key _version = undefined
-    getLatest _handle _key = undefined
+    get handle key version = doGet handle key version
+    getLatest handle key = doGetLatest handle key
 
     set handle key value = doSet handle key value
 
@@ -54,17 +56,30 @@ doClose _handle = do
     debugM tag "close"
     return ()
 
+doGet :: Reference -> Key -> Version -> IO (Maybe Value)
+doGet reference key _version = do
+    debugM tag (printf "get %s" key)
+    CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
+        Just <$> BL.readFile (getLocation reference </> "store" </> keyHash key)
+
+doGetLatest :: Reference -> Key -> IO (Maybe (Value, Version))
+doGetLatest reference key = do
+    value <- doGet reference key 0
+    return ((,0) <$> value)
+
 doSet :: Reference -> Key -> Value -> IO Version
 doSet reference key value = do
     debugM tag (printf "set %s" key)
-    let keyHash = showDigest (sha1 (BL.pack key))
-    BL.writeFile (getLocation reference </> "store" </> keyHash) value
-    return 0
+    BL.writeFile (getLocation reference </> "store" </> keyHash key) value
+    return 1
 
 initStore :: FilePath -> IO ()
 initStore loc = do
     debugM tag "initStore"
     createDirectory loc
     writeFile (loc </> "format") formatString
-    writeFile (loc </> "version") (show version)
+    writeFile (loc </> "version") (show storeVersion)
     createDirectory (loc </> "store")
+
+keyHash :: Key -> String
+keyHash = showDigest . sha1 . BL.pack
