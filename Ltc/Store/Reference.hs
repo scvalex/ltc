@@ -4,6 +4,7 @@ module Ltc.Store.Reference (
         Reference, ConnectParameters(..)
     ) where
 
+import qualified Codec.Compression.GZip as Z
 import Control.Applicative
 import qualified Control.Exception as CE
 import Control.Monad
@@ -60,7 +61,7 @@ doGet :: Reference -> Key -> Version -> IO (Maybe Value)
 doGet ref key _version = do
     debugM tag (printf "get %s" key)
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
-        Just <$> BL.readFile (keyLocation ref key)
+        Just . Z.decompress <$> BL.readFile (keyLocation ref key)
 
 doGetLatest :: Reference -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
@@ -70,7 +71,7 @@ doGetLatest ref key = do
 doSet :: Reference -> Key -> Value -> IO Version
 doSet ref key value = do
     debugM tag (printf "set %s" key)
-    BL.writeFile (keyLocation ref key) value
+    BL.writeFile (keyLocation ref key) (Z.compress value)
     return 1
 
 doDel :: Reference -> Key -> IO (Maybe Version)
