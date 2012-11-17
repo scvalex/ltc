@@ -4,7 +4,7 @@ module Ltc.Store.Class (
         Store(..), Key, Value, Version
     ) where
 
-import Data.ByteString ( ByteString )
+import Data.ByteString.Lazy ( ByteString )
 
 type Key = String
 type Value = ByteString

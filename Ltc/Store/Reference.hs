@@ -5,7 +5,6 @@ module Ltc.Store.Reference (
     ) where
 
 import Control.Monad ( when )
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Digest.Pure.SHA ( sha1, showDigest )
 import Ltc.Store.Class ( Store(..), Key, Value, Version )
@@ -59,7 +58,7 @@ doSet :: Reference -> Key -> Value -> IO Version
 doSet reference key value = do
     debugM tag (printf "set %s" key)
     let keyHash = showDigest (sha1 (BL.pack key))
-    BS.writeFile (getLocation reference </> "store" </> keyHash) value
+    BL.writeFile (getLocation reference </> "store" </> keyHash) value
     return 0
 
 initStore :: FilePath -> IO ()
