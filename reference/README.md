@@ -91,3 +91,8 @@ The mercurial wire protocol is a set of RPC methods that are used to
 discover what changes one side is aware of and the other is unaware
 of, and then to transfer said changes.  The RPC calls are either done
 over HTTP or over an SSH pipe.
+
+### Bazaar
+
+It's over-complicated and over-engineered as hell.  Comparing the way
+it works to git is really an eye-opening experience.
