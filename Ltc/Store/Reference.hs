@@ -10,7 +10,7 @@ import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Digest.Pure.SHA ( sha1, showDigest )
 import Ltc.Store.Class ( Store(..), Key, Value, Version )
-import System.Directory ( createDirectory, doesDirectoryExist )
+import System.Directory ( createDirectory, doesDirectoryExist, removeFile )
 import System.FilePath ( (</>) )
 import System.Log.Logger ( debugM )
 import Text.Printf ( printf )
@@ -42,7 +42,7 @@ instance Store Reference where
 
     set handle key value = doSet handle key value
 
-    del _handle _key = undefined
+    del handle key = doDel handle key
 
 doOpen :: ConnectParameters Reference -> IO Reference
 doOpen params = do
@@ -57,21 +57,28 @@ doClose _handle = do
     return ()
 
 doGet :: Reference -> Key -> Version -> IO (Maybe Value)
-doGet reference key _version = do
+doGet ref key _version = do
     debugM tag (printf "get %s" key)
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
-        Just <$> BL.readFile (getLocation reference </> "store" </> keyHash key)
+        Just <$> BL.readFile (keyLocation ref key)
 
 doGetLatest :: Reference -> Key -> IO (Maybe (Value, Version))
-doGetLatest reference key = do
-    value <- doGet reference key 0
+doGetLatest ref key = do
+    value <- doGet ref key 0
     return ((,0) <$> value)
 
 doSet :: Reference -> Key -> Value -> IO Version
-doSet reference key value = do
+doSet ref key value = do
     debugM tag (printf "set %s" key)
-    BL.writeFile (getLocation reference </> "store" </> keyHash key) value
+    BL.writeFile (keyLocation ref key) value
     return 1
+
+doDel :: Reference -> Key -> IO (Maybe Version)
+doDel ref key = do
+    debugM tag (printf "del %s" key)
+    CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
+        removeFile (keyLocation ref key)
+        return (Just 0)
 
 initStore :: FilePath -> IO ()
 initStore loc = do
@@ -81,5 +88,11 @@ initStore loc = do
     writeFile (loc </> "version") (show storeVersion)
     createDirectory (loc </> "store")
 
+-- | The hash of a key.  This hash is used as the filename under which
+-- the value is stored in the reference store.
 keyHash :: Key -> String
 keyHash = showDigest . sha1 . BL.pack
+
+-- | The location of a key's value value.
+keyLocation :: Reference -> Key -> FilePath
+keyLocation ref key = getLocation ref </> "store" </> keyHash key
