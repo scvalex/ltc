@@ -82,3 +82,12 @@ stability under high loads", "Riak demonstrates linear scalability".
 > <https://en.wikipedia.org/w/index.php?title=Delay-tolerant_networking&oldid=522645285>
 
 DTN is basically normal networking will lots of store-and-forward hops.
+
+### Mercurial WireProtocol
+
+> [mercurial-p.pdf](https://github.com/scvalex/ltc/blob/master/reference/mercurial-p.pdf)
+
+The mercurial wire protocol is a set of RPC methods that are used to
+discover what changes one side is aware of and the other is unaware
+of, and then to transfer said changes.  The RPC calls are either done
+over HTTP or over an SSH pipe.
