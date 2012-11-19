@@ -17,6 +17,8 @@ import Test.Framework.Providers.QuickCheck2
 import Test.HUnit
 import Test.QuickCheck
 
+--FIXME Add QC test Reference test-suite
+
 main :: IO ()
 main = defaultMainWithOpts
        [ testCase "open" testOpen
