@@ -11,8 +11,9 @@ import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Digest.Pure.SHA ( sha1, showDigest )
 import Ltc.Store.Class ( Store(..), Key, Value, Version )
-import System.Directory ( createDirectory, doesDirectoryExist, removeFile )
+import System.Directory ( createDirectory, doesDirectoryExist, removeFile, renameFile )
 import System.FilePath ( (</>) )
+import System.IO ( hClose, openBinaryTempFile )
 import System.Log.Logger ( debugM )
 import Text.Printf ( printf )
 
@@ -71,7 +72,10 @@ doGetLatest ref key = do
 doSet :: Reference -> Key -> Value -> IO Version
 doSet ref key value = do
     debugM tag (printf "set %s" key)
-    BL.writeFile (keyLocation ref key) (Z.compress value)
+    (tempFile, handle) <- openBinaryTempFile "/tmp/" "ltc"
+    BL.hPut handle (Z.compress value)
+    hClose handle
+    renameFile tempFile (keyLocation ref key)
     return 1
 
 doDel :: Reference -> Key -> IO (Maybe Version)
