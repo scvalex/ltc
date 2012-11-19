@@ -43,9 +43,17 @@ testOpen = cleanEnvironment ["test-store"] $ do
 testSimpleSetGet :: Assertion
 testSimpleSetGet = cleanEnvironment ["test-store"] $ do
     store <- open (ConnectParameters { location = "test-store" })
-    set store "foo" "bar"
-    res <- getLatest store "foo"
-    res @?= Just ("bar", 1)
+    _ <- set store "foo" "bar"
+    res1 <- getLatest store "foo"
+    res1 @?= Just ("bar", 1)
+    res2 <- getLatest store "bar"
+    res2 @?= Nothing
+    _ <- set store "bar" "baz"
+    res3 <- getLatest store "bar"
+    res3 @?= Just ("baz", 1)
+    _ <- set store "foo" "baz"
+    res4 <- getLatest store "foo"
+    res4 @?= Just ("baz", 1)
     close store
 
 --------------------------------
