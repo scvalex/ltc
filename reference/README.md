@@ -105,3 +105,12 @@ In order to minimize the number of round-trips, the current "pristine"
 repo is packed into a tarball, and all the patches are packed into a
 different tarball.  This way, to get cracking you only need the first
 tarball, and to get everything you need both tarballs.
+
+### Darcs Patch Theory
+
+> <https://en.wikibooks.org/w/index.php?title=Understanding_Darcs/Patch_theory&oldid=2216663>
+
+Patch theory is an algebra for patches.  It talks about patches as an
+almost-group (patch application is not a closed operation).  It uses
+commutation (which is not to say patches are commutative) to re-order
+the patch history before doing some operations.

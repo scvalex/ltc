@@ -2,7 +2,7 @@ Keybindings:
  - C-c C-t :: Cycle through TODO state
 
 * To Read
-** [6/10] Background Reading
+** [7/10] Background Reading
 *** DONE Subversion's Transfer Protocol
 *** DONE Git's Transfer Protocol
 *** TODO CouchDB's right-growing tree
@@ -14,4 +14,4 @@ Keybindings:
 *** DONE Darcs' Transfer Protocol (what not to do)
 *** TODO Rsync protocol
 *** TODO Look at the theory behind transactions
-*** TODO Look at patch theory (Darcs)
+*** DONE Look at patch theory (Darcs)
