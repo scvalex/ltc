@@ -67,12 +67,12 @@ doGet ref key _version = do
 doGetLatest :: Reference -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
     value <- doGet ref key 0
-    return ((,0) <$> value)
+    return ((,1) <$> value)
 
 doSet :: Reference -> Key -> Value -> IO Version
 doSet ref key value = do
     debugM tag (printf "set %s" key)
-    (tempFile, handle) <- openBinaryTempFile "/tmp/" "ltc"
+    (tempFile, handle) <- openBinaryTempFile (getLocation ref </> "tmp") "ltc"
     BL.hPut handle (Z.compress value)
     hClose handle
     renameFile tempFile (keyLocation ref key)
@@ -92,6 +92,7 @@ initStore loc = do
     writeFile (loc </> "format") formatString
     writeFile (loc </> "version") (show storeVersion)
     createDirectory (loc </> "store")
+    createDirectory (loc </> "tmp")
 
 -- | The hash of a key.  This hash is used as the filename under which
 -- the value is stored in the reference store.
