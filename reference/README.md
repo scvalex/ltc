@@ -114,3 +114,16 @@ Patch theory is an algebra for patches.  It talks about patches as an
 almost-group (patch application is not a closed operation).  It uses
 commutation (which is not to say patches are commutative) to re-order
 the patch history before doing some operations.
+
+### Rsync Algorithm
+
+> <https://en.wikipedia.org/wiki/Rsync>
+
+In order to synchronize a local file with an older version of the file
+on a remote server, `rsync` does the following: first, the local
+machine splits the file into fixed-size chunks and computes two
+checksums for them (an MD5 and a rolling checksum); these checksums
+are sent to the remote; the remote computes *all* the rolling
+checksums for its version of the file, and checks if any blocks match
+with what the local sent; it tells the local what pieces it's missing;
+the local then sends the missing pieces over.
