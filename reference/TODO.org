@@ -18,3 +18,4 @@ Keybindings:
 *** TODO Look at diff
 *** TODO Look at rdiff
 *** TODO Look at bdiff
+*** TODO Read about Logic Databases (in the DB book)
