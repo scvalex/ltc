@@ -6,8 +6,6 @@ Background Reading
 
 ### Subversion's Delta Editor: Interface As Ontology \cite{Fogel12}
 
-> [subversion-delta-editor.pdf](https://github.com/scvalex/ltc/blob/master/reference/subversion-delta-editor.pdf)
-
 Subversion has a client/server model.  The server holds all the
 history for a repository, while clients only have "working
 directories" checked out at particular revisions, and possibly local,
@@ -30,8 +28,6 @@ and commit operations can be done through a single RPC call.
 
 ### Git Internals -- Transfer Protocols \cite{Chacon09}
 
-> [git-transfer.pdf](https://github.com/scvalex/ltc/blob/master/reference/git-transfer.pdf)
-
 Git separates the task of downloading/uploading the changes, and
 updating the working tree.  Only the transfer part is interesting to
 us.
@@ -42,8 +38,6 @@ changes.  This is all done with many separate requests.
 
 ### Two Cons against NoSQL \cite{Zicari12}
 
-> [two-cons-nosql.pdf](https://github.com/scvalex/ltc/blob/master/reference/two-cons-nosql.pdf)
-
 The author notes two current issues with NoSQL databases:
 
  * it's hard to transfer data from one NoSQL product into another, and
@@ -53,39 +47,29 @@ The author notes two current issues with NoSQL databases:
 The author then proceeds to interview several people who explain how
 his issues are fictive, or only true in some narrow sense.
 
-### On Eventual Consistency – An interview with Justin Sheehy
-
-> [eventual-consistency-justin-sheehy.pdf](https://github.com/scvalex/ltc/blob/master/reference/eventual-consistency-justin-sheehy.pdf)
+### On Eventual Consistency – An interview with Justin Sheehy \cite{Sheehy12}
 
 An interview with the CTO of Basho Technologies, where he talks about
 Riak, eventual consistency, and uses of document-stores.
 
-### On Eventual Consistency - An interview with Monty Widenius
-
-> [eventual-consistency-monty-widenius.pdf](https://github.com/scvalex/ltc/blob/master/reference/eventual-consistency-monty-widenius.pdf)
+### On Eventual Consistency - An interview with Monty Widenius \cite{Widenius12}
 
 An interview with the author of MySQL (who forked MariaDB), where he
 explains how eventual consistency is not what he'd want in many
 circumstances.  This is mostly a response to the Basho interview
 above.
 
-### Riak SmartMachine Benchmark: The Technical Details
-
-> [riak-benchmark.pdf](https://github.com/scvalex/ltc/blob/master/reference/riak-benchmark.pdf)
+### Riak SmartMachine Benchmark: The Technical Details \cite{badnima10}
 
 Joyent bencharked Riak under a variety of loads.  The found that:
 "Riak behaves predictably under high loads", "Riak demonstrates
 stability under high loads", "Riak demonstrates linear scalability".
 
-### Delay-tolerant networking
-
-> <https://en.wikipedia.org/w/index.php?title=Delay-tolerant_networking&oldid=522645285>
+### Delay-tolerant networking \cite{wiki:DTN}
 
 DTN is basically normal networking will lots of store-and-forward hops.
 
-### Mercurial WireProtocol
-
-> [mercurial-p.pdf](https://github.com/scvalex/ltc/blob/master/reference/mercurial-p.pdf)
+### Mercurial WireProtocol \cite{mercurial}
 
 The mercurial wire protocol is a set of RPC methods that are used to
 discover what changes one side is aware of and the other is unaware
