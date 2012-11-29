@@ -4,7 +4,7 @@ References
 Background Reading
 ------------------
 
-### Subversion's Delta Editor: Interface As Ontology
+### Subversion's Delta Editor: Interface As Ontology \cite{Fogel12}
 
 > [subversion-delta-editor.pdf](https://github.com/scvalex/ltc/blob/master/reference/subversion-delta-editor.pdf)
 
@@ -28,7 +28,7 @@ operation of the parent.
 Although it's probably not implemented as such, Subversion's update,
 and commit operations can be done through a single RPC call.
 
-### Git Internals -- Transfer Protocols
+### Git Internals -- Transfer Protocols \cite{Chacon09}
 
 > [git-transfer.pdf](https://github.com/scvalex/ltc/blob/master/reference/git-transfer.pdf)
 
@@ -40,7 +40,7 @@ In order to exchange changes, Git queries the remote for its
 references, then walks through the commits, downloading or uploading
 changes.  This is all done with many separate requests.
 
-### Two Cons against NoSQL
+### Two Cons against NoSQL \cite{Zicari12}
 
 > [two-cons-nosql.pdf](https://github.com/scvalex/ltc/blob/master/reference/two-cons-nosql.pdf)
 
