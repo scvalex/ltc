@@ -111,3 +111,17 @@ are sent to the remote; the remote computes *all* the rolling
 checksums for its version of the file, and checks if any blocks match
 with what the local sent; it tells the local what pieces it's missing;
 the local then sends the missing pieces over.
+
+### Diff O(ND) Algorithm \cite{Myers86ano(nd)}
+
+Diffing is related to the Longest Common Subsequence problem.  The
+general idea is to find the LCS of two strings, then work backwards,
+and compute the edit script.
+
+Interestingly, the way the algorithms above are explained is different
+from the standard LCS dynamic programming solution.  The define the
+edit graph of two strings in the obvious way with edges going to the
+nodes underneath, to the right, and on the diagonal. They then define
+a D-path of length `k` as a path through the edit-graph that has
+exactly `k` non-diagonal edges.  Their algorithms then work by
+computing D-paths of increasing lengths.
