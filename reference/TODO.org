@@ -21,3 +21,4 @@ Keybindings:
 *** TODO Read about Logic Databases (in the DB book)
 *** TODO Read about process-calculus
 *** TODO Find out if there's some research on expiring data
+*** TODO Look at PODS (the distributed computing conference) papers
