@@ -39,6 +39,20 @@ identified by an unique randomly generated id, and a human-friendly
 name.  Sites with different ids may have the same name, though this
 may be confusing for humans inspecting the change history.
 
+Why?
+----
+
+`ltc` solves two main problems: simple storage and synchronization
+over *bad* connections:
+
+- `ltc` is a key-value data-store; additionally, it takes some
+  features from version control systems, and stores some history for
+  each recorded field;
+
+- `ltc` allows synchronization over very-high latency, lossy, and
+  possibly one-way connections; the versioning plays a key role here,
+  and allows `ltc` to resolve more conflicts than similar systems.
+
 Operations
 ----------
 
