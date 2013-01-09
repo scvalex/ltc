@@ -121,3 +121,20 @@ nodes underneath, to the right, and on the diagonal. They then define
 a D-path of length `k` as a path through the edit-graph that has
 exactly `k` non-diagonal edges.  Their algorithms then work by
 computing D-paths of increasing lengths.
+
+### Bundle Protocol Specification \cite{rfc5050}
+
+"This document describes version 6 of the Delay Tolerant Networking
+(DTN) "bundle" protocol (BP).  Delay Tolerant Networking is an end-
+to-end architecture providing communications in and/or through
+**highly stressed environments**.  Stressed networking environments
+include those with intermittent connectivity, large and/or variable
+delays, and high bit error rates." (emphasis ours)
+
+BP is an overlay store-and-forward network.  It sits at the
+application layer and is built on top of existing networks.
+
+They use a dictionary to "compress" IDs in each bundle.  All IDs are
+included once at the beginning of each bundle, and references to these
+are used in the rest of the bundle; so, every ID appears only once in
+the binary representation.
