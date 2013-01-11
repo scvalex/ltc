@@ -138,3 +138,87 @@ They use a dictionary to "compress" IDs in each bundle.  All IDs are
 included once at the beginning of each bundle, and references to these
 are used in the rest of the bundle; so, every ID appears only once in
 the binary representation.
+
+### Interplanetary Internet \cite{wiki:IPN}
+
+"While the Internet as it is known today tends to be a busy network of
+networks with high traffic, negligible delay and errors, and a wired
+backbone, the Interplanetary Internet is a store-and-forward network
+of internets that is often disconnected, has a wireless backbone
+fraught with error-prone links and delays ranging from tens of minutes
+to even hours, even when there is a connection."
+
+### Delay Tolerant Networking Research Group \cite{dtnrg}
+
+"Said another way, we are concerned with interconnecting highly
+heterogeneous networks together even if end-to-end connectivity may
+never be available. Examples of such environments include spacecraft,
+military/tactical, some forms of disaster response, underwater, and
+some forms of ad-hoc sensor/actuator networks. It may also include
+Internet connectivity in places where performance may suffer such as
+developing parts of the world."
+
+### Routing in delay-tolerant networking \cite{wiki:dtn-routing}
+
+"There are many characteristics DTN protocols, including routing, must
+take into consideration. A first consideration is if information about
+future contacts is readily available. For example, in interplanetary
+communications, many times a planet or moon is the cause of contact
+disruption, and large distance is the cause of communication
+delay. However, due to the laws of physics, it is possible to predict
+the future in terms of the times contacts will be available, and how
+long they will last. These types of contacts are known as scheduled or
+predictable contacts.[7] On the contrary, in disaster recovery
+networks the future location of communicating entities, such as
+emergency responders, may not be known. These types of contacts are
+known as intermittent or opportunistic contacts."
+
+### Delay-Tolerant Networking Architecture \cite{rfc4838}
+
+"In a sense, the DTN architecture provides a common method for
+interconnecting heterogeneous gateways or proxies that employ store-
+and-forward message routing to overcome communication disruptions.  It
+provides services similar to electronic mail, but with enhanced
+naming, routing, and security capabilities.
+
+The existing Internet protocols do not work well for some
+environments, due to some fundamental assumptions built into the
+Internet architecture:
+
+ - that an end-to-end path between source and destination exists for
+   the duration of a communication session
+
+ - (for reliable communication) that retransmissions based on timely
+   and stable feedback from data receivers is an effective means for
+   repairing errors
+
+ - that end-to-end loss is relatively small
+
+ - that all routers and end stations support the TCP/IP protocols
+
+ - that applications need not worry about communication performance
+
+ - that endpoint-based security mechanisms are sufficient for meeting
+   most security concerns
+
+ - that packet switching is the most appropriate abstraction for
+   interoperability and performance
+
+ - that selecting a single route between sender and receiver is
+   sufficient for achieving acceptable communication performance
+
+The DTN architecture is conceived to relax most of these assumptions,
+based on a number of design principles that are summarized here:
+
+..."
+
+"The use of the bundle layer is guided not only by its own design
+principles, but also by a few application design principles:
+
+ - Applications should minimize the number of round-trip exchanges.
+
+ - Applications should cope with restarts after failure while network
+   transactions remain pending.
+
+ - Applications should inform the network of the useful life and
+   relative importance of data to be delivered."
