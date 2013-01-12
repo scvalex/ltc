@@ -222,3 +222,13 @@ principles, but also by a few application design principles:
 
  - Applications should inform the network of the useful life and
    relative importance of data to be delivered."
+
+### DRBD \cite{drbd}
+
+DRBD just sends write operations from the master node to the slaves.
+The write either blocks until all the slaves have finished the write
+(Protocol C), or it's done in an asynchronous fashion which only
+blocks when the TCP send buffer is full (Protocol A).
+
+It currently uses TCP.  UDP multicast is on their
+roadmap. \cite{drbd-roadmap}
