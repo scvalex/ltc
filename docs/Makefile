@@ -14,4 +14,4 @@ clean:
 	rm -f {references,interim}.{tex,pdf,aux,bbl,blg,log,out,bcf}
 
 p:
-	permamake.sh template.tex interim.bib interim.md Makefile
+	permamake.sh template.tex references.bib interim.md Makefile
