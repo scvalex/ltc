@@ -1,9 +1,23 @@
 \documentclass[11pt, a4paper, titlepage]{article}
+\usepackage{fullpage}
+
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{amssymb,amsmath}
 
-\usepackage{fullpage}
+\usepackage[
+  setpagesize=false, % page size defined by xetex
+  unicode=false, % unicode breaks when used with xetex
+  xetex
+]{hyperref}
+
+\hypersetup{
+  breaklinks=true,
+  bookmarks=true,
+  colorlinks=false,
+  pdfborder={0 0 0}
+}
+
 \usepackage[numbers]{natbib}
 
 % Provides \textsubscript
@@ -28,19 +42,6 @@
 
 \let\Oldincludegraphics\includegraphics
 \renewcommand{\includegraphics}[1]{\Oldincludegraphics[width=\maxwidth]{#1}}
-
-\usepackage[
-  setpagesize=false, % page size defined by xetex
-  unicode=false, % unicode breaks when used with xetex
-  xetex
-]{hyperref}
-
-\hypersetup{
-  breaklinks=true,
-  bookmarks=true,
-  colorlinks=false,
-  pdfborder={0 0 0}
-}
 
 \usepackage{color}
 \usepackage{fancyvrb}
@@ -106,7 +107,7 @@
 
 $body$
 
-\bibliographystyle{acm}
+\bibliographystyle{plainnat}
 \bibliography{interim}
 
 \end{document}
