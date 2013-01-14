@@ -280,3 +280,10 @@ Since, according to Special Relativity, "time is a local phenomenon",
 we cannot use normal timestamps to version updates.  We instead use
 vector clocks, a kind of timestamp designed specifically for
 distributed system.  These are basically vectors Lamport timestamps.
+
+### OSPF Route Propagation \cite{rfc2328}
+
+The OSPF algorithm is used to compute the shortest routes inside an
+AS.  Given no changes to the topology, the routes computed by each
+router will converge.  Additionally, the convergence period for any
+one change is "short".
