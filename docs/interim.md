@@ -19,6 +19,20 @@ Introduction
 > solving it?  (DON'T use those three questions as subheadings
 > however!  The answers should emerge from what you write.)
 
+What is LTc?
+
+What assumptions do current datastores make?
+
+What assumptions does LTc make?
+
+Where would LTc be used?
+
+How is LTc implemented? (key-value store with DVCS semantics,
+communicates over UDP, conflict resolution through Patch Theory,
+decoupled internal architecture)
+
+What are the obvious downsides?
+
 Background
 ==========
 
@@ -50,6 +64,10 @@ Background
 > solutions. Critical judgement is shown by discussing the limitations
 > of the solutions proposed both in terms of their disadvantages and
 > limits of applicability.
+
+### DTN
+
+### Patch Theory
 
 Project Plan
 ============
