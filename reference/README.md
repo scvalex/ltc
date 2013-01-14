@@ -253,3 +253,7 @@ master will then send to the slave all accumulated commands, and all
 new commands received from clients that will modify the dataset. This
 is done as a stream of commands and is in the same format of the Redis
 protocol itself."
+
+### IMAP (Kolab) conflict resolution \cite{imap-resolution}
+
+The oldest object is the valid one.  Clients deal with conflicts.
