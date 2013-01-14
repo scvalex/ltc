@@ -2,7 +2,7 @@ Keybindings:
  - C-c C-t :: Cycle through TODO state
 
 * To Read
-** [9/18] Background Reading
+** [10/19] Background Reading
 *** DONE Subversion's Transfer Protocol
 *** DONE Git's Transfer Protocol
 *** TODO CouchDB's right-growing tree
@@ -21,5 +21,6 @@ Keybindings:
 *** TODO Read about Logic Databases (in the DB book)
 *** DONE Read about process-calculus
 *** TODO Find out if there's some research on expiring data
-*** TODO Look at PODS (the distributed computing conference) papers
-*** TODO How does IMAP synchronization resolve conflicts
+*** TODO Look at PODS? (the distributed computing conference) papers
+*** TODO Look at PODC (the distributed computing conference) papers
+*** DONE How does IMAP synchronization resolve conflicts
