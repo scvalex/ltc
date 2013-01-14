@@ -232,3 +232,9 @@ blocks when the TCP send buffer is full (Protocol A).
 
 It currently uses TCP.  UDP multicast is on their
 roadmap. \cite{drbd-roadmap}
+
+### Globally Distributed Content Delivery \cite{akamai}
+
+This is an overview of what Akamai does -- it serves static and
+dynamic content from the "Internet's Edge".  It focuses on the user's
+perspective so it doesn't contain anything useful to us.
