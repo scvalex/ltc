@@ -238,3 +238,18 @@ roadmap. \cite{drbd-roadmap}
 This is an overview of what Akamai does -- it serves static and
 dynamic content from the "Internet's Edge".  It focuses on the user's
 perspective so it doesn't contain anything useful to us.
+
+### Redis replication \cite{redis-replication}
+
+"If you set up a slave, upon connection it sends a SYNC command. And
+it doesn't matter if it's the first time it has connected or if it's a
+reconnection.
+
+The master then starts background saving, and collects all new
+commands received that will modify the dataset. When the background
+saving is complete, the master transfers the database file to the
+slave, which saves it on disk, and then loads it into memory. The
+master will then send to the slave all accumulated commands, and all
+new commands received from clients that will modify the dataset. This
+is done as a stream of commands and is in the same format of the Redis
+protocol itself."
