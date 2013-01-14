@@ -23,13 +23,17 @@ What is LTc?
 
 What assumptions do current datastores make?
 
-What assumptions does LTc make?
+What assumptions does LTc make?  Mention that c+ communications are
+currently in the realm of SF.
 
 Where would LTc be used?
 
-How is LTc implemented? (key-value store with DVCS semantics,
-communicates over UDP, conflict resolution through Patch Theory,
-decoupled internal architecture)
+How is LTc implemented? (cAP, key-value store with DVCS semantics,
+communicates over UDP, conflict resolution through Patch Theory
+(because communication between nodes is very difficult, so the usual
+consensus or voting algorithms are not feasible), not ACID, decoupled
+internal architecture, updates are propagated via some lazy epidemic
+technique, vector clocks)
 
 What are the obvious downsides?
 
@@ -68,6 +72,8 @@ Background
 ### DTN
 
 ### Patch Theory
+
+### Vector Clocks
 
 Project Plan
 ============
