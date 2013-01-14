@@ -1,4 +1,4 @@
-\documentclass[11pt, a4paper]{article}
+\documentclass[11pt, a4paper, titlepage]{article}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{amssymb,amsmath}
@@ -74,12 +74,35 @@
 \setlength{\parskip}{6pt plus 2pt minus 1pt}
 \setlength{\emergencystretch}{3em}  % prevent overfull lines
 
-\title{LTc: References}
-\author{Alexandru Scvor\c tov\\\url{<as10109@doc.ic.ac.uk>}}
+\newcommand{\mytitle}{LTc: Replicated data stores over bad connections\\[0.4cm]Interim Report}
+\newcommand{\myauthor}{Alexandru Scvor\c tov}
+\newcommand{\myemail}{\email{<as10109@doc.ic.ac.uk>}}
+
+\newcommand{\email}[1]{\nolinkurl{#1}}
 
 \begin{document}
 
-\maketitle
+\begin{titlepage}
+
+  \begin{center}
+    \textsc{Imperial College of Science, Technology and Medicine}\\[0.1cm]
+    \textsc{Department of Computing}
+
+    \vspace{3cm}
+
+    \textsc{\Large \mytitle}
+
+    \vspace{1cm}
+
+    \textsc{\Large \myauthor}\\[0.1cm]
+    \myemail
+
+    \vspace{2cm}
+
+    \textsc{Supervisor: Susan Eisenbach} \email{<susan@doc.ic.ac.uk>}
+  \end{center}
+
+\end{titlepage}
 
 $body$
 
