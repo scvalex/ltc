@@ -1,6 +1,9 @@
 Introduction
 ============
 
+\cite{rfc4838}
+\cite{dtnrg}
+
 > It’s a good idea to try to write the introduction to your final
 > report early on in the project. However, you will find it hard, as
 > you won’t yet have a complete story and you won’t know what your

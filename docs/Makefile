@@ -1,9 +1,18 @@
-all: proposal.pdf
+all: interim.pdf
 
-.PHONY: all clean
+.PHONY: interim.pdf interim.tex
 
-proposal.pdf: proposal.md
+interim.pdf: interim.tex
+	xelatex $< -o $@
+	bibtex interim
+	xelatex $< -o $@
+	xelatex $< -o $@
+
+interim.tex: interim.md
 	pandoc --template template.tex --latex-engine=xelatex --toc $< -o $@
 
 clean:
-	rm -f proposal.pdf
+	rm -f {references,interim}.{tex,pdf,aux,bbl,blg,log,out}
+
+p:
+	permamake.sh template.tex interim.bib interim.md Makefile
