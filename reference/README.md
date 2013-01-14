@@ -257,3 +257,19 @@ protocol itself."
 ### IMAP (Kolab) conflict resolution \cite{imap-resolution}
 
 The oldest object is the valid one.  Clients deal with conflicts.
+
+### Eventually Consistent \cite{Vog08}
+
+"In ACID-based systems, this kind of consistency is often the
+responsibility of the developer writing the transaction but can be
+assisted by the database managing integrity constraints."
+
+LTc is cAP, but probably-not ACID.
+
+LTc is causally consistent, read-your-writes consistent, monotonic
+read consistent, monotonic write consistent.
+
+"In a simple key-value model it is easy to compare versions to
+determine the latest value written to the system".  This is not true
+in LTc, as according to special relativity, "time is a local
+phenomenon".
