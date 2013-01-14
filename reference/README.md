@@ -273,3 +273,10 @@ read consistent, monotonic write consistent.
 determine the latest value written to the system".  This is not true
 in LTc, as according to special relativity, "time is a local
 phenomenon".
+
+### Vector Clocks \cite{vector-clocks}
+
+Since, according to Special Relativity, "time is a local phenomenon",
+we cannot use normal timestamps to version updates.  We instead use
+vector clocks, a kind of timestamp designed specifically for
+distributed system.  These are basically vectors Lamport timestamps.
