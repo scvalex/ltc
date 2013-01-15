@@ -345,6 +345,28 @@ update is assumed to have propagated through the network, and ceases
 to be infectious. \citep{Vah00} Thus, the update executes a
 breadth-first walk of network graph.
 
+~~~~ {.sourceCode}
+    A    B    C           Day 1: None of the three nodes is
+    o    o    o                  infected.
+
+    A    B    C           Day 2: B is "infected" by an update.
+    o    I    o
+
+    A    B    C           Day 3: C connects to B and is infected
+    o    I -- I                  by the update.
+
+    A    B    C           Day 4: B does not consider the update
+    o    i    I                  infections any more.
+
+    A    B    C           Day 5: A connects to B, but does not
+    o -- i    I                  receive the update.
+
+       The propagation of an update through a partially
+       connected network of three nodes.  Ultimately, the
+       update does not fully propagate due to it ceasing to
+       be infectious too soon in B.
+~~~~
+
 The algorithm outlined above is rumor mongering, and it is what LTc
 will initially use.  By changing the way a nodes selects other nodes
 to infect, and the time until an update is no longer considered
