@@ -31,6 +31,8 @@ as developing parts of the world." \citep{dtnrg}
 <!-- The final report should include a discussion of how each of the above -->
 <!-- environments is bad for communications. -->
 
+## Motivation
+
 Current systems such as distributed version control systems (DVCS),
 traditional databases (DBMS), and modern NoSQL data stores are
 unsuitable for such situations because they make tacit assumptions
@@ -62,6 +64,12 @@ There are several environments in which current systems will not work
 effectively or at all, but for which LTc is designed.  In this
 section, we look at what issues arise in each environment, and how
 they impact communication channels.
+
+The following issues can usually be alleviated by better
+communications infrastructure.  That said, unless an inexpensive
+instantaneous communication system is discovered, these issues are
+here to stay, and will only get worse as time goes on and the
+transferred data increases in size.
 
 ### Interplanetary Internet
 
@@ -140,14 +148,29 @@ able to handle this case automatically.
 
 ### Developing and Rural Areas
 
-"include spacecraft, military/tactical, some forms of disaster
-response, underwater, some forms of ad-hoc sensor/actuator networks,
-and Internet connectivity in places where performance may suffer such
-as developing parts of the world."
+Finally, consider developing countries or rural areas.  In both cases,
+the ground-based communications infrastructure is either incomplete or
+non-existing, and the only alternative is satellite communications.
+Unfortunately, consumer-grade satellite links tend to be expensive,
+lossy, and unpredictable.
 
-Mention that c+ communications are currently in the realm of SF.
+~~~~ {.sourceCode}
+       +--------+     +--------+
+       |  |  |  |--0--|  |  |  |
+       +--------+     +--------+
+                   |
+             /     |     \
+            o      o      o
+~~~~
 
-## Design Decisions
+Although a traditional database system could function in such an
+environment, it would also have to handle the inevitable network
+partitions gracefully.  This is not often the case.  For instance,
+Redis requires nodes to perform a re-synchronization of all the data
+once the connection has been re-established \citep{redis-replication}.
+
+Design Decisions
+================
 
 How is LTc implemented? (cAP (in fact, we usually can't choose C, and
 take this case to its logical extreme), key-value store with DVCS
