@@ -16,25 +16,51 @@ synchronization protocols for such situations.
 Introduction
 ============
 
-\nocite{*}
-
-> For the interim report this section should be a short, succinct,
-> summary of the project’s main objectives.
-
-> What is the problem,
-
 > why is it interesting
 
 > what’s your main idea for solving it?
 
-What is LTc?
+LTc is a key-value store designed so that replicated data sets can be
+synchronized over lossy connections where end-to-end connectivity may
+not be available.  Examples of environments where this is the case
+"include spacecraft, military/tactical, some forms of disaster
+response, underwater, some forms of ad-hoc sensor/actuator networks,
+and Internet connectivity in places where performance may suffer such
+as developing parts of the world." \citep{dtnrg}
 
-What assumptions do current datastores make?
+<!-- The final report should include a discussion of how each of the above -->
+<!-- environments is bad for communications. -->
 
-What assumptions does LTc make?  Mention that c+ communications are
-currently in the realm of SF.
+Current systems such as distributed version control systems (DVCS),
+traditional databases (DBMS), and modern NoSQL data stores are
+unsuitable for such situations because they make tacit assumptions
+about the communications medium.  We discuss these assumptions in
+detail in Section \ref{sec:dtn}, but, broadly speaking, these systems
+assume that the communication channel uses a protocol, with strong
+reliability and ordering guarantees, such as TCP/IP.
+
+Unlike other systems, LTc makes only the following explicit
+assumptions.  First of all, nodes\footnote{when speaking of nodes, we
+mean machines that hold (possibly different versions of) the same data
+set} may send messages to other nodes occasionally.  This means that
+an LTc node does *not* expect to be able to send messages to another
+at any time, it does *not* expect that all the sent messages will
+reach the other node, and it does *not* expect an immediate reply to
+the sent messages.  Secondly, it is possible for all nodes to
+communicate with each other, perhaps indirectly.  In other words, if
+we construct a directed graph, where the LTc nodes are vertices, and
+the communication channels between nodes are directed edges, the graph
+is strongly connected.  We claim that these assumptions hold for all
+the environments mentioned above, and discuss this in Section
+\ref{sec:scenarios}.
+
+## Usage Scenarios
+
+\label{sec:scenarios}
 
 Where would LTc be used?
+
+Mention that c+ communications are currently in the realm of SF.
 
 How is LTc implemented? (cAP (in fact, we usually can't choose C, and
 take this case to its logical extreme), key-value store with DVCS
@@ -78,16 +104,20 @@ Background
 > of the solutions proposed both in terms of their disadvantages and
 > limits of applicability.
 
-### DTN
+## DTN
 
-### Patch Theory
+\label{sec:dtn}
 
-### Vector Clocks
+It's interesting to note that connectivity may be asymmetrical.
+
+## Patch Theory
+
+## Vector Clocks
 
 Project Plan
 ============
 
-### Phase 0
+## Phase 0
 
 > Deadline: end of October
 
@@ -97,7 +127,7 @@ distances.  Specifically, determine why TCP would not work (and at
 what point in breaks down), whether UDP or another existing protocol
 would work, and how "intermittent" the connection is likely to be.
 
-### Phase 1
+## Phase 1
 
 > Deadline: end of November
 
@@ -116,7 +146,7 @@ written and tested in a week.
 Additionally, develop a benchmark to compare different implementations
 of the data-store.
 
-### Phase 2
+## Phase 2
 
 > Deadline: end of January
 
@@ -126,7 +156,7 @@ synchronization protocol for the replicated nodes.  This will probably
 involve sending large sets of updates at once.  Entries will probably
 need to be versioned with a scheme like vector-clocks.
 
-### Phase 3
+## Phase 3
 
 > Deadline: mid March
 
@@ -135,7 +165,7 @@ LTc's synchronization, develop a Linux kernel module that creates a
 loopback network device that is high-latency and intermittent.  Using
 this, test and tune the synchronization algorithm.
 
-### Phase 4
+## Phase 4
 
 > Deadline: mid May
 
