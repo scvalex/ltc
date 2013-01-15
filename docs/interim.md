@@ -141,6 +141,9 @@ predicting when two nodes will connect.
       o              o
      /    o -- o     |
     o  o             o
+
+    Nodes forming short-lived
+    pair-wise connections.
 ~~~~
 
 Because connections cannot be established between any two nodes
@@ -163,6 +166,9 @@ lossy, and unpredictable.
                    |
              /     |     \
             o      o      o
+
+       A satellite communicating
+       with three nodes.
 ~~~~
 
 Although a traditional database system could function in such an
