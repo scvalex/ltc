@@ -240,9 +240,26 @@ MongoDB and CouchDB have similar limitations.
 
 ## DVCS Semantics
 
-conflict resolution through Patch Theory (because communication
-between nodes is very difficult, so the usual consensus or voting
-algorithms are not feasible)
+We expect communication between LTc nodes to be difficult, and since
+updates can occur on each node, we expect the data sets to diverge in
+conflicting ways.  As such, conflict resolution will play a key role
+in the operation of LTc.
+
+Because conflict resolution must happen automatically in most cases,
+we make two design choices meant to increase the amount of information
+available during resolution.  First, we timestamp events with vector
+clocks, which allows us to establish causal relationships between
+them; this is the subject of Section \ref{sec:vector-clocks}.  Second,
+we store at least some change history for every field in the database,
+much like a distributed version control system.  This should allow us
+solve some conflicting changes by "merging"; this is the subject of
+Section \ref{sec:patch-theory}.
+
+The use of vector clocks and storing changes are complications due to
+the scope of the problem.  Conflict resolution mechanisms employed by
+other data stores such as consensus and majority voting \citep{Vog08}
+cannot be used by LTc because of the large delays in communications
+between nodes.
 
 ## UDP
 
@@ -290,7 +307,11 @@ Background
 
 ## Patch Theory
 
+\label{sec:patch-theory}
+
 ## Vector Clocks
+
+\label{sec:vector-clocks}
 
 Project Plan
 ============
