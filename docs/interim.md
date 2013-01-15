@@ -20,8 +20,6 @@ synchronization protocols for such situations.
 Introduction
 ============
 
-> what’s your main idea for solving it?
-
 LTc is a key-value store designed so that replicated data sets can be
 synchronized over lossy connections where end-to-end connectivity may
 not be available.  Examples of environments where this is the case
@@ -64,6 +62,8 @@ There are several environments in which current systems will not work
 effectively or at all, but for which LTc is designed.  In this
 section, we look at what issues arise in each environment, and how
 they impact communication channels.
+
+### Interplanetary Internet
 
 Consider interplanetary communications.  In contrast to the Internet,
 which "tends to be a busy network of networks with high traffic,
@@ -108,10 +108,37 @@ such as TCP would not work effectively.  Similarly, because of the
 length of time in which communications are impossible, any system not
 designed with severe partitioning in mind will probably not work.
 
+### Disaster-Stricken Areas
 
-Where would LTc be used?
+Consider a disaster stricken area: a city hit by an earthquake or by a
+storm.  Although many parts of the infrastructure can collapse after a
+catastrophic event, "the breakdown of essential communications is one
+of the most widely shared characteristics of all disasters".
+\citep{Tow05} Interestingly enough, cell towers and other elements of
+the centralized communications infrastructure fail, but individual
+devices such as mobile phones or portable computers continue to
+function.
 
-It's interesting to note that connectivity may be asymmetrical.
+The result of this sort of centralized communications failure is a
+large number of nodes that can set up occasional connections between
+themselves, but are disconnected from any global network.  For
+instance, these connections could be set up via Bluetooth, NFC, or
+ad-hoc WiFi networks.  We call these connections occasional because no
+two nodes will be permanently connected, and there is no way of
+predicting when two nodes will connect.
+
+~~~~ {.sourceCode}
+      o              o
+     /    o -- o     |
+    o  o             o
+~~~~
+
+Because connections cannot be established between any two nodes
+automatically, and because connection establishment between nodes is
+effectively random, current replicated data store systems will not be
+able to handle this case automatically.
+
+### Developing and Rural Areas
 
 "include spacecraft, military/tactical, some forms of disaster
 response, underwater, some forms of ad-hoc sensor/actuator networks,
