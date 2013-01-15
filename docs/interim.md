@@ -172,15 +172,45 @@ once the connection has been re-established \citep{redis-replication}.
 Design Decisions
 ================
 
-How is LTc implemented? (cAP (in fact, we usually can't choose C, and
-take this case to its logical extreme), key-value store with DVCS
-semantics, communicates over UDP, conflict resolution through Patch
-Theory (because communication between nodes is very difficult, so the
-usual consensus or voting algorithms are not feasible), not ACID,
-decoupled internal architecture, updates are propagated via some lazy
-epidemic technique, vector clocks)
+## Key-Value Store
 
-What are the obvious downsides?
+## ecAP
+
+LTc is a distributed data store and one of the ways to characterize it
+is in terms of Eric Brewer's CAP Theorem \citep{Gil02}.  The CAP
+theorem simply states that a distributed service cannot provide all
+three of the following guarantees: consistency, availability, and
+partition tolerance.
+
+In other words, when designing a distributed service, we must relax at
+least one of the above guarantees.  We note that since network
+partitions happen, we cannot relax the last guarantee. \citep{Vog08}
+LTc takes this observation further: not only do network partitions
+happen, the network *is* partitioned.
+
+Since communication between nodes can be very slow, guaranteeing
+consistency would mean that most operations have to be equally slow.
+So, we relax the strict consistency guarantee and use *eventual
+consistency*.  In other words, LTc nodes may have conflicting data
+sets, but, given enough time, all the nodes will converge to The One
+True Data Set.
+
+The downside to using eventually consistent semantics is that the user
+has to take into account that they may be operating on "old" data.
+
+## ACID?
+
+## DVCS Semantics
+
+conflict resolution through Patch Theory (because communication
+between nodes is very difficult, so the usual consensus or voting
+algorithms are not feasible)
+
+## UDP
+
+## Epidemic Updating
+
+## Plugable Internal Architecture
 
 Background
 ==========
