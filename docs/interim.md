@@ -171,6 +171,8 @@ partitions gracefully.  This is not often the case.  For instance,
 Redis requires nodes to perform a re-synchronization of all the data
 once the connection has been re-established \citep{redis-replication}.
 
+\clearpage
+
 Design Decisions
 ================
 
@@ -276,15 +278,46 @@ Interestingly, the only widely used protocol that completely avoids
 round-trips is UDP, which "provides a minimal, unreliable,
 best-effort, message-passing transport". \citep{rfc5405}
 
-The only alternative we could find is the DTN protocol, which is the
-subject of Section \ref{sec:dtn}.  Unfortunately, although it is a
-better fit for LTc's requirements, DTN is not widely deployed, and
+The only alternative we could find is the Bundle Protocol (BP), which
+is the subject of Section \ref{sec:dtn}.  Unfortunately, although it
+is a better fit for LTc's requirements, BP is not widely deployed, and
 relying on it would only make LTc more difficult to use and test.
 However, because of the plugable architecture described in Section
 \ref{sec:plugable} which we adopted, we believe that adding support
-for DTN would be a straightforward future extension.
+for BP would be a straightforward future extension.
 
 ## Epidemic Updating
+
+In the previous sections, we mentioned some of the issues surrounding
+the synchronization of two nodes, but we did not discuss the way
+updates are propagated through the network of LTc nodes.  In other
+words, when a node sees an update to one of its entries, how does it
+propagate the update to all the other nodes that hold a copy of the
+data set?
+
+Because of the disconnected nature of the network, we do not have much
+choice in the matter, and updates can only be propagated on a
+node-by-node basis.  We note that this is the same problem routers in
+partially connected have when updating their routing tables.  "When
+instantaneous end-to-end paths are difficult or impossible to
+establish, routing protocols must take to a 'store and forward'
+approach, where data is incrementally moved and stored throughout the
+network in hopes that it will eventually reach its destination."
+\citep{wiki:dtn-routing}
+
+Our update propagation algorithm will be a variant of epidemic
+routing: When a node becomes "infected" by an update, it seeks out
+uninfected nodes, and infects them.  After some time has passed, an
+update is assumed to have propagated through the network, and ceases
+to be infectious. \citep{Vah00} Thus, the update executes a
+breadth-first walk of network graph.
+
+The algorithm outlined above is rumor mongering, and it is what LTc
+will initially use.  By changing the way a nodes selects other nodes
+to infect, and the time until an update is no longer considered
+infections, several variations of the basic algorithm
+arise. \citep{wiki:dtn-routing} Exploring which of these is best
+suited for LTc is a future path for development.
 
 ## Plugable Internal Architecture
 
