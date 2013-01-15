@@ -189,6 +189,13 @@ drop-in replacement for any existing piece of software, we believe
 that the plugable architecture described in Section \ref{sec:plugable}
 makes writing adapters a simple order of business.
 
+Although, key-value store APIs are much less featureful than the SQL
+APIs exposed by relational databases, we note that a recent trend has
+been to use the latter strictly as the former.  For example,
+\citet{Hof10} mentions how \href{http://www.reddit.com}{Reddit}, a
+site with 270 million page views per month, achieves its performance
+by using MySQL as a key-value store.
+
 ## ecAP
 
 LTc is a distributed data store and one of the ways to characterize it
@@ -226,6 +233,8 @@ algorithms are not feasible)
 ## Epidemic Updating
 
 ## Plugable Internal Architecture
+
+\label{sec:plugable}
 
 Background
 ==========
