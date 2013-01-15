@@ -199,17 +199,17 @@ makes writing adapters a simple order of business.
     +================+================+
     | users          | alex,bob       |
     +----------------+----------------+
-    + alex:highscore + 43000          +
+    + alex:karma     + 43             +
     +----------------+----------------+
     + alex:email     + alex@email.com +
     +----------------+----------------+
-    + bob:highscore  + 240000         +
+    + bob:karma      + 240            +
     +----------------+----------------+
     + bob:email      + bob@bob.me     +
     +----------------+----------------+
 
     An example key-value table populated with
-    data for an online gaming company.
+    data for a social news website.
 ~~~~
 
 Although, key-value store APIs are much less featureful than the SQL
@@ -277,6 +277,20 @@ we store at least some change history for every field in the database,
 much like a distributed version control system.  This should allow us
 solve some conflicting changes by "merging"; this is the subject of
 Section \ref{sec:patch-theory}.
+
+~~~~ {.sourceCode}
+    Other key-value stores               LTc key-value store with changes
+
+    +---------------+-------------+      +---------------+---------------+
+    | Key           | Value       |      | Key           | Value         |
+    +===============+=============+      +===============+===============+
+    | alex:ballance |  120$       |      | alex:ballance |    0$         |
+    +---------------+-------------+      |               |  v | +200$    |
+                                         |               |    200$       |
+                                         |               |  v | -80$     |
+                                         |               |    120$       |
+                                         +---------------+---------------+
+~~~~
 
 The use of vector clocks and storing changes are complications due to
 the scope of the problem.  Conflict resolution mechanisms employed by
