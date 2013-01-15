@@ -1,23 +1,31 @@
+\begin{abstract}
+
+A frequent problem that appears in computing is keeping replicated
+data sets synchronized.  Solutions to this problem include distributed
+version control systems such as git, traditional databases such as
+MySQL, and modern NoSQL data stores such as Redis.  All these make
+tacit assumptions about the communication channel; for instance, all
+assume that the round-trip times between nodes is relatively short.
+Although these assumptions hold withing data centers, and sometimes,
+on the Internet, they do not hold for some extreme situations such as
+interplanetary communications.  LTc aims to define and implement
+synchronization protocols for such situations.
+
+\end{abstract}
+
 Introduction
 ============
 
-\cite{rfc4838}
 \nocite{*}
 
-> It’s a good idea to try to write the introduction to your final
-> report early on in the project. However, you will find it hard, as
-> you won’t yet have a complete story and you won’t know what your
-> main contributions are going to be. However, the exercise is useful
-> as it will tell you what you don’t yet know and thus what questions
-> your project should aim to answer. For the interim report this
-> section should be a short, succinct, summary of the project’s main
-> objectives. Some of this material may be re-usable in your final
-> report, but the chances are that your final introduction will be
-> quite different.  You are therefore advised to keep this part of the
-> interim report short, focusing on the following questions: What is
-> the problem, why is it interesting and what’s your main idea for
-> solving it?  (DON'T use those three questions as subheadings
-> however!  The answers should emerge from what you write.)
+> For the interim report this section should be a short, succinct,
+> summary of the project’s main objectives.
+
+> What is the problem,
+
+> why is it interesting
+
+> what’s your main idea for solving it?
 
 What is LTc?
 
@@ -28,12 +36,13 @@ currently in the realm of SF.
 
 Where would LTc be used?
 
-How is LTc implemented? (cAP, key-value store with DVCS semantics,
-communicates over UDP, conflict resolution through Patch Theory
-(because communication between nodes is very difficult, so the usual
-consensus or voting algorithms are not feasible), not ACID, decoupled
-internal architecture, updates are propagated via some lazy epidemic
-technique, vector clocks)
+How is LTc implemented? (cAP (in fact, we usually can't choose C, and
+take this case to its logical extreme), key-value store with DVCS
+semantics, communicates over UDP, conflict resolution through Patch
+Theory (because communication between nodes is very difficult, so the
+usual consensus or voting algorithms are not feasible), not ACID,
+decoupled internal architecture, updates are propagated via some lazy
+epidemic technique, vector clocks)
 
 What are the obvious downsides?
 
