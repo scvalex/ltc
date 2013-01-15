@@ -222,6 +222,22 @@ has to take into account that they may be operating on "old" data.
 
 ## ACID?
 
+Orthogonal to which of the CAP guarantees LTc makes, we ask whether it
+supports ACID transactions. \citet{wiki:ACID} defines ACID as the
+following four characteristics which transactions need to have:
+atomicity, consistency, isolation, durability.
+
+LTc does *not* support transactions at the moment, but they would be a
+very useful future development.  Although this makes LTc less useful,
+it does allow us to focus on the data store, and on the
+synchronization protocols, both of which would be greatly complicated
+by the addition of transactions.
+
+So, ACID-wise, LTc only supports atomic write operations, but this is
+not as limiting as it first seems: widely used data stores such as
+MongoDB and CouchDB have similar limitations.
+\citep{mongodb-transactions} \citep{couchdb-transactions}
+
 ## DVCS Semantics
 
 conflict resolution through Patch Theory (because communication
@@ -339,3 +355,5 @@ convincing demo.
 
 Evaluation Plan
 ===============
+
+Future: ACID transactions.
