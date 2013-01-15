@@ -193,6 +193,25 @@ drop-in replacement for any existing piece of software, we believe
 that the plugable architecture described in Section \ref{sec:plugable}
 makes writing adapters a simple order of business.
 
+~~~~ {.sourceCode}
+    +----------------+----------------+
+    | Key            | Value          |
+    +================+================+
+    | users          | alex,bob       |
+    +----------------+----------------+
+    + alex:highscore + 43000          +
+    +----------------+----------------+
+    + alex:email     + alex@email.com +
+    +----------------+----------------+
+    + bob:highscore  + 240000         +
+    +----------------+----------------+
+    + bob:email      + bob@bob.me     +
+    +----------------+----------------+
+
+    An example key-value table populated with
+    data for an online gaming company.
+~~~~
+
 Although, key-value store APIs are much less featureful than the SQL
 APIs exposed by relational databases, we note that a recent trend has
 been to use the latter strictly as the former.  For example,
