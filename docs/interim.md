@@ -33,6 +33,8 @@ as developing parts of the world." \citep{dtnrg}
 
 ## Motivation
 
+\label{sec:motivation}
+
 Current systems such as distributed version control systems (DVCS),
 traditional databases (DBMS), and modern NoSQL data stores are
 unsuitable for such situations because they make tacit assumptions
@@ -262,6 +264,25 @@ cannot be used by LTc because of the large delays in communications
 between nodes.
 
 ## UDP
+
+As previously mentioned in Section \ref{sec:scenarios}, LTc cannot use
+a transport protocol such as TCP, which assumes end-to-end
+connectivity, and short round-trips between nodes.  Starting from the
+first assumption outlined in Section \ref{sec:motivation}, LTc only
+requires a protocol that uniquely identifies nodes, and allows at
+least one-way communication between them.
+
+Interestingly, the only widely used protocol that completely avoids
+round-trips is UDP, which "provides a minimal, unreliable,
+best-effort, message-passing transport". \citep{rfc5405}
+
+The only alternative we could find is the DTN protocol, which is the
+subject of Section \ref{sec:dtn}.  Unfortunately, although it is a
+better fit for LTc's requirements, DTN is not widely deployed, and
+relying on it would only make LTc more difficult to use and test.
+However, because of the plugable architecture described in Section
+\ref{sec:plugable} which we adopted, we believe that adding support
+for DTN would be a straightforward future extension.
 
 ## Epidemic Updating
 
