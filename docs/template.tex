@@ -48,7 +48,7 @@
 \usepackage{color}
 \usepackage{fancyvrb}
 \DefineShortVerb[commandchars=\\\{\}]{\|}
-\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},fontsize=\small}
 \newenvironment{Shaded}{\begin{list}{}{\setlength{\leftmargin}{0.5cm}}\item}{\end{list}}
 \newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{{#1}}}}
 \newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{{#1}}}
@@ -65,6 +65,10 @@
 \newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{{#1}}}}
 \newcommand{\NormalTok}[1]{{#1}}
 \newcommand{\FIXME}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{FIXME}}\quad #1}
+
+\makeatletter
+\g@addto@macro\@verbatim\small
+\makeatother
 
 % Make links footnotes instead of hotlinks:
 \renewcommand{\href}[2]{#2\footnote{\url{#1}}}
