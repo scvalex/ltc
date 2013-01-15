@@ -174,6 +174,21 @@ Design Decisions
 
 ## Key-Value Store
 
+Conceptually, LTc is a key-value store.  Its API has only three core
+commands: `set <key> <value>`, `get <key>`, and `delete <key>`.  The
+main reason behind this decision is simplicity: experience has shown
+that key-value stores such as Cassandra, Dynamo, and Riak are the
+simplest data stores that are still useful. \citep{wiki:NoSQL}
+
+The main alternative designs are relational databases such as
+PostgreSQL, and document stores such as CouchDB.  Implementing either
+of these would have made LTc more useful, but it would have made
+writing the data store itself much more difficult, and that is not the
+focus of this project.  So, although, LTc is *not* designed as a
+drop-in replacement for any existing piece of software, we believe
+that the plugable architecture described in Section \ref{sec:plugable}
+makes writing adapters a simple order of business.
+
 ## ecAP
 
 LTc is a distributed data store and one of the ways to characterize it
