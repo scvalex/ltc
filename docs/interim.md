@@ -13,10 +13,12 @@ synchronization protocols for such situations.
 
 \end{abstract}
 
+\tableofcontents
+
+\clearpage
+
 Introduction
 ============
-
-> why is it interesting
 
 > what’s your main idea for solving it?
 
@@ -50,7 +52,7 @@ the sent messages.  Secondly, it is possible for all nodes to
 communicate with each other, perhaps indirectly.  In other words, if
 we construct a directed graph, where the LTc nodes are vertices, and
 the communication channels between nodes are directed edges, the graph
-is strongly connected.  We claim that these assumptions hold for all
+is strongly connected.  We note that these assumptions hold for all
 the environments mentioned above, and discuss this in Section
 \ref{sec:scenarios}.
 
@@ -58,9 +60,67 @@ the environments mentioned above, and discuss this in Section
 
 \label{sec:scenarios}
 
+There are several environments in which current systems will not work
+effectively or at all, but for which LTc is designed.  In this
+section, we look at what issues arise in each environment, and how
+they impact communication channels.
+
+Consider interplanetary communications.  In contrast to the Internet,
+which "tends to be a busy network of networks with high traffic,
+negligible delay and errors, and a wired backbone, the Interplanetary
+Internet is a store-and-forward network of internets that is often
+disconnected, has a wireless backbone fraught with error-prone links
+and delays ranging from tens of minutes to even hours, even when there
+is a connection." \citep{Bur03} In other words, due to obstacles and
+the energy-efficient nature of the machines involved, there is
+significant packet-loss on any interplanetary communication channel.
+Furthermore, because of the distances involved, the round-trip times
+for messages are too large for packet retransmission to a viable
+solution to the problem.
+
+Take, for instance, an idealized case of communicating with NASA's
+Mars Reconnaissance Orbiter.  When they are closest together, Earth
+and Mars are $4$ light minutes apart.  This means that any message
+sent from one to the other will take *at least* $4$ minutes.
+
+~~~~ {.sourceCode}
+    The Sun             Earth     Mars
+     /---\
+     |   | <------------> o <----> o
+     \---/     8 min         4 min
+~~~~
+
+When they are furthest apart, Earth and Mars are $20$ light minutes
+apart.  Even worse, the Sun is between them at this point, making
+communications impossible.
+
+~~~~ {.sourceCode}
+    Earth             The Sun                   Mars
+                       /---\
+      0 <------------> |   | <------------------> o
+            8 min      \---/         12 min
+~~~~
+
+Given that the packet round-trip to Mars is at least $1200$ times
+greater than the longest packet round-trip in today's Internet, it is
+not hard to see how an acknowledgment/retransmission-based protocol
+such as TCP would not work effectively.  Similarly, because of the
+length of time in which communications are impossible, any system not
+designed with severe partitioning in mind will probably not work.
+
+
 Where would LTc be used?
 
+It's interesting to note that connectivity may be asymmetrical.
+
+"include spacecraft, military/tactical, some forms of disaster
+response, underwater, some forms of ad-hoc sensor/actuator networks,
+and Internet connectivity in places where performance may suffer such
+as developing parts of the world."
+
 Mention that c+ communications are currently in the realm of SF.
+
+## Design Decisions
 
 How is LTc implemented? (cAP (in fact, we usually can't choose C, and
 take this case to its logical extreme), key-value store with DVCS
@@ -107,8 +167,6 @@ Background
 ## DTN
 
 \label{sec:dtn}
-
-It's interesting to note that connectivity may be asymmetrical.
 
 ## Patch Theory
 
