@@ -306,6 +306,8 @@ between nodes.
 
 ## UDP
 
+\label{sec:udp}
+
 As previously mentioned in Section \ref{sec:scenarios}, LTc cannot use
 a transport protocol such as TCP, which assumes end-to-end
 connectivity, and short round-trips between nodes.  Starting from the
@@ -492,6 +494,82 @@ computer networks were built, the pace has increased greatly in the
 last decade.  More relevant to LTc, the
 \href{https://www.ietf.org/}{IETF} has now published two RFCs about
 the architecture of DTN systems, and the protocol used by them.
+
+RFC 4838 \citep{rfc4838} outlines the reasons for developing DTN and
+describes the high-level architecture of such networks.  Usefully, it
+identifies the tacit assumptions made by most networked programs:
+
+> "The existing Internet protocols do not work well for some
+> environments, due to some fundamental assumptions built into the
+> Internet architecture:
+>
+> - that an end-to-end path between source and destination exists for
+>   the duration of a communication session
+>
+> - (for reliable communication) that retransmissions based on timely
+>   and stable feedback from data receivers is an effective means for
+>   repairing errors
+>
+> - that end-to-end loss is relatively small
+>
+> - that all routers and end stations support the TCP/IP protocols
+>
+> - that applications need not worry about communication performance
+>
+> - that endpoint-based security mechanisms are sufficient for meeting
+>   most security concerns
+>
+> - that packet switching is the most appropriate abstraction for
+>   interoperability and performance
+>
+> - that selecting a single route between sender and receiver is
+>   sufficient for achieving acceptable communication performance"
+
+As described in mentioned in Section \ref{sec:motivation}, and
+described in Section \ref{sec:scenarios}, there are several
+environments where the previous assumptions do not hold.  Protocols
+that make these assumptions will not function as expected in such
+environments, and programs relying on them will fail.  In particular,
+this is the case for distributed data stores which perform many
+network operations during synchronization.
+
+Taking these assumptions into account and relaxing them, RFC 5050
+\citep{rfc5050} describes the Bundle Protocol (BP), a protocol for DTN
+networks.  \citet{rfc4838} again lists the guiding principles behind
+BP.
+
+> "The DTN architecture is conceived to relax most of these
+> assumptions, based on a number of design principles that are
+> summarized here:
+>
+> - Use variable-length (possibly long) messages (not streams or
+>   limited-sized packets) as the communication abstraction to help
+>   enhance the ability of the network to make good scheduling/path
+>   selection decisions when possible.
+>
+> - Use a naming syntax that supports a wide range of naming and
+>   addressing conventions to enhance interoperability.
+>
+> - Use storage within the network to support store-and-forward
+>   operation over multiple paths, and over potentially long timescales
+>   (i.e., to support operation in environments where many and/or no
+>   end-to-end paths may ever exist); do not require end-to-end
+>   reliability.
+>
+> - Provide security mechanisms that protect the infrastructure from
+>   unauthorized use by discarding traffic as quickly as possible.
+>
+> - Provide coarse-grained classes of service, delivery options, and a
+>   way to express the useful lifetime of data to allow the network to
+>   better deliver data in serving the needs of applications.
+
+As mentioned in Section \ref{sec:udp}, LTc uses UDP instead of BP, but
+this decision was made because of the obscurity of BP, and not based
+on the relative technical merits of the two protocols.  Despite this,
+LTc is internally written as if it were using BP; for example, LTc
+node names follow the same convention as BP endpoint ids.  Given this
+policy, and because UDP has strictly fewer features than BP, adapting
+LTc to BP in the future should not be difficult.
 
 ## Patch Theory
 
