@@ -392,7 +392,9 @@ will look like in the end.  In particular, we do not know exactly what
 specific technologies and algorithms it will use, and the way they
 will work together.  In light of this, we have opted for a decoupled
 architecture, where components interact with one another only through
-well-defined APIs.
+well-defined APIs.  This architecture was heavily influenced by the
+design of \href{http://xmonad.org/}{XMonad} and
+\href{http://jaspervdj.be/hakyll/}{Hakyll}.
 
 Fundamentally, there are only a few kinds of components in LTc:
 stores, clients, and proxies.  Because LTc is written in Haskell, the
@@ -453,14 +455,12 @@ messages in response to internal events.  Other proxies would offer
 support for different protocols such as BP, or Redis.
 
 We take an unusual approach to configuring LTc nodes: we use an
-\href{http://xmonad.org/}{XMonad}-like DSL to choose which components
-are active in a node; a more orthodox choice would have been to use
-XML.  The downside of our approach is that users need to know a bit of
-Haskell's syntax in order to configure LTc.  On the other hand, it
-makes the system much easier to tweak by advanced users, and it is the
-Haskell way of approaching this problem.
-
-\clearpage
+XMonad-like DSL to choose which components are active in a node; a
+more orthodox choice would have been to use XML.  The downside of our
+approach is that users need to know a bit of Haskell's syntax in order
+to configure LTc.  On the other hand, it makes the system much easier
+to tweak by advanced users, and it is the Haskell way of approaching
+this problem.
 
 ## DTN
 
