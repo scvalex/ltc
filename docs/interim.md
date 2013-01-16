@@ -285,17 +285,17 @@ solve some conflicting changes by "merging"; this is the subject of
 Section \ref{sec:patch-theory}.
 
 ~~~~ {.sourceCode}
-    Other key-value stores               LTc key-value store with changes
+    Other key-value stores          LTc key-value store with changes
 
-    +---------------+-------------+      +---------------+---------------+
-    | Key           | Value       |      | Key           | Value         |
-    +===============+=============+      +===============+===============+
-    | alex:ballance |  120$       |      | alex:ballance |    0$         |
-    +---------------+-------------+      |               |  v | +200$    |
-                                         |               |    200$       |
-                                         |               |  v | -80$     |
-                                         |               |    120$       |
-                                         +---------------+---------------+
+    +---------------+-----------+   +---------------+--------------+
+    | Key           | Value     |   | Key           | Value        |
+    +===============+===========+   +===============+==============+
+    | alex:ballance |  120$     |   | alex:ballance |    0$        |
+    +---------------+-----------+   |               |  v | +200$   |
+                                    |               |    200$      |
+                                    |               |  v | -80$    |
+                                    |               |    120$      |
+                                    +---------------+--------------+
 ~~~~
 
 The use of vector clocks and storing changes are complications due to
@@ -646,27 +646,29 @@ node's vector clock is conceptually the list of all the events the
 node is aware of and which may have affected its behaviour.
 
 ~~~~ {.sourceCode}
- Event timeline for Node A: [(A, 1)]; [(A, 2)]
- Event timeline for Node B: [(B, 199)]; [(B, 200)]
+    Event timeline for Node A: [(A, 1)]; [(A, 2)]
+    Event timeline for Node B: [(B, 199)]; [(B, 200)]
 
- B sends "[(B, 200)]" to A.
+    B sends "[(B, 200)]" to A.
 
- Event timeline for Node A: [(A, 1)]; [(A, 2)]; [(A, 2), (B, 200)]; [(A, 3), (B, 200)]
- Event timeline for Node B: [(B, 199)]; [(B, 200)]
+    Event timeline for Node A: [(A, 1)]; [(A, 2)];
+                                 [(A, 2), (B, 200)];
+                                 [(A, 3), (B, 200)]
+    Event timeline for Node B: [(B, 199)]; [(B, 200)]
 
-     After Node A receives B's message, it updates its own vector
-     clock to be [(A, 2), (B, 200)], so the next event will have a
-     vector clock of [(A, 3), (B, 200)].
-~~~~
+        After Node A receives B's message, it updates its own vector
+        clock to be [(A, 2), (B, 200)], so the next event will have a
+        vector clock of [(A, 3), (B, 200)].  ~~~~
 
 With vector clocks, we can finally get the ordering relations we
 wanted.  Given two events, $e$, and $f$, where $\text{VC}(e)$ is the
 event's vector clock, and $\text{VC}(e)[k]$ is the $k^\text{th}$ entry
 of that vector clock, we have:
-
-$$
-  \forall e, f.\ e \neq f \Rightarrow \Big( (e < f) \Leftrightarrow (\forall k.\ \text{VC}(e)[k] \leq \text{VC}(f)[k]) \land (\exists k.\ \text{VC}(e)[k] < \text{VC}(f)[k]) \Big)
-$$
+\vspace{-0.6cm}
+\begin{align*}
+  &\forall e, f.\ e \neq f \Rightarrow\\
+  &\qquad\Big( (e < f) \Leftrightarrow (\forall k.\ \text{VC}(e)[k] \leq \text{VC}(f)[k]) \land (\exists k.\ \text{VC}(e)[k] < \text{VC}(f)[k]) \Big)
+\end{align*}
 
 By adding vector clocks to events in LTc, we gain the ability to
 sometimes determine causal relationships among them.  This is very
