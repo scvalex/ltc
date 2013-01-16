@@ -134,15 +134,6 @@ ad-hoc WiFi networks.  We call these connections occasional because no
 two nodes will be permanently connected, and there is no way of
 predicting when two nodes will connect.
 
-~~~~ {.sourceCode}
-      o              o
-     /    o -- o     |
-    o  o             o
-
-    Nodes forming short-lived
-    pair-wise connections.
-~~~~
-
 Because connections cannot be established between any two nodes
 automatically, and because connection establishment between nodes is
 effectively random, current replicated data store systems will not be
