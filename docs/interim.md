@@ -413,6 +413,33 @@ Fundamentally, there are only a few kinds of components in LTc:
 stores, clients, and proxies.  Because LTc is written in Haskell, the
 APIs for these components is specified with type-classes.
 
+Stores expose the key-value store API described in Section
+\ref{sec:kv-store}.  They are responsible for storing entries
+persistently, and for managing the change history for each value.  For
+instance, the "Ltc.Reference" store is the straightforward
+implementation of a key-value store on top of a file system, where
+each entry is represented by a file.  Although it works, it is grossly
+inefficient in terms of disk-space.  Thanks to the store abstraction,
+different implementation could be tested without affecting the rest of
+LTc's code.
+
+Clients serve as high-level "handles" for working with stores.  They
+are short lived, usually created in response to some external event,
+and may expose a different API than underlying store.  For instance,
+in addition to the basic client which just re-exposes the store API,
+we could have a Redis client, which exposes Redis's API and is
+responsible for translating Redis API calls to store API calls.
+
+Proxies are abstractions around some external interface; they are both
+the only way for an external entity to interact with an LTc node, and
+the only way for an LTc node to interact with the outside world.  For
+instance, the UDP proxy is responsible for listening on an UDP port,
+spawning clients in response to received messages, and sending
+messages in response to internal events.  Other proxies would offer
+support for different protocols such as BP, or Redis.
+
+\clearpage
+
 ~~~~ {.sourceCode}
 
     +------+  +------+
@@ -441,31 +468,6 @@ APIs for these components is specified with type-classes.
        exposes a Redis-like interface through
        a Redis proxy.
 ~~~~
-
-Stores expose the key-value store API described in Section
-\ref{sec:kv-store}.  They are responsible for storing entries
-persistently, and for managing the change history for each value.  For
-instance, the "Ltc.Reference" store is the straightforward
-implementation of a key-value store on top of a file system, where
-each entry is represented by a file.  Although it works, it is grossly
-inefficient in terms of disk-space.  Thanks to the store abstraction,
-different implementation could be tested without affecting the rest of
-LTc's code.
-
-Clients serve as high-level "handles" for working with stores.  They
-are short lived, usually created in response to some external event,
-and may expose a different API than underlying store.  For instance,
-in addition to the basic client which just re-exposes the store API,
-we could have a Redis client, which exposes Redis's API and is
-responsible for translating Redis API calls to store API calls.
-
-Proxies are abstractions around some external interface; they are both
-the only way for an external entity to interact with an LTc node, and
-the only way for an LTc node to interact with the outside world.  For
-instance, the UDP proxy is responsible for listening on an UDP port,
-spawning clients in response to received messages, and sending
-messages in response to internal events.  Other proxies would offer
-support for different protocols such as BP, or Redis.
 
 We take an unusual approach to configuring LTc nodes: we use an
 XMonad-like DSL to choose which components are active in a node; a
