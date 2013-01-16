@@ -28,9 +28,6 @@ response, underwater, some forms of ad-hoc sensor/actuator networks,
 and Internet connectivity in places where performance may suffer such
 as developing parts of the world." \citep{dtnrg}
 
-<!-- The final report should include a discussion of how each of the above -->
-<!-- environments is bad for communications. -->
-
 ## Motivation
 
 \label{sec:motivation}
@@ -466,7 +463,17 @@ this problem.
 
 \label{sec:dtn}
 
-
+As mentioned in Section \ref{sec:motivation}, LTc's synchronization
+mechanism is meant to work even on networks where packet round-trip
+times are prohibitively large, and end-to-end connectivity may be
+impossible.  The approach LTc takes with regards to communication is
+not new, and is called Delay-Tolerant Networking\footnote{or,
+\emph{Disruption}-Tolerant Networking as DARPA likes to call it}
+(DTN).  Although research in DTN has been done since the first
+computer networks were built, the pace has increased greatly in the
+last decade.  More relevant to LTc, the
+\href{https://www.ietf.org/}{IETF} has now published two RFCs about
+the architecture of DTN systems, and the protocol used by them.
 
 ## Patch Theory
 
