@@ -269,6 +269,8 @@ MongoDB and CouchDB have similar limitations.
 
 ## DVCS Semantics
 
+\label{sec:dvcs}
+
 We expect communication between LTc nodes to be difficult, and since
 updates can occur on each node, we expect the data sets to diverge in
 conflicting ways.  As such, conflict resolution will play a key role
@@ -575,7 +577,38 @@ LTc to BP in the future should not be difficult.
 
 \label{sec:patch-theory}
 
+As mentioned in Section \ref{sec:dvcs}, we expect parallel updates to
+the data sets on different nodes to cause conflicts.  Relational
+databases data stores usually solve this issue by coordinating the
+nodes such that conflicts cannot appear in the first place.  Due to
+the disconnected nature of LTc, this is not an option, so LTc nodes
+have to deal with conflicts as they appear.  DVCSs such as git face a
+similar problem, which they solve by attempting a textual merge of the
+conflicting changes, and falling back to manual intervention.  NoSQL
+data stores usually adopt an automated version of previous scheme; for
+instance, CouchDB detects conflicts, but lets the user application
+decide how the merging should be done. \citep{And10} Since both these
+approaches work well in practice, in LTc, we first attempt to solve
+conflict through automatic merging, and fallback to application
+specific conflict resolution.
 
+Among DVCSs, \href{http://darcs.net/}{Darcs} is different in that it
+tries to mathematically formalize its behaviour.  This formalism is
+known as Patch Theory, and is a way of reasoning about what happens
+when two repositories exchange patches.  It begins by defining basic
+concepts such as patches, and changes, and the properties these may
+have.  For instance, some patches have inverses, and some pairs of
+patches are commutative; if all the patches participating in a
+conflict have these two properties, it is always possible to perform
+an automatic merge.  As other DVCSs have shown, it is possible to
+write a working system without any formalization, but for an
+experimental system such as LTc, we believe that a formalism will be
+indispensable.
+
+Unfortunately, Patch Theory is very much an open area of research;
+there are no published works on the topic, but the
+\href{http://darcs.net/Theory}{Darcs Theory} page links to several
+talks and unfinished articles.
 
 ## Vector Clocks
 
