@@ -171,6 +171,11 @@ re-established \citep{redis-replication}.
 Background
 ==========
 
+In this section we discuss various design decisions we made for LTc,
+what factors we considered, the advantages and disadvantages of our
+approach. and the ways similar products have tackled the same
+problems.
+
 ## Key-Value Store
 
 \label{sec:kv-store}
