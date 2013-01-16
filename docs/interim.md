@@ -579,6 +579,111 @@ LTc to BP in the future should not be difficult.
 
 \label{sec:vector-clocks}
 
+Many distributed systems need to create globally unique identifiers
+for events, and to determine a global logical ordering for them.  This
+is definitely the case for LTc, which attempts to store historic
+changes in addition to just the values of entries, and needs an
+unambiguous way of referring to these changes.  There are many ways of
+generating these identifiers, and in this section, we look at vector
+clocks, which are a general way of achieving this while preserving
+enough information to determine causal relationships among events.
+
+Consider the following problem: We have two nodes, A and B.  There are
+events that occur internally in each node, and nodes may send messages
+to each other, causing events to occur in the destination node.
+Uniquely identifying events inside a node is simple: we just keep a
+counter that is incremented every time an event occurs.  In order to
+uniquely identify events globally, we just have to include the node's
+id inside the event id.  So, events are identified by pairs `(node-id,
+counter)`.
+
+Now that we have unique identifiers, we need a way to order them.  It
+is interesting to discuss what "ordering" means in this case.  It
+cannot mean chronological ordering, because clocks in distributed
+systems are rarely synchronized well enough to allow this.
+Furthermore, according to Special Relativity, time passes at different
+rates for observers moving at different speeds, so it does not make
+sense to talk about a "global" time. \citep{wiki:SR} Because
+chronological ordering is not an option, we must use a logical
+ordering.
+
+With our identification scheme, we have a total ordering for events
+within each node, but no global ordering for events.  \citet{Lam78}
+describes an algorithm by which it is possible to establish a partial
+global ordering among events in a distributed system.  In addition to
+the previous identification scheme, we only need the following rule:
+"When a node receives a message, it updates its counter to be the
+maximum of the its current value, and the counter of the received
+event".  Given this, we can state that an event cannot happen before
+another, unless the counter of the first one is less than the counter
+of the second.  Unfortunately, this does not provide us with enough
+information to state anything more about the order of two events,
+given only their ids.
+
+~~~~ {.sourceCode}
+    Event timeline for Node A: (A, 1); (A, 2)
+    Event timeline for Node B: (B, 199); (B, 200)
+
+    B sends "(B, 200)" to A.
+
+    Event timeline for Node A: (A, 1); (A, 2); (B, 200); (A, 201)
+    Event timeline for Node B: (B, 199); (B, 200)
+
+       After Node A receives B's message, it updates its own
+       counter to be 200, so the next event will have a counter
+       value of 201.
+~~~~
+
+In order to get more ordering relations we need to increase the amount
+of information in the event ids.  \citet{Bal02} describe vector
+clocks, a scheme by which event ids contain a vector of the counters
+for all the nodes the event has "traveled through".  Additionally,
+each node uses a vector clock to generate ids for new events.  Upon
+receiving an event, a node updates its vector clock entry-by-entry
+using the Lamport clock rule for entries present in both clocks, and
+by copying over entries present only in the event's clock.  Thus, a
+node's vector clock is conceptually the list of all the events the
+node is aware of and which may have affected its behaviour.
+
+~~~~ {.sourceCode}
+ Event timeline for Node A: [(A, 1)]; [(A, 2)]
+ Event timeline for Node B: [(B, 199)]; [(B, 200)]
+
+ B sends "[(B, 200)]" to A.
+
+ Event timeline for Node A: [(A, 1)]; [(A, 2)]; [(A, 2), (B, 200)]; [(A, 3), (B, 200)]
+ Event timeline for Node B: [(B, 199)]; [(B, 200)]
+
+     After Node A receives B's message, it updates its own vector
+     clock to be [(A, 2), (B, 200)], so the next event will have a
+     vector clock of [(A, 3), (B, 200)].
+~~~~
+
+With vector clocks, we can finally get the ordering relations we
+wanted.  Given two events, $e$, and $f$, where $\text{VC}(e)$ is the
+event's vector clock, and $\text{VC}(e)[k]$ is the $k^\text{th}$ entry
+of that vector clock, we have:
+
+$$
+  \forall e, f.\ e \neq f \Rightarrow \Big( (e < f) \Leftrightarrow (\forall k.\ \text{VC}(e)[k] \leq \text{VC}(f)[k]) \land (\exists k.\ \text{VC}(e)[k] < \text{VC}(f)[k]) \Big)
+$$
+
+By adding vector clocks to events in LTc, we gain the ability to
+sometimes determine causal relationships among them.  This is very
+important because, in the event of a conflict, using the "most recent"
+value is a probably a good enough resolution \citep{Vog08}, and we
+would need the causal relationships to determine which that is.
+
+The downside of using vector clocks is that they add considerable
+overhead.  As is obvious from the vector clock update rule, they grow
+by one entry every time an event passes thorough a new node.  If our
+assumption that the network of LTc nodes is strongly connected holds,
+eventually, every event will carry a vector clock with entries for all
+the nodes.  Ultimately, vector clocks are on a sliding scale tradeoffs
+between overhead and scope.  If we wanted less overhead, we would use
+Lamport timestamps, and if we wanted more causal relations to be
+detected, we would use Matrix Clocks \citep{Bal02}.
+
 Project Plan
 ============
 
