@@ -1,15 +1,15 @@
 \begin{abstract}
 
-A frequent problem that appears in computing is keeping replicated
-data sets synchronized.  Solutions to this problem include distributed
-version control systems such as git, traditional databases such as
-MySQL, and modern NoSQL data stores such as Redis.  All these make
-tacit assumptions about the communication channel; for instance, all
-assume that the round-trip times between nodes is relatively short.
-Although these assumptions hold withing data centers, and sometimes,
-on the Internet, they do not hold for some extreme situations such as
-interplanetary communications.  LTc aims to define and implement
-synchronization protocols for such situations.
+A frequent problem in computing is keeping replicated data sets
+synchronized.  Solutions include distributed version control systems
+such as git, traditional databases such as MySQL, and modern NoSQL
+data stores such as Redis.  But all these make tacit assumptions about
+the communication channel; for instance, all assume that the
+round-trip times between nodes is relatively short.  Although these
+assumptions hold withing data centers, and sometimes, on the Internet,
+they do not hold for some extreme situations such as interplanetary
+communications.  LTc aims to define and implement synchronization
+protocols for such situations.
 
 \end{abstract}
 
