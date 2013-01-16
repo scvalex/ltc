@@ -20,13 +20,15 @@ synchronization protocols for such situations.
 Introduction
 ============
 
-LTc is a key-value store designed so that replicated data sets can be
-synchronized over lossy connections where end-to-end connectivity may
-not be available.  Examples of environments where this is the case
-"include spacecraft, military/tactical, some forms of disaster
-response, underwater, some forms of ad-hoc sensor/actuator networks,
-and Internet connectivity in places where performance may suffer such
-as developing parts of the world." \citep{dtnrg}
+LTc\footnote{the name is an acronym that stands for "less than c", and
+refers to the fact that all communication happens at sub-light speeds
+in our universe} is a key-value store designed so that replicated data
+sets can be synchronized over lossy connections where end-to-end
+connectivity may not be available.  Examples of environments where
+this is the case "include spacecraft, military/tactical, some forms of
+disaster response, underwater, some forms of ad-hoc sensor/actuator
+networks, and Internet connectivity in places where performance may
+suffer such as developing parts of the world." \citep{dtnrg}
 
 ## Motivation
 
