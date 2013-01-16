@@ -781,22 +781,58 @@ and tune it.
 Evaluation Plan
 ===============
 
-> Project evaluation is very important, so it's important to think now
-> about how you plan to measure success.
+We evaluate LTc in terms of what it can do (Section
+\ref{sec:functionality}), and how well it does it (Section
+\ref{sec:performance}).  Broadly speaking, LTc should have the
+interface and behaviour of a persistent map/hashtable/dictionary, it
+should be possible to synchronize entries from one LTc node to
+another, and the synchronization should work over bad connections.
 
-> For example, what
-> functionality do you need to demonstrate?
+If all goes well, we will have developed and benchmarked novel
+synchronization methods for replicated data stores over bad
+connections.
 
-> What experiments to you
-> need to undertake and what outcome(s) would constitute success?
+## Functionality
 
-> What benchmarks should you use?
+\label{sec:functionality}
 
-> How has your project extended the
-> state of the art?
+In terms of functionality, LTc should expose at least the following
+commands: `set <key> <value>`, `get <key>`, and `delete <key>`.  These
+commands should have the obvious meanings, and should be atomic and
+persistent.  By persistent we mean that once they return, the changes
+have been recorded to persistent storage.  For testing, we can use a
+random tester that runs the commands with dummy data, occasionally
+killing the program, all the while checking invariants.
 
-> How do you measure qualitative aspects, such as
-> ease of use?
+Additionally, LTc nodes should be able to push updates to other nodes.
+For this, LTc should expose at least a `sync-to <node-id>
+<node-location>` command that performs the to for the specified peer.
+For testing, we can use a random tester that creates two nodes,
+connects them through a channel that loses the majority of packets,
+inserts some dummy data into each node, then runs the `push` command
+repeatedly, expecting the two data sets to eventually become
+consistent.  If we complete Phase X, we would need to perform the
+above test for networks of nodes, and not just for pairs of nodes.
 
-> These are the sort of questions that your project
-> evaluation should address; this section should outline your plan.
+## Performance
+
+\label{sec:performance}
+
+In terms of performance, we are interested in several measures.
+First, we need to know the throughput of the key-value store.
+Specifically, we need to find the number of reads and writes per
+second it can sustain on magnetic disks and solid-state drives.
+Although this is not strictly the project's focus, it seems a waste
+not to measure, and it may be useful in interpreting the following
+measures.
+
+Second, we need to determine the number of times two nodes need to
+synchronize in order to reach consistency, when connected over
+channels of decreasing quality.
+
+Third, we need to measure the synchronization protocol's overhead,
+defined as the size of the data sent, and possibly lost, divided by
+the total size of the entries that needed synchronization.
+
+If we complete Phase X, we would also need to perform the second
+benchmark for networks of nodes of varying size.
