@@ -575,16 +575,16 @@ As mentioned in Section \ref{sec:conflicts}, we expect parallel
 updates to the data sets on different nodes to cause conflicts.
 Relational databases data stores usually solve this issue by
 coordinating the nodes such that conflicts cannot appear in the first
-place.  Due to the disconnected nature of LTc, this is not an option,
-so LTc nodes have to deal with conflicts as they appear.  DVCSs such
-as git face a similar problem, which they solve by attempting a
-textual merge of the conflicting changes, and falling back to manual
-intervention.  NoSQL data stores usually adopt an automated version of
-previous scheme; for instance, CouchDB detects conflicts, but lets the
-user application decide how the merging should be done. \citep{And10}
-Since both these approaches work well in practice, in LTc, we first
-attempt to solve conflict through automatic merging, and fallback to
-application specific conflict resolution.
+place.  Because of the disconnected nature of LTc, this is not an
+option, so LTc nodes have to deal with conflicts as they appear.
+DVCSs such as git face a similar problem, which they solve by
+attempting a textual merge of the conflicting changes, and falling
+back to manual intervention.  NoSQL data stores usually adopt an
+automated version of previous scheme; for instance, CouchDB detects
+conflicts, but lets the user application decide how the merging should
+be done. \citep{And10} Because both these approaches work well in
+practice, in LTc, we first attempt to solve conflict through automatic
+merging, and fallback to application specific conflict resolution.
 
 Among DVCSs, \href{http://darcs.net/}{Darcs} is different in that it
 tries to mathematically formalize its behaviour.  This formalism is
