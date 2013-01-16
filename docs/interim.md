@@ -684,10 +684,18 @@ between overhead and scope.  If we wanted less overhead, we would use
 Lamport timestamps, and if we wanted more causal relations to be
 detected, we would use Matrix Clocks \citep{Bal02}.
 
+\clearpage
+
 Project Plan
 ============
 
-## Phase 0
+The following is the roughly the same plan included in the project
+proposal, with some changes made to the later phases.  Phases 0, and 1
+are done, and Phase 2 is in progress.  We are slightly behind the
+original schedule; since we planned to do the bulk of the work in the
+spring and summer terms, this setback should not be a problem.
+
+## Phase 0 [**done**]
 
 > Deadline: end of October
 
@@ -697,7 +705,7 @@ distances.  Specifically, determine why TCP would not work (and at
 what point in breaks down), whether UDP or another existing protocol
 would work, and how "intermittent" the connection is likely to be.
 
-## Phase 1
+## Phase 1  [**done**]
 
 > Deadline: end of November
 
@@ -713,27 +721,27 @@ instance, CouchDB's on-disk format is an append-only B+-tree; if all
 else fails, that should be enough for LTc, and it could probably be
 written and tested in a week.
 
-Additionally, develop a benchmark to compare different implementations
+## Phase 2  [**in progress**]
+
+> Deadline: mid February
+
+Develop a benchmark to compare different implementations
 of the data-store.
-
-## Phase 2
-
-> Deadline: end of January
 
 Find out how NASA and ESA are currently getting information to and
 from the Mars orbiters and rovers.  Invent and implement a
 synchronization protocol for the replicated nodes.  This will probably
 involve sending large sets of updates at once.  Entries will probably
-need to be versioned with a scheme like vector-clocks.
+need to be versioned with a scheme like vector-clocks, and we will
+need to hold at least some change history for entries.
 
 ## Phase 3
 
 > Deadline: mid March
 
-Since we are unlikely to get access to a computer far enough to test
-LTc's synchronization, develop a Linux kernel module that creates a
-loopback network device that is high-latency and intermittent.  Using
-this, test and tune the synchronization algorithm.
+Come up with a representative benchmark for the synchronization
+algorithm, test, and tune it.  We are optimising for "number of
+iterations until all data sets are consistent".
 
 ## Phase 4
 
@@ -744,6 +752,28 @@ Use the statistics to automatically tune the synchronization algorithm
 (e.g. we probably want different behaviours if the other node is 100ms
 away, and if it is 30min away).  Polish everything and come up with a
 convincing demo.
+
+## Phase 5
+
+> Deadline: mid June
+
+Write project report, and LTc user guide.
+
+## Phase X
+
+If time permits, attempt the following extensions.
+
+- Figure out a benchmark for the epidemic updating algorithm, test,
+and tune it.
+
+- Research whether ACID transactions are feasible given the weak
+  guarantees of the communication channel.  If they are not, find out
+  if some relaxed version of ACID would work instead.  If this is the
+  case, implement it.
+
+- Redis adapter to make LTc a drop-in replacement.
+
+\clearpage
 
 Evaluation Plan
 ===============
