@@ -180,8 +180,8 @@ re-established \citep{redis-replication}.
 
 \clearpage
 
-Design Decisions
-================
+Background
+==========
 
 ## Key-Value Store
 
@@ -462,41 +462,11 @@ Haskell way of approaching this problem.
 
 \clearpage
 
-Background
-==========
-
-> The background section of the report should set the project into
-> context by relating it to existing published work which you read at
-> the start of the project when your approach and methods were being
-> considered. There are usually many ways of solving a given problem,
-> and you shouldn't just pick one at random. Describe and evaluate as
-> many alternative approaches as possible. The published work may be
-> in the form of research papers, articles, text books, technical
-> manuals, or even existing software or hardware of which you have had
-> hands-on experience. Your must acknowledge the sources of your
-> inspiration. You are expected to have seen and thought about other
-> people's ideas; your contribution will be putting them into practice
-> in some other context. However, avoid plagiarism: if you take
-> another person's work as your own and do not cite your sources of
-> information/inspiration you are being dishonest; in other words you
-> are cheating. When referring to other pieces of work, cite the
-> sources where they are referred to or used, rather than just listing
-> them at the end. Make sure you read and digest the Department's
-> plagiarism document .
-
-> In writing the Background chapter you must demonstrate your
-> capability of analysis, synthesis and critical judgement. Analysis
-> is shown by explaining how the proposed solution operates in your
-> own words as well as its benefits and consequences. Synthesis is
-> shown through the organisation of your Related Work section and
-> through identifying and generalising common aspects across different
-> solutions. Critical judgement is shown by discussing the limitations
-> of the solutions proposed both in terms of their disadvantages and
-> limits of applicability.
-
 ## DTN
 
 \label{sec:dtn}
+
+
 
 ## Patch Theory
 
