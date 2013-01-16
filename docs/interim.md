@@ -658,7 +658,8 @@ node is aware of and which may have affected its behaviour.
 
         After Node A receives B's message, it updates its own vector
         clock to be [(A, 2), (B, 200)], so the next event will have a
-        vector clock of [(A, 3), (B, 200)].  ~~~~
+        vector clock of [(A, 3), (B, 200)].
+~~~~
 
 With vector clocks, we can finally get the ordering relations we
 wanted.  Given two events, $e$, and $f$, where $\text{VC}(e)$ is the
