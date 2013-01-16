@@ -325,6 +325,22 @@ However, because of the plugable architecture described in Section
 \ref{sec:plugable} which we adopted, we believe that adding support
 for BP would be a straightforward future extension.
 
+Defining the LTc's synchronization protocol on top of UDP poses
+significant problems.  First, UDP makes no guarantee that a sent
+packet will be received by the destination.  More problematically,
+there is no way for the source to tell if a packet was lost or not.
+Worse yet, even assuming a perfect connection that does not lose
+packets, if the destination does not process them quickly enough, its
+UDP buffer will spill over causing lost packets.  So, LTc's
+synchronization mechanism must be able to make forward progress even
+if only incomplete updates are available.  Second, UDP makes no
+guarantee that sent packets will be received in order.  This is
+problematic because the order of updates is important.  Finally, UDP
+makes no guarantee that a sent packet will not be received multiple
+times.  Again, this is problematic because updates should only be
+applied once.  Because BP was designed with systems like LTc in mind,
+if we used it, it would solve or alleviate all these problems.
+
 ## Epidemic Updating
 
 In the previous sections, we mentioned some of the issues surrounding
