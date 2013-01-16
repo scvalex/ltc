@@ -267,45 +267,6 @@ not as limiting as it first seems: widely used data stores such as
 MongoDB and CouchDB have similar limitations.
 \citep{mongodb-transactions} \citep{couchdb-transactions}
 
-## DVCS Semantics
-
-\label{sec:dvcs}
-
-We expect communication between LTc nodes to be difficult, and since
-updates can occur on each node, we expect the data sets to diverge in
-conflicting ways.  As such, conflict resolution will play a key role
-in the operation of LTc.
-
-Because conflict resolution must happen automatically in most cases,
-we make two design choices meant to increase the amount of information
-available during resolution.  First, we timestamp events with vector
-clocks, which allows us to establish causal relationships between
-them; this is the subject of Section \ref{sec:vector-clocks}.  Second,
-we store at least some change history for every field in the database,
-much like a distributed version control system.  This should allow us
-solve some conflicting changes by "merging"; this is the subject of
-Section \ref{sec:patch-theory}.
-
-~~~~ {.sourceCode}
-    Other key-value stores          LTc key-value store with changes
-
-    +---------------+-----------+   +---------------+--------------+
-    | Key           | Value     |   | Key           | Value        |
-    +===============+===========+   +===============+==============+
-    | alex:ballance |  120$     |   | alex:ballance |    0$        |
-    +---------------+-----------+   |               |  v | +200$   |
-                                    |               |    200$      |
-                                    |               |  v | -80$    |
-                                    |               |    120$      |
-                                    +---------------+--------------+
-~~~~
-
-The use of vector clocks and storing changes are complications due to
-the scope of the problem.  Conflict resolution mechanisms employed by
-other data stores such as consensus and majority voting \citep{Vog08}
-cannot be used by LTc because of the large delays in communications
-between nodes.
-
 ## UDP
 
 \label{sec:udp}
@@ -442,8 +403,6 @@ spawning clients in response to received messages, and sending
 messages in response to internal events.  Other proxies would offer
 support for different protocols such as BP, or Redis.
 
-\clearpage
-
 ~~~~ {.sourceCode}
 
     +------+  +------+
@@ -573,24 +532,63 @@ node names follow the same convention as BP endpoint ids.  Given this
 policy, and because UDP has strictly fewer features than BP, adapting
 LTc to BP in the future should not be difficult.
 
+## Conflict Resolution
+
+\label{sec:conflicts}
+
+We expect communication between LTc nodes to be difficult, and since
+updates can occur on each node, we expect the data sets to diverge in
+conflicting ways.  As such, conflict resolution will play a key role
+in the operation of LTc.
+
+Because conflict resolution must happen automatically in most cases,
+we make two design choices meant to increase the amount of information
+available during resolution.  First, we timestamp events with vector
+clocks, which allows us to establish causal relationships between
+them; this is the subject of Section \ref{sec:vector-clocks}.  Second,
+we store at least some change history for every field in the database,
+much like a distributed version control system.  This should allow us
+solve some conflicting changes by "merging"; this is the subject of
+Section \ref{sec:patch-theory}.
+
+~~~~ {.sourceCode}
+    Other key-value stores          LTc key-value store with changes
+
+    +---------------+-----------+   +---------------+--------------+
+    | Key           | Value     |   | Key           | Value        |
+    +===============+===========+   +===============+==============+
+    | alex:ballance |  120$     |   | alex:ballance |    0$        |
+    +---------------+-----------+   |               |  v | +200$   |
+                                    |               |    200$      |
+                                    |               |  v | -80$    |
+                                    |               |    120$      |
+                                    +---------------+--------------+
+~~~~
+
+The use of vector clocks and storing changes are complications due to
+the scope of the problem.  Conflict resolution mechanisms employed by
+other data stores such as consensus and majority voting \citep{Vog08}
+cannot be used by LTc because of the large delays in communications
+between nodes.
+
 ## Patch Theory
 
 \label{sec:patch-theory}
 
-As mentioned in Section \ref{sec:dvcs}, we expect parallel updates to
-the data sets on different nodes to cause conflicts.  Relational
-databases data stores usually solve this issue by coordinating the
-nodes such that conflicts cannot appear in the first place.  Due to
-the disconnected nature of LTc, this is not an option, so LTc nodes
-have to deal with conflicts as they appear.  DVCSs such as git face a
-similar problem, which they solve by attempting a textual merge of the
-conflicting changes, and falling back to manual intervention.  NoSQL
-data stores usually adopt an automated version of previous scheme; for
-instance, CouchDB detects conflicts, but lets the user application
-decide how the merging should be done. \citep{And10} Since both these
-approaches work well in practice, in LTc, we first attempt to solve
-conflict through automatic merging, and fallback to application
-specific conflict resolution.
+As mentioned in Section \ref{sec:conflicts}, we expect parallel
+updates to the data sets on different nodes to cause conflicts.
+Relational databases data stores usually solve this issue by
+coordinating the nodes such that conflicts cannot appear in the first
+place.  Due to the disconnected nature of LTc, this is not an option,
+so LTc nodes have to deal with conflicts as they appear.  DVCSs such
+as git face a similar problem, which they solve by attempting a
+textual merge of the conflicting changes, and falling back to manual
+intervention.  NoSQL data stores usually adopt an automated version of
+previous scheme; for instance, CouchDB detects conflicts, but lets the
+user application decide how the merging should be done. \citep{And10}
+Since both these approaches work well in practice, in LTc, we first
+attempt to solve conflict through automatic merging, and fallback to
+application specific conflict resolution.
 
 Among DVCSs, \href{http://darcs.net/}{Darcs} is different in that it
 tries to mathematically formalize its behaviour.  This formalism is
