@@ -778,4 +778,22 @@ and tune it.
 Evaluation Plan
 ===============
 
-Future: ACID transactions.
+> Project evaluation is very important, so it's important to think now
+> about how you plan to measure success.
+
+> For example, what
+> functionality do you need to demonstrate?
+
+> What experiments to you
+> need to undertake and what outcome(s) would constitute success?
+
+> What benchmarks should you use?
+
+> How has your project extended the
+> state of the art?
+
+> How do you measure qualitative aspects, such as
+> ease of use?
+
+> These are the sort of questions that your project
+> evaluation should address; this section should outline your plan.
