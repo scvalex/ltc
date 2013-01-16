@@ -174,8 +174,9 @@ lossy, and unpredictable.
 Although a traditional database system could function in such an
 environment, it would also have to handle the inevitable network
 partitions gracefully.  This is not often the case.  For instance,
-Redis requires nodes to perform a re-synchronization of all the data
-once the connection has been re-established \citep{redis-replication}.
+\href{http://redis.io/}{Redis} requires nodes to perform a
+re-synchronization of all the data once the connection has been
+re-established \citep{redis-replication}.
 
 \clearpage
 
@@ -183,6 +184,8 @@ Design Decisions
 ================
 
 ## Key-Value Store
+
+\label{sec:kv-store}
 
 Conceptually, LTc is a key-value store.  Its API has only three core
 commands: `set <key> <value>`, `get <key>`, and `delete <key>`.  The
@@ -383,6 +386,81 @@ suited for LTc is a future path for development.
 ## Plugable Internal Architecture
 
 \label{sec:plugable}
+
+Because LTc is a research project, we are not entirely sure what it
+will look like in the end.  In particular, we do not know exactly what
+specific technologies and algorithms it will use, and the way they
+will work together.  In light of this, we have opted for a decoupled
+architecture, where components interact with one another only through
+well-defined APIs.
+
+Fundamentally, there are only a few kinds of components in LTc:
+stores, clients, and proxies.  Because LTc is written in Haskell, the
+APIs for these components is specified with type-classes.
+
+~~~~ {.sourceCode}
+
+    +------+  +------+
+    | LTc  |  | LTc  |
+    | Node |  | Node |   ...
+    +------+  +------+
+       |        |
+
+    +-- LTc node ---------------------------+
+    |                                       |
+    |   |  |  |     | | |           |       |
+    | +--------+  +-------+     +-------+   |
+    | |   UDP  |  |  BP   |     | Redis |   |
+    | |  Proxy |  | Proxy |     | Proxy |   |
+    | +--------+  +-------+     +-------+   |
+    |         |    |               |||      |
+    |          \  /             +--------+  |
+    |           ||              | Redis  |  |
+    |       +-------+      /--- | Client |  |
+    |       | Store | ----/     +--------+  |
+    |       +-------+                       |
+    +---------------------------------------+
+
+       An LTc node, connected to other LTc nodes
+       through UDP and BP proxies, and which
+       exposes a Redis-like interface through
+       a Redis proxy.
+~~~~
+
+Stores expose the key-value store API described in Section
+\ref{sec:kv-store}.  They are responsible for storing entries
+persistently, and for managing the change history for each value.  For
+instance, the "Ltc.Reference" store is the straightforward
+implementation of a key-value store on top of a file system, where
+each entry is represented by a file.  Although it works, it is grossly
+inefficient in terms of disk-space.  Thanks to the store abstraction,
+different implementation could be tested without affecting the rest of
+LTc's code.
+
+Clients serve as high-level "handles" for working with stores.  They
+are short lived, usually created in response to some external event,
+and may expose a different API than underlying store.  For instance,
+in addition to the basic client which just re-exposes the store API,
+we could have a Redis client, which exposes Redis's API and is
+responsible for translating Redis API calls to store API calls.
+
+Proxies are abstractions around some external interface; they are both
+the only way for an external entity to interact with an LTc node, and
+the only way for an LTc node to interact with the outside world.  For
+instance, the UDP proxy is responsible for listening on an UDP port,
+spawning clients in response to received messages, and sending
+messages in response to internal events.  Other proxies would offer
+support for different protocols such as BP, or Redis.
+
+We take an unusual approach to configuring LTc nodes: we use an
+\href{http://xmonad.org/}{XMonad}-like DSL to choose which components
+are active in a node; a more orthodox choice would have been to use
+XML.  The downside of our approach is that users need to know a bit of
+Haskell's syntax in order to configure LTc.  On the other hand, it
+makes the system much easier to tweak by advanced users, and it is the
+Haskell way of approaching this problem.
+
+\clearpage
 
 Background
 ==========
