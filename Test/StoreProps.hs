@@ -38,12 +38,12 @@ main = defaultMainWithOpts
 
 testOpen :: Assertion
 testOpen = cleanEnvironment ["test-store"] $ do
-    store <- open (ConnectParameters { location = "test-store" })
+    store <- open (OpenParameters { location = "test-store" })
     close store
 
 testSimpleSetGet :: Assertion
 testSimpleSetGet = cleanEnvironment ["test-store"] $ do
-    store <- open (ConnectParameters { location = "test-store" })
+    store <- open (OpenParameters { location = "test-store" })
     _ <- set store "foo" "bar"
     res1 <- getLatest store "foo"
     res1 @?= Just ("bar", VC.empty)

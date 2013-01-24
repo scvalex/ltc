@@ -38,7 +38,7 @@
 -- gzipped.  These files are referenced by files in the @DB_DIR/keys@
 -- directory.
 module Ltc.Store.Simple (
-        Simple, ConnectParameters(..)
+        Simple, OpenParameters(..)
     ) where
 
 import qualified Codec.Compression.GZip as Z
@@ -70,7 +70,7 @@ data Simple = Simple
     }
 
 instance Store Simple where
-    data ConnectParameters Simple = ConnectParameters
+    data OpenParameters Simple = OpenParameters
         { location :: FilePath
         }
 
@@ -85,7 +85,7 @@ instance Store Simple where
 
     del handle key = doDel handle key
 
-doOpen :: ConnectParameters Simple -> IO Simple
+doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
     debugM tag "open"
     storeExists <- doesDirectoryExist (location params)

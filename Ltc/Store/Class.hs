@@ -12,9 +12,9 @@ type Value = ByteString
 type Version = VectorClock ByteString Int
 
 class Store a where
-    data ConnectParameters a :: *
+    data OpenParameters a :: *
 
-    open :: ConnectParameters a -> IO a
+    open :: OpenParameters a -> IO a
     close :: a -> IO ()
 
     get :: a -> Key -> Version -> IO (Maybe Value)
