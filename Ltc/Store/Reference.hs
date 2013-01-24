@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, ScopedTypeVariables, TupleSections #-}
+{-# LANGUAGE TypeFamilies, TupleSections #-}
 
 module Ltc.Store.Reference (
         Reference, ConnectParameters(..)
