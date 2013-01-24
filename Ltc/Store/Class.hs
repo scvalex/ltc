@@ -4,11 +4,12 @@ module Ltc.Store.Class (
         Store(..), Key, Value, Version
     ) where
 
-import Data.ByteString.Lazy ( ByteString )
+import Data.ByteString.Lazy.Char8 ( ByteString )
+import Data.VectorClock ( VectorClock )
 
 type Key = String
 type Value = ByteString
-type Version = Int
+type Version = VectorClock ByteString Int
 
 class Store a where
     data ConnectParameters a :: *

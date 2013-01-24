@@ -47,6 +47,8 @@ import qualified Control.Exception as CE
 import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Digest.Pure.SHA ( sha1, showDigest )
+-- FIXME Use vector clocks properly (search for "VC.")
+import qualified Data.VectorClock as VC
 import Ltc.Store.Class ( Store(..), Key, Value, Version )
 import System.Directory ( createDirectory, doesDirectoryExist, removeFile, renameFile )
 import System.FilePath ( (</>) )
@@ -103,8 +105,8 @@ doGet ref key _version = do
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
-    value <- doGet ref key 0
-    return ((,1) <$> value)
+    value <- doGet ref key VC.empty
+    return ((,VC.empty) <$> value)
 
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
@@ -113,14 +115,14 @@ doSet ref key value = do
     BL.hPut handle (Z.compress value)
     hClose handle
     renameFile tempFile (locationValue ref key)
-    return 1
+    return VC.empty
 
 doDel :: Simple -> Key -> IO (Maybe Version)
 doDel ref key = do
     debugM tag (printf "del %s" key)
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
         removeFile (locationValue ref key)
-        return (Just 0)
+        return (Just VC.empty)
 
 initStore :: FilePath -> IO ()
 initStore base = do
