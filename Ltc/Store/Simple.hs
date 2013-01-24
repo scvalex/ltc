@@ -1,5 +1,9 @@
 {-# LANGUAGE TypeFamilies, TupleSections #-}
 
+-- | Imagine desiging a key-value store on top of the file system.
+-- The 'Simple' store is basically that, with a few added
+-- complications due to the versioning.
+
 module Ltc.Store.Simple (
         Simple, ConnectParameters(..)
     ) where
