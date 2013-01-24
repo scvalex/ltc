@@ -75,4 +75,5 @@ rmrf fp = do
 cleanEnvironment :: [FilePath] -> Assertion -> Assertion
 cleanEnvironment files ass = do
     mapM_ rmrf files
-    ass `finally` mapM_ rmrf files
+    -- FIXME Re-enable cleanup after tests.
+    ass `finally` return () --mapM_ rmrf files
