@@ -1,7 +1,7 @@
 module Ltc.Store (
         module Ltc.Store.Class,
-        module Ltc.Store.Reference
+        module Ltc.Store.Simple
     ) where
 
 import Ltc.Store.Class
-import Ltc.Store.Reference
+import Ltc.Store.Simple

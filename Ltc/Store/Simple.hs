@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies, TupleSections #-}
 
-module Ltc.Store.Reference (
-        Reference, ConnectParameters(..)
+module Ltc.Store.Simple (
+        Simple, ConnectParameters(..)
     ) where
 
 import qualified Codec.Compression.GZip as Z
@@ -24,14 +24,14 @@ storeVersion :: Int
 storeVersion = 1
 
 tag :: String
-tag = "Reference"
+tag = "Simple"
 
-data Reference = Reference
+data Simple = Simple
     { getLocation :: FilePath
     }
 
-instance Store Reference where
-    data ConnectParameters Reference = ConnectParameters
+instance Store Simple where
+    data ConnectParameters Simple = ConnectParameters
         { location :: FilePath
         }
 
@@ -46,30 +46,30 @@ instance Store Reference where
 
     del handle key = doDel handle key
 
-doOpen :: ConnectParameters Reference -> IO Reference
+doOpen :: ConnectParameters Simple -> IO Simple
 doOpen params = do
     debugM tag "open"
     storeExists <- doesDirectoryExist (location params)
     when (not storeExists) (initStore (location params))
-    return (Reference { getLocation = location params })
+    return (Simple { getLocation = location params })
 
-doClose :: Reference -> IO ()
+doClose :: Simple -> IO ()
 doClose _handle = do
     debugM tag "close"
     return ()
 
-doGet :: Reference -> Key -> Version -> IO (Maybe Value)
+doGet :: Simple -> Key -> Version -> IO (Maybe Value)
 doGet ref key _version = do
     debugM tag (printf "get %s" key)
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
         Just . Z.decompress <$> BL.readFile (keyLocation ref key)
 
-doGetLatest :: Reference -> Key -> IO (Maybe (Value, Version))
+doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
     value <- doGet ref key 0
     return ((,1) <$> value)
 
-doSet :: Reference -> Key -> Value -> IO Version
+doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
     debugM tag (printf "set %s" key)
     (tempFile, handle) <- openBinaryTempFile (getLocation ref </> "tmp") "ltc"
@@ -78,7 +78,7 @@ doSet ref key value = do
     renameFile tempFile (keyLocation ref key)
     return 1
 
-doDel :: Reference -> Key -> IO (Maybe Version)
+doDel :: Simple -> Key -> IO (Maybe Version)
 doDel ref key = do
     debugM tag (printf "del %s" key)
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
@@ -100,5 +100,5 @@ keyHash :: Key -> String
 keyHash = showDigest . sha1 . BL.pack
 
 -- | The location of a key's value value.
-keyLocation :: Reference -> Key -> FilePath
+keyLocation :: Simple -> Key -> FilePath
 keyLocation ref key = getLocation ref </> "store" </> keyHash key
