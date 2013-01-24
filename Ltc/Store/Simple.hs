@@ -4,7 +4,8 @@
 -- The 'Simple' store is basically that, with a few added
 -- complications due to the versioning.
 --
--- The store runs out of a single directory on disk.  The layout is:
+-- The store runs out of a single directory on disk.  The layout, as
+-- created by 'open', is:
 --
 -- @
 -- DB_DIR/
@@ -12,7 +13,7 @@
 -- ├── version
 -- ├── tmp/
 -- ├── keys/
--- └── objects/
+-- └── values/
 -- @
 --
 -- @DB_DIR/format@ contains a single string identifying the format of
@@ -32,7 +33,7 @@
 -- S-Expression which contains meta information about the value of the
 -- key.
 --
--- @DB_DIR/objects@ is a directory that contains a file for each value
+-- @DB_DIR/values@ is a directory that contains a file for each value
 -- present in the key-value store.  The values in these files may be
 -- gzipped.  These files are referenced by files in the @DB_DIR/keys@
 -- directory.
@@ -63,7 +64,7 @@ tag :: String
 tag = "Simple"
 
 data Simple = Simple
-    { getLocation :: FilePath
+    { getBase :: FilePath
     }
 
 instance Store Simple where
@@ -87,7 +88,7 @@ doOpen params = do
     debugM tag "open"
     storeExists <- doesDirectoryExist (location params)
     when (not storeExists) (initStore (location params))
-    return (Simple { getLocation = location params })
+    return (Simple { getBase = location params })
 
 doClose :: Simple -> IO ()
 doClose _handle = do
@@ -98,7 +99,7 @@ doGet :: Simple -> Key -> Version -> IO (Maybe Value)
 doGet ref key _version = do
     debugM tag (printf "get %s" key)
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
-        Just . Z.decompress <$> BL.readFile (keyLocation ref key)
+        Just . Z.decompress <$> BL.readFile (locationValue ref key)
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
@@ -108,33 +109,53 @@ doGetLatest ref key = do
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
     debugM tag (printf "set %s" key)
-    (tempFile, handle) <- openBinaryTempFile (getLocation ref </> "tmp") "ltc"
+    (tempFile, handle) <- openBinaryTempFile (locationTemporary (getBase ref)) "ltc"
     BL.hPut handle (Z.compress value)
     hClose handle
-    renameFile tempFile (keyLocation ref key)
+    renameFile tempFile (locationValue ref key)
     return 1
 
 doDel :: Simple -> Key -> IO (Maybe Version)
 doDel ref key = do
     debugM tag (printf "del %s" key)
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
-        removeFile (keyLocation ref key)
+        removeFile (locationValue ref key)
         return (Just 0)
 
 initStore :: FilePath -> IO ()
-initStore loc = do
+initStore base = do
     debugM tag "initStore"
-    createDirectory loc
-    writeFile (loc </> "format") formatString
-    writeFile (loc </> "version") (show storeVersion)
-    createDirectory (loc </> "store")
-    createDirectory (loc </> "tmp")
+    createDirectory base
+    writeFile (locationFormat base) formatString
+    writeFile (locationVersion base) (show storeVersion)
+    createDirectory (locationTemporary base)
+    createDirectory (locationValues base)
+    createDirectory (locationKeys base)
 
 -- | The hash of a key.  This hash is used as the filename under which
 -- the value is stored in the reference store.
 keyHash :: Key -> String
 keyHash = showDigest . sha1 . BL.pack
 
--- | The location of a key's value value.
-keyLocation :: Simple -> Key -> FilePath
-keyLocation ref key = getLocation ref </> "store" </> keyHash key
+----------------------
+-- Locations
+----------------------
+
+-- | The location of a key's value.
+locationValue :: Simple -> Key -> FilePath
+locationValue ref key = locationValues (getBase ref) </> keyHash key
+
+locationFormat :: FilePath -> FilePath
+locationFormat base = base </> "format"
+
+locationVersion :: FilePath -> FilePath
+locationVersion base = base </> "version"
+
+locationTemporary :: FilePath -> FilePath
+locationTemporary base = base </> "tmp"
+
+locationValues :: FilePath -> FilePath
+locationValues base = base </> "values"
+
+locationKeys :: FilePath -> FilePath
+locationKeys base = base </> "keys"
