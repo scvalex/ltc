@@ -3,7 +3,39 @@
 -- | Imagine desiging a key-value store on top of the file system.
 -- The 'Simple' store is basically that, with a few added
 -- complications due to the versioning.
-
+--
+-- The store runs out of a single directory on disk.  The layout is:
+--
+-- @
+-- DB_DIR/
+-- ├── format
+-- ├── version
+-- ├── tmp/
+-- ├── keys/
+-- └── objects/
+-- @
+--
+-- @DB_DIR/format@ contains a single string identifying the format of
+-- the key-value store.  In our case, this is "simple".
+--
+-- @DB_DIR/version@ contains the version of the key-value store.  This
+-- is used to upgrade on-disk files.
+--
+-- @DB_DIR/tmp@ is a directory used as a staging ground for creating
+-- new files.  On most file systems, /move/ is an atomic operation,
+-- but /create file and write to it/ is not.  So, when writing to
+-- disk, we usually create a new file in this temporary directory,
+-- then move it to its real location.
+--
+-- @DB_DIR/keys@ is a directory that contains a file for each key
+-- present in the key-value store.  Each of these files is an
+-- S-Expression which contains meta information about the value of the
+-- key.
+--
+-- @DB_DIR/objects@ is a directory that contains a file for each value
+-- present in the key-value store.  The values in these files may be
+-- gzipped.  These files are referenced by files in the @DB_DIR/keys@
+-- directory.
 module Ltc.Store.Simple (
         Simple, ConnectParameters(..)
     ) where
@@ -22,10 +54,10 @@ import System.Log.Logger ( debugM )
 import Text.Printf ( printf )
 
 formatString :: String
-formatString = "reference"
+formatString = "simple"
 
 storeVersion :: Int
-storeVersion = 1
+storeVersion = 2
 
 tag :: String
 tag = "Simple"
