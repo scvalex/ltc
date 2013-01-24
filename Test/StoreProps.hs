@@ -4,18 +4,16 @@ module Main where
 
 import Ltc.Store
 
-import Prelude hiding ( catch )
-
-import Control.Exception
+import Control.Exception ( finally )
 import Control.Monad
 import Data.Monoid
 import System.Directory
 
 import Test.Framework
 import Test.Framework.Providers.HUnit
-import Test.Framework.Providers.QuickCheck2
+-- import Test.Framework.Providers.QuickCheck2
 import Test.HUnit
-import Test.QuickCheck
+-- import Test.QuickCheck
 
 --FIXME Add QC test Simple test-suite
 
