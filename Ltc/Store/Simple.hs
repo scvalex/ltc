@@ -66,12 +66,14 @@ tag :: String
 tag = "Simple"
 
 data Simple = Simple
-    { getBase :: FilePath
+    { getBase           :: FilePath
+    , getUseCompression :: Bool
     }
 
 instance Store Simple where
     data OpenParameters Simple = OpenParameters
-        { location :: FilePath
+        { location       :: FilePath
+        , useCompression :: Bool
         }
 
     open params = doOpen params
@@ -90,7 +92,9 @@ doOpen params = do
     debugM tag "open"
     storeExists <- doesDirectoryExist (location params)
     when (not storeExists) (initStore (location params))
-    return (Simple { getBase = location params })
+    return (Simple { getBase = location params
+                   , getUseCompression = useCompression params
+                   })
 
 doClose :: Simple -> IO ()
 doClose _handle = do
@@ -101,7 +105,8 @@ doGet :: Simple -> Key -> Version -> IO (Maybe Value)
 doGet ref key _version = do
     debugM tag (printf "get %s" key)
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
-        Just . Z.decompress <$> BL.readFile (locationValue ref key)
+        Just . (if getUseCompression ref then Z.decompress else id)
+            <$> BL.readFile (locationValue ref key)
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
@@ -112,7 +117,7 @@ doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
     debugM tag (printf "set %s" key)
     (tempFile, handle) <- openBinaryTempFile (locationTemporary (getBase ref)) "ltc"
-    BL.hPut handle (Z.compress value)
+    BL.hPut handle ((if getUseCompression ref then Z.compress else id) value)
     hClose handle
     renameFile tempFile (locationValue ref key)
     return VC.empty

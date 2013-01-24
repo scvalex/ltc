@@ -38,12 +38,14 @@ main = defaultMainWithOpts
 
 testOpen :: Assertion
 testOpen = cleanEnvironment ["test-store"] $ do
-    store <- open (OpenParameters { location = "test-store" })
+    store <- open (OpenParameters { location       = "test-store"
+                                  , useCompression = False})
     close store
 
 testSimpleSetGet :: Assertion
 testSimpleSetGet = cleanEnvironment ["test-store"] $ do
-    store <- open (OpenParameters { location = "test-store" })
+    store <- open (OpenParameters { location       = "test-store"
+                                  , useCompression = False})
     _ <- set store "foo" "bar"
     res1 <- getLatest store "foo"
     res1 @?= Just ("bar", VC.empty)
