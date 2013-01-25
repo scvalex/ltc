@@ -114,26 +114,19 @@ doGet ref key version = do
     -- FIXME Add a PrintfArg instance for lazy ByteStrings
     debugM tag (printf "get %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
-        mkr <- readKeyRecord (locationKey ref key)
-        case mkr of
-            Nothing -> return Nothing
-            Just kr ->
-                case lookup version (getVersions kr) of
-                    Nothing -> return Nothing
-                    Just vhash -> do
-                        Just . (if getUseCompression ref then Z.decompress else id)
-                             <$> BL.readFile (locationValueHash ref vhash)
+        withKeyRecord (locationKey ref key) $ \kr -> do
+            case lookup version (getVersions kr) of
+                Nothing -> return Nothing
+                Just vhash -> do
+                    Just . (if getUseCompression ref then Z.decompress else id)
+                        <$> BL.readFile (locationValueHash ref vhash)
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
-    mkr <- readKeyRecord (locationKey ref key)
-    case mkr of
-        Nothing ->
-            return Nothing
-        Just kr -> do
-            let latestVersion = fst (head (getVersions kr))
-            Just value <- doGet ref key latestVersion
-            return (Just (value, latestVersion))
+    withKeyRecord (locationKey ref key) $ \kr -> do
+        let latestVersion = fst (head (getVersions kr))
+        Just value <- doGet ref key latestVersion
+        return (Just (value, latestVersion))
 
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
@@ -160,6 +153,14 @@ setKeyRecord ref path update = do
     kr' <- update mkr
     atomicWriteFile ref path (printHum (toSexp kr'))
     return (fst (head (getVersions kr')))
+
+-- | Wrapper around 'readKeyRecord'.
+withKeyRecord :: FilePath -> (KeyRecord -> IO (Maybe a)) -> IO (Maybe a)
+withKeyRecord path f = do
+    mkr <- readKeyRecord path
+    case mkr of
+        Nothing -> return Nothing
+        Just kr -> f kr
 
 -- | Read a key record from disk.  If the key doesn't exist, return
 -- 'Nothing'.  If the key record is corrupt, fail.
