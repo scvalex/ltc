@@ -50,15 +50,15 @@ testSimpleSetGet = cleanEnvironment ["test-store"] $ do
                                   , nodeName       = "test" })
     _ <- set store "foo" "bar"
     res1 <- getLatest store "foo"
-    res1 @?= Just ("bar", VC.empty)
+    res1 @?= Just ("bar", VC.fromList [("test", 1)])
     res2 <- getLatest store "bar"
     res2 @?= Nothing
     _ <- set store "bar" "baz"
     res3 <- getLatest store "bar"
-    res3 @?= Just ("baz", VC.empty)
+    res3 @?= Just ("baz", VC.fromList [("test", 1)])
     _ <- set store "foo" "baz"
     res4 <- getLatest store "foo"
-    res4 @?= Just ("baz", VC.empty)
+    res4 @?= Just ("baz", VC.fromList [("test", 2)])
     close store
 
 --------------------------------

@@ -121,8 +121,13 @@ doGet ref key _version = do
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
-    value <- doGet ref key VC.empty
-    return ((,VC.empty) <$> value)
+    mvalue <- doGet ref key VC.empty
+    case mvalue of
+        Nothing ->
+            return Nothing
+        Just value -> do
+            Just kr <- readKeyRecord (locationKey ref key)
+            return (Just (value, fst (head (getVersions kr))))
 
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
@@ -151,8 +156,17 @@ doDel ref key = do
 
 setKeyRecord :: Simple -> FilePath -> (Maybe KeyRecord -> IO KeyRecord) -> IO Version
 setKeyRecord ref path update = do
+    mkr <- readKeyRecord path
+    kr' <- update mkr
+    atomicWriteFile ref path (printMach (toSexp kr'))
+    return (fst (head (getVersions kr')))
+
+-- | Read a key record from disk.  If the key doesn't exist, return
+-- 'Nothing'.  If the key record is corrupt, fail.
+readKeyRecord :: FilePath -> IO (Maybe KeyRecord)
+readKeyRecord path = do
     keyExists <- doesFileExist path
-    mkr <- if keyExists
+    if keyExists
           then do
               text <- BL.readFile path
               case parse text of
@@ -163,9 +177,6 @@ setKeyRecord ref path update = do
                           Just kr -> return (Just kr)
                   Right _ -> fail (printf "corrupt key file: %s (multiple sexps)" path)
           else return Nothing
-    kr' <- update mkr
-    atomicWriteFile ref path (printMach (toSexp kr'))
-    return (fst (head (getVersions kr')))
 
 
 -- | Write the given 'ByteString' to the file atomically.  Overwrite
