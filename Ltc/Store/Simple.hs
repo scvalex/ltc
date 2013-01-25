@@ -121,13 +121,14 @@ doGet ref key _version = do
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
-    mvalue <- doGet ref key VC.empty
-    case mvalue of
+    mkr <- readKeyRecord (locationKey ref key)
+    case mkr of
         Nothing ->
             return Nothing
-        Just value -> do
-            Just kr <- readKeyRecord (locationKey ref key)
-            return (Just (value, fst (head (getVersions kr))))
+        Just kr -> do
+            let latestVersion = fst (head (getVersions kr))
+            Just value <- doGet ref key latestVersion
+            return (Just (value, latestVersion))
 
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
