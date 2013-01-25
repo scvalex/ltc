@@ -22,10 +22,10 @@ Source-repository head
   Location:             https://github.com/scvalex/ltc.git
 
 Library
-  Build-depends:        base >= 4 && < 5, bytestring, directory, filepath, hslogger,
-                        sexp, SHA, vector-clock, zlib
+  Build-depends:        base >= 4 && < 5, bytestring, data-default, directory, filepath,
+                        hslogger, sexp, SHA, vector-clock, zlib
   Ghc-options:          -Wall
-  Extensions:           ScopedTypeVariables
+  Extensions:           ScopedTypeVariables, OverloadedStrings
   Exposed-modules:      Ltc.Store
 
 Test-suite store
@@ -33,10 +33,10 @@ Test-suite store
   Main-Is:              StoreProps.hs
   Type:                 exitcode-stdio-1.0
 
-  Build-Depends:        base >= 4 && < 5, bytestring, directory, filepath, hslogger,
-                        sexp, SHA, vector-clock, zlib
+  Build-Depends:        base >= 4 && < 5, bytestring, data-default, directory, filepath,
+                        hslogger, sexp, SHA, vector-clock, zlib
   Ghc-Options:          -Wall
-  Extensions:           ScopedTypeVariables
+  Extensions:           ScopedTypeVariables, OverloadedStrings
 
   Build-Depends:        test-framework, test-framework-hunit, test-framework-quickcheck2,
                         HUnit, QuickCheck
