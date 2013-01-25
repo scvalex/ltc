@@ -52,9 +52,10 @@ import Data.Default ( Default(..) )
 import Data.Digest.Pure.SHA ( sha1, showDigest )
 -- FIXME Use vector clocks properly (search for "VC.")
 import qualified Data.VectorClock as VC
-import Language.Sexp ( toSexp, printMach )
+import Language.Sexp ( toSexp, fromSexp, parse, printMach )
 import Ltc.Store.Class ( Store(..), Key, Value, ValueHash, Version )
-import System.Directory ( createDirectory, doesDirectoryExist, removeFile, renameFile )
+import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
+                        , removeFile, renameFile )
 import System.FilePath ( (</>) )
 import System.IO ( hClose, openBinaryTempFile )
 import System.Log.Logger ( debugM )
@@ -133,7 +134,8 @@ doSet ref key value = do
         kr = KR { getKeyName = key, getVersions = [(vsn, BL.pack (keyHash key))] }
     atomicWriteFile ref (locationValue ref key)
         ((if getUseCompression ref then Z.compress else id) value)
-    atomicWriteFile ref (locationKey ref key) (printMach (toSexp kr))
+    setKeyRecord ref (locationKey ref key) $ \_ -> do
+        return kr
     return vsn
 
 doDel :: Simple -> Key -> IO (Maybe Version)
@@ -146,6 +148,24 @@ doDel ref key = do
 ----------------------
 -- Helpers
 ----------------------
+
+setKeyRecord :: Simple -> FilePath -> (KeyRecord -> IO KeyRecord) -> IO ()
+setKeyRecord ref path update = do
+    keyExists <- doesFileExist path
+    kr <- if keyExists
+          then do
+              text <- BL.readFile path
+              case parse text of
+                  Left err -> fail (printf "corrupt key file: %s (%s)" path (show err))
+                  Right [s] ->
+                      case fromSexp s of
+                          Nothing -> fail (printf "corrupt key file: %s (KeyRecord)" path)
+                          Just kr -> return kr
+                  Right _ -> fail (printf "corrupt key file: %s (multiple sexps)" path)
+          else return def
+    kr' <- update kr
+    atomicWriteFile ref path (printMach (toSexp kr'))
+
 
 -- | Write the given 'ByteString' to the file atomically.  Overwrite
 -- any previous content.  The 'Simple' reference is needed in order to
