@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Ltc.Store.Class (
-        Store(..), Key, Value, ValueHash, Version
+        Store(..), Key, Value, ValueHash, Version, NodeName
     ) where
 
 import Data.ByteString.Lazy.Char8 ( ByteString )
@@ -10,7 +10,8 @@ import Data.VectorClock ( VectorClock )
 type Key       = ByteString
 type Value     = ByteString
 type ValueHash = ByteString
-type Version   = VectorClock ByteString Int
+type NodeName  = ByteString
+type Version   = VectorClock NodeName Int
 
 class Store a where
     data OpenParameters a :: *

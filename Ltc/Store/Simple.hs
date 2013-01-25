@@ -53,7 +53,7 @@ import Data.Digest.Pure.SHA ( sha1, showDigest )
 -- FIXME Use vector clocks properly (search for "VC.")
 import qualified Data.VectorClock as VC
 import Language.Sexp ( toSexp, fromSexp, parse, printMach )
-import Ltc.Store.Class ( Store(..), Key, Value, ValueHash, Version )
+import Ltc.Store.Class
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , removeFile, renameFile )
 import System.FilePath ( (</>) )
@@ -72,6 +72,7 @@ tag = "Simple"
 
 data Simple = Simple { getBase           :: FilePath
                      , getUseCompression :: Bool
+                     , getNodeName       :: NodeName
                      }
 
 data KeyRecord = KR { getKeyName :: Key
@@ -87,6 +88,7 @@ instance Store Simple where
     data OpenParameters Simple = OpenParameters
         { location       :: FilePath
         , useCompression :: Bool
+        , nodeName       :: ByteString
         }
 
     open params = doOpen params
@@ -105,8 +107,9 @@ doOpen params = do
     debugM tag "open"
     storeExists <- doesDirectoryExist (location params)
     when (not storeExists) (initStore (location params))
-    return (Simple { getBase = location params
+    return (Simple { getBase           = location params
                    , getUseCompression = useCompression params
+                   , getNodeName       = nodeName params
                    })
 
 doClose :: Simple -> IO ()
@@ -130,13 +133,16 @@ doGetLatest ref key = do
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
     debugM tag (printf "set %s" (BL.unpack key))
-    let vsn = VC.empty
-        kr = KR { getKeyName = key, getVersions = [(vsn, BL.pack (keyHash key))] }
     atomicWriteFile ref (locationValue ref key)
         ((if getUseCompression ref then Z.compress else id) value)
-    setKeyRecord ref (locationKey ref key) $ \_ -> do
-        return kr
-    return vsn
+    setKeyRecord ref (locationKey ref key) $ \mkrOld -> do
+        let krOld = maybe (KR { getKeyName = key, getVersions = [] }) id mkrOld
+            nn = getNodeName ref
+            versions = getVersions krOld
+            versions' = case versions of
+                []   -> [(VC.insert nn 1 VC.empty, BL.pack (keyHash key))]
+                v@(vc, _):vs -> (VC.incWithDefault nn vc 0, BL.pack (keyHash key)) : v : vs
+        return (krOld { getVersions = versions' })
 
 doDel :: Simple -> Key -> IO (Maybe Version)
 doDel ref key = do
@@ -149,10 +155,10 @@ doDel ref key = do
 -- Helpers
 ----------------------
 
-setKeyRecord :: Simple -> FilePath -> (KeyRecord -> IO KeyRecord) -> IO ()
+setKeyRecord :: Simple -> FilePath -> (Maybe KeyRecord -> IO KeyRecord) -> IO Version
 setKeyRecord ref path update = do
     keyExists <- doesFileExist path
-    kr <- if keyExists
+    mkr <- if keyExists
           then do
               text <- BL.readFile path
               case parse text of
@@ -160,11 +166,12 @@ setKeyRecord ref path update = do
                   Right [s] ->
                       case fromSexp s of
                           Nothing -> fail (printf "corrupt key file: %s (KeyRecord)" path)
-                          Just kr -> return kr
+                          Just kr -> return (Just kr)
                   Right _ -> fail (printf "corrupt key file: %s (multiple sexps)" path)
-          else return def
-    kr' <- update kr
+          else return Nothing
+    kr' <- update mkr
     atomicWriteFile ref path (printMach (toSexp kr'))
+    return (fst (head (getVersions kr')))
 
 
 -- | Write the given 'ByteString' to the file atomically.  Overwrite
