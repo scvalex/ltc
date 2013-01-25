@@ -48,7 +48,6 @@ import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Data ( Data, Typeable )
-import Data.Default ( Default(..) )
 import Data.Digest.Pure.SHA ( sha1, showDigest )
 -- FIXME Use vector clocks properly (search for "VC.")
 import qualified Data.VectorClock as VC
@@ -78,11 +77,6 @@ data Simple = Simple { getBase           :: FilePath
 data KeyRecord = KR { getKeyName :: Key
                     , getVersions :: [(Version, ValueHash)]
                     } deriving ( Data, Typeable )
-
-instance Default KeyRecord where
-    def = KR { getKeyName = "unnamed"
-             , getVersions = []
-             }
 
 instance Store Simple where
     data OpenParameters Simple = OpenParameters
