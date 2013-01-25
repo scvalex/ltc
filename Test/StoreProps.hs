@@ -22,6 +22,7 @@ main :: IO ()
 main = defaultMainWithOpts
        [ testCase "open" testOpen
        , testCase "simpleSetGet" testSimpleSetGet
+       , testCase "simpleHistory" testSimpleHistory
 --       , testProperty "idemParseShowStatement" prop_IdemParseShowStatement
        ] opts
   where
@@ -60,6 +61,20 @@ testSimpleSetGet = cleanEnvironment ["test-store"] $ do
     res4 <- getLatest store "foo"
     res4 @?= Just ("boom", VC.fromList [("test", 2)])
     close store
+
+testSimpleHistory :: Assertion
+testSimpleHistory = cleanEnvironment ["test-store"] $ do
+    store <- open (OpenParameters { location       = "test-store"
+                                  , useCompression = False
+                                  , nodeName       = "test" })
+    v1 <- set store "foo" "bar"
+    res1 <- getLatest store "foo"
+    res1 @?= Just ("bar", v1)
+    v2 <- set store "foo" "baz"
+    res2 <- getLatest store "foo"
+    res2 @?= Just ("baz", v2)
+    res3 <- get store "foo" v1
+    res3 @?= Just "bar"
 
 --------------------------------
 -- Helpers
