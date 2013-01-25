@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, TupleSections #-}
+{-# LANGUAGE TypeFamilies, TupleSections, DeriveDataTypeable #-}
 
 -- | Imagine desiging a key-value store on top of the file system.
 -- The 'Simple' store is basically that, with a few added
@@ -46,10 +46,13 @@ import Control.Applicative
 import qualified Control.Exception as CE
 import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BL
+import Data.ByteString.Lazy.Char8 ( ByteString )
+import Data.Data ( Data, Typeable )
 import Data.Digest.Pure.SHA ( sha1, showDigest )
 -- FIXME Use vector clocks properly (search for "VC.")
 import qualified Data.VectorClock as VC
-import Ltc.Store.Class ( Store(..), Key, Value, Version )
+import Language.Sexp ( toSexp, printMach )
+import Ltc.Store.Class ( Store(..), Key, Value, ValueHash, Version )
 import System.Directory ( createDirectory, doesDirectoryExist, removeFile, renameFile )
 import System.FilePath ( (</>) )
 import System.IO ( hClose, openBinaryTempFile )
@@ -65,10 +68,13 @@ storeVersion = 2
 tag :: String
 tag = "Simple"
 
-data Simple = Simple
-    { getBase           :: FilePath
-    , getUseCompression :: Bool
-    }
+data Simple = Simple { getBase           :: FilePath
+                     , getUseCompression :: Bool
+                     }
+
+data KeyRecord = KR { getKeyName :: Key
+                    , getVersions :: [(Version, ValueHash)]
+                    } deriving ( Data, Typeable )
 
 instance Store Simple where
     data OpenParameters Simple = OpenParameters
@@ -103,7 +109,8 @@ doClose _handle = do
 
 doGet :: Simple -> Key -> Version -> IO (Maybe Value)
 doGet ref key _version = do
-    debugM tag (printf "get %s" key)
+    -- FIXME Add a PrintfArg instance for lazy ByteStrings
+    debugM tag (printf "get %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
         Just . (if getUseCompression ref then Z.decompress else id)
             <$> BL.readFile (locationValue ref key)
@@ -115,20 +122,36 @@ doGetLatest ref key = do
 
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
-    debugM tag (printf "set %s" key)
-    (tempFile, handle) <- openBinaryTempFile (locationTemporary (getBase ref)) "ltc"
-    BL.hPut handle ((if getUseCompression ref then Z.compress else id) value)
-    hClose handle
-    renameFile tempFile (locationValue ref key)
-    return VC.empty
+    debugM tag (printf "set %s" (BL.unpack key))
+    let vsn = VC.empty
+        kr = KR { getKeyName = key, getVersions = [(vsn, BL.pack (keyHash key))] }
+    atomicWriteFile ref (locationValue ref key)
+        ((if getUseCompression ref then Z.compress else id) value)
+    atomicWriteFile ref (locationKey ref key) (printMach (toSexp kr))
+    return vsn
 
 doDel :: Simple -> Key -> IO (Maybe Version)
 doDel ref key = do
-    debugM tag (printf "del %s" key)
+    debugM tag (printf "del %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
         removeFile (locationValue ref key)
         return (Just VC.empty)
 
+----------------------
+-- Helpers
+----------------------
+
+-- | Write the given 'ByteString' to the file atomically.  Overwrite
+-- any previous content.  The 'Simple' reference is needed in order to
+-- find the temporary directory.
+atomicWriteFile :: Simple -> FilePath -> ByteString -> IO ()
+atomicWriteFile ref path content = do
+    (tempFile, handle) <- openBinaryTempFile (locationTemporary (getBase ref)) "ltc"
+    BL.hPut handle content `CE.finally` hClose handle
+    renameFile tempFile path
+
+-- | Create the initial layout for the store at the given directory
+-- base.
 initStore :: FilePath -> IO ()
 initStore base = do
     debugM tag "initStore"
@@ -142,7 +165,7 @@ initStore base = do
 -- | The hash of a key.  This hash is used as the filename under which
 -- the value is stored in the reference store.
 keyHash :: Key -> String
-keyHash = showDigest . sha1 . BL.pack
+keyHash = showDigest . sha1
 
 ----------------------
 -- Locations
@@ -151,6 +174,10 @@ keyHash = showDigest . sha1 . BL.pack
 -- | The location of a key's value.
 locationValue :: Simple -> Key -> FilePath
 locationValue ref key = locationValues (getBase ref) </> keyHash key
+
+-- | The location of a key's record.
+locationKey :: Simple -> Key -> FilePath
+locationKey ref key = locationKeys (getBase ref) </> keyHash key
 
 locationFormat :: FilePath -> FilePath
 locationFormat base = base </> "format"
