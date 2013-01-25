@@ -51,7 +51,7 @@ import Data.Data ( Data, Typeable )
 import Data.Digest.Pure.SHA ( sha1, showDigest )
 -- FIXME Use vector clocks properly (search for "VC.")
 import qualified Data.VectorClock as VC
-import Language.Sexp ( toSexp, fromSexp, parse, printMach )
+import Language.Sexp ( toSexp, fromSexp, parse, printHum )
 import Ltc.Store.Class
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , removeFile, renameFile )
@@ -159,7 +159,7 @@ setKeyRecord :: Simple -> FilePath -> (Maybe KeyRecord -> IO KeyRecord) -> IO Ve
 setKeyRecord ref path update = do
     mkr <- readKeyRecord path
     kr' <- update mkr
-    atomicWriteFile ref path (printMach (toSexp kr'))
+    atomicWriteFile ref path (printHum (toSexp kr'))
     return (fst (head (getVersions kr')))
 
 -- | Read a key record from disk.  If the key doesn't exist, return
