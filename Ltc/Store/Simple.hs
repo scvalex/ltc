@@ -11,6 +11,7 @@
 -- DB_DIR/
 -- ├── format
 -- ├── version
+-- ├── nodeName
 -- ├── tmp/
 -- ├── keys/
 -- └── values/
@@ -49,7 +50,6 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Data ( Data, Typeable )
 import Data.Digest.Pure.SHA ( sha1, showDigest )
--- FIXME Use vector clocks properly (search for "VC.")
 import qualified Data.VectorClock as VC
 import Language.Sexp ( toSexp, fromSexp, parse, printHum )
 import Ltc.Store.Class
@@ -98,7 +98,10 @@ doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
     debugM tag "open"
     storeExists <- doesDirectoryExist (location params)
-    when (not storeExists) (initStore (location params))
+    when (not storeExists) (initStore params)
+    nn <- BL.readFile (locationNodeName (location params))
+    when (nn /= nodeName params) $
+        fail (printf "node name mismatch: store has %s" (BL.unpack nn))
     return (Simple { getBase           = location params
                    , getUseCompression = useCompression params
                    , getNodeName       = nodeName params
@@ -190,12 +193,14 @@ atomicWriteFile ref path content = do
 
 -- | Create the initial layout for the store at the given directory
 -- base.
-initStore :: FilePath -> IO ()
-initStore base = do
+initStore :: OpenParameters Simple -> IO ()
+initStore params = do
     debugM tag "initStore"
+    let base = location params
     createDirectory base
     writeFile (locationFormat base) formatString
     writeFile (locationVersion base) (show storeVersion)
+    BL.writeFile (locationNodeName base) (nodeName params)
     createDirectory (locationTemporary base)
     createDirectory (locationValues base)
     createDirectory (locationKeys base)
@@ -236,3 +241,6 @@ locationValues base = base </> "values"
 
 locationKeys :: FilePath -> FilePath
 locationKeys base = base </> "keys"
+
+locationNodeName :: FilePath -> FilePath
+locationNodeName base = base </> "nodeName"
