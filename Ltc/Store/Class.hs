@@ -1,13 +1,14 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Ltc.Store.Class (
-        Store(..), Key, Value, ValueHash, Version, NodeName
+        Store(..), Key, KeyHash, Value, ValueHash, Version, NodeName
     ) where
 
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.VectorClock ( VectorClock )
 
 type Key       = ByteString
+type KeyHash   = ByteString
 type Value     = ByteString
 type ValueHash = ByteString
 type NodeName  = ByteString

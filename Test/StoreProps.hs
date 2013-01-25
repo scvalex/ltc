@@ -56,9 +56,9 @@ testSimpleSetGet = cleanEnvironment ["test-store"] $ do
     _ <- set store "bar" "baz"
     res3 <- getLatest store "bar"
     res3 @?= Just ("baz", VC.fromList [("test", 1)])
-    _ <- set store "foo" "baz"
+    _ <- set store "foo" "boom"
     res4 <- getLatest store "foo"
-    res4 @?= Just ("baz", VC.fromList [("test", 2)])
+    res4 @?= Just ("boom", VC.fromList [("test", 2)])
     close store
 
 --------------------------------

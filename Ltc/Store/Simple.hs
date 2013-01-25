@@ -112,12 +112,19 @@ doClose _handle = do
     return ()
 
 doGet :: Simple -> Key -> Version -> IO (Maybe Value)
-doGet ref key _version = do
+doGet ref key version = do
     -- FIXME Add a PrintfArg instance for lazy ByteStrings
     debugM tag (printf "get %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
-        Just . (if getUseCompression ref then Z.decompress else id)
-            <$> BL.readFile (locationValue ref key)
+        mkr <- readKeyRecord (locationKey ref key)
+        case mkr of
+            Nothing -> return Nothing
+            Just kr ->
+                case lookup version (getVersions kr) of
+                    Nothing -> return Nothing
+                    Just vhash -> do
+                        Just . (if getUseCompression ref then Z.decompress else id)
+                             <$> BL.readFile (locationValueHash ref vhash)
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
@@ -133,22 +140,24 @@ doGetLatest ref key = do
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
     debugM tag (printf "set %s" (BL.unpack key))
-    atomicWriteFile ref (locationValue ref key)
+    let vhash = valueHash value
+    atomicWriteFile ref (locationValueHash ref vhash)
         ((if getUseCompression ref then Z.compress else id) value)
     setKeyRecord ref (locationKey ref key) $ \mkrOld -> do
         let krOld = maybe (KR { getKeyName = key, getVersions = [] }) id mkrOld
             nn = getNodeName ref
             versions = getVersions krOld
             versions' = case versions of
-                []   -> [(VC.insert nn 1 VC.empty, BL.pack (keyHash key))]
-                v@(vc, _):vs -> (VC.incWithDefault nn vc 0, BL.pack (keyHash key)) : v : vs
+                []   -> [(VC.insert nn 1 VC.empty, vhash)]
+                v@(vc, _):vs -> (VC.incWithDefault nn vc 0, vhash) : v : vs
         return (krOld { getVersions = versions' })
 
 doDel :: Simple -> Key -> IO (Maybe Version)
 doDel ref key = do
     debugM tag (printf "del %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
-        removeFile (locationValue ref key)
+        -- FIXME Write 'doDel'
+        removeFile (locationValueHash ref undefined)
         return (Just VC.empty)
 
 ----------------------
@@ -202,21 +211,26 @@ initStore base = do
     createDirectory (locationKeys base)
 
 -- | The hash of a key.  This hash is used as the filename under which
--- the value is stored in the reference store.
-keyHash :: Key -> String
-keyHash = showDigest . sha1
+-- the key is stored in the @keys/@ folder.
+keyHash :: Key -> KeyHash
+keyHash = BL.pack . showDigest . sha1
+
+-- | The hash of a value.  This hash is used as the filename under
+-- which the value is stored in the @values/@ folder.
+valueHash :: Value -> ValueHash
+valueHash = BL.pack . showDigest . sha1
 
 ----------------------
 -- Locations
 ----------------------
 
 -- | The location of a key's value.
-locationValue :: Simple -> Key -> FilePath
-locationValue ref key = locationValues (getBase ref) </> keyHash key
+locationValueHash :: Simple -> ValueHash -> FilePath
+locationValueHash ref hash = locationValues (getBase ref) </> BL.unpack hash
 
 -- | The location of a key's record.
 locationKey :: Simple -> Key -> FilePath
-locationKey ref key = locationKeys (getBase ref) </> keyHash key
+locationKey ref key = locationKeys (getBase ref) </> BL.unpack (keyHash key)
 
 locationFormat :: FilePath -> FilePath
 locationFormat base = base </> "format"
