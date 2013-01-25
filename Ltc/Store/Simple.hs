@@ -114,7 +114,6 @@ doClose _handle = do
 
 doGet :: Simple -> Key -> Version -> IO (Maybe Value)
 doGet ref key version = do
-    -- FIXME Add a PrintfArg instance for lazy ByteStrings
     debugM tag (printf "get %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
         withKeyRecord (locationKey ref key) $ \kr -> do
