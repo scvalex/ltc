@@ -24,5 +24,3 @@ class Store a where
     getLatest :: a -> Key -> IO (Maybe (Value, Version))
 
     set :: a -> Key -> Value -> IO Version
-
-    del :: a -> Key -> IO (Maybe Version)

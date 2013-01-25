@@ -54,7 +54,7 @@ import qualified Data.VectorClock as VC
 import Language.Sexp ( toSexp, fromSexp, parse, printHum )
 import Ltc.Store.Class
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
-                        , removeFile, renameFile )
+                        , renameFile )
 import System.FilePath ( (</>) )
 import System.IO ( hClose, openBinaryTempFile )
 import System.Log.Logger ( debugM )
@@ -93,8 +93,6 @@ instance Store Simple where
     getLatest handle key = doGetLatest handle key
 
     set handle key value = doSet handle key value
-
-    del handle key = doDel handle key
 
 doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
@@ -152,14 +150,6 @@ doSet ref key value = do
                 v@(vc, _):vs -> (VC.incWithDefault nn vc 0, vhash) : v : vs
         return (krOld { getVersions = versions' })
 
-doDel :: Simple -> Key -> IO (Maybe Version)
-doDel ref key = do
-    debugM tag (printf "del %s" (BL.unpack key))
-    CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
-        -- FIXME Write 'doDel'
-        removeFile (locationValueHash ref undefined)
-        return (Just VC.empty)
-
 ----------------------
 -- Helpers
 ----------------------
@@ -187,7 +177,6 @@ readKeyRecord path = do
                           Just kr -> return (Just kr)
                   Right _ -> fail (printf "corrupt key file: %s (multiple sexps)" path)
           else return Nothing
-
 
 -- | Write the given 'ByteString' to the file atomically.  Overwrite
 -- any previous content.  The 'Simple' reference is needed in order to
