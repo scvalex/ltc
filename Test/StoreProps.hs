@@ -6,6 +6,7 @@ module Main where
 import Ltc.Store
 
 import Control.Applicative
+import qualified Control.Exception as CE
 import Control.Monad
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -36,10 +37,17 @@ main = defaultMainWithOpts
 
 testOpen :: Assertion
 testOpen = cleanEnvironment ["test-store"] $ do
-    store <- open (OpenParameters { location       = "test-store"
-                                  , useCompression = False
-                                  , nodeName       = "test" })
+    let op = OpenParameters { location       = "test-store"
+                            , useCompression = False
+                            , nodeName       = "test" }
+    store <- open op
     close store
+    store' <- open op
+    close store'
+    opened <- CE.handle (\(_ :: CE.SomeException) -> return False) $ do
+        _ <- open (op { nodeName = "other-test" })
+        return True
+    when opened $ assertFailure "re-opened store with different node name"
 
 testSimpleSetGet :: Assertion
 testSimpleSetGet = cleanEnvironment ["test-store"] $ do
