@@ -109,6 +109,11 @@ instance Arbitrary Commands where
                 2 -> Set <$> key <*> arbitrary
                 _ -> fail "unknown case in 'Arbitrary Command'"
 
+-- | For any store @store@, and any key @k@, the value of @getLatest
+-- store k@ should either be 'Nothing', if @key@ was never set in this
+-- store, or @Just (v, vsn)@, where @v@ is parameter to the most
+-- recent @set store k v@, and @vsn@ is the returned value of the same
+-- command.
 propSetGetLatest :: Commands -> Property
 propSetGetLatest cmds = monadicIO $ do
     cleanEnvironmentP ["test-store"] $ do
