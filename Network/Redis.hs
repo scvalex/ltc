@@ -30,7 +30,7 @@ data RedisMessage = Status ByteString
                   | Integer Integer
                   | Bulk ByteString
                   | MultiBulk [RedisMessage]
-                  deriving ( Show )
+                  deriving ( Eq, Show )
 
 -- | Parse a Redis command from a lazy 'ByteString'.  If the parse was
 -- successful, @Right msg@ is returned; otherwise, @Left (errorMsg,
