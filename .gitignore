@@ -1,3 +1,4 @@
 .cr
 cabal-dev/
 dist/
+test-store/
