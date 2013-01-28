@@ -87,12 +87,14 @@ instance Store Simple where
 
     open params = doOpen params
 
-    close handle = doClose handle
+    close ref = doClose ref
 
-    get handle key version = doGet handle key version
-    getLatest handle key = doGetLatest handle key
+    get ref key version = doGet ref key version
+    getLatest ref key = doGetLatest ref key
 
-    set handle key value = doSet handle key value
+    keyVersions ref key = doKeyVersions ref key
+
+    set ref key value = doSet ref key value
 
 doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
@@ -129,6 +131,11 @@ doGetLatest ref key = do
         let latestVersion = fst (head (getVersions kr))
         Just value <- doGet ref key latestVersion
         return (Just (value, latestVersion))
+
+doKeyVersions :: Simple -> Key -> IO (Maybe [Version])
+doKeyVersions ref key = do
+    withKeyRecord (locationKey ref key) $ \kr -> do
+        return . Just . map fst $ getVersions kr
 
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do

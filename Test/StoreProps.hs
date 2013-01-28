@@ -10,6 +10,7 @@ import qualified Control.Exception as CE
 import Control.Monad
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import qualified Data.ByteString.Lazy.Char8 as BL
+import Data.List ( find )
 import Data.Foldable ( foldlM )
 import qualified Data.Map as M
 import Data.Monoid
@@ -29,6 +30,7 @@ main = defaultMainWithOpts
        , testCase "simpleSetGet" testSimpleSetGet
        , testCase "simpleHistory" testSimpleHistory
        , testProperty "setGetLatest" propSetGetLatest
+       , testProperty "fullHistory" propFullHistory
        ] mempty
 
 --------------------------------
@@ -100,14 +102,6 @@ instance Arbitrary Commands where
         let kn = ceiling (sqrt (fromIntegral n :: Double)) :: Int
         keys <- replicateM kn arbitrary
         Commands <$> replicateM n (makeCommand keys)
-      where
-        makeCommand keys = do
-            n <- choose (1, 2 :: Int)
-            let key = elements keys
-            case n of
-                1 -> GetLatest <$> key
-                2 -> Set <$> key <*> arbitrary
-                _ -> fail "unknown case in 'Arbitrary Command'"
 
 -- | For any store @store@, and any key @k@, the value of @getLatest
 -- store k@ should either be 'Nothing', if @key@ was never set in this
@@ -136,6 +130,39 @@ propSetGetLatest cmds = monadicIO $ do
                     Just (_, vsnOld) -> QCM.assert (vsnOld `VC.causes` vsn)
                 return (M.insert key (value, vsn) kvs)
 
+-- | For a non-forgetful $store$, /all/ values @v@ inserted by @set
+-- store k v$ should still be available to @get store k vsn@, where
+-- @vsn@ is the value returned by the corresponding @set@.
+propFullHistory :: Commands -> Property
+propFullHistory cmds = monadicIO $ do
+    cleanEnvironmentP ["test-store"] $ do
+        store <- run $ open (OpenParameters { location       = "test-store"
+                                            , useCompression = False
+                                            , nodeName       = "test" })
+        _ <- foldlM (runCmd store) (M.empty, []) (unCommands cmds)
+        run $ close store
+  where
+    runCmd store (kvsns, kvs) cmd = do
+        case cmd of
+            GetLatest key -> do
+                mvsns <- run $ keyVersions store key
+                QCM.assert (mvsns == M.lookup key kvsns)
+                case mvsns of
+                    Nothing -> return ()
+                    Just vsns ->
+                        forM_ vsns $ \vsn -> do
+                            res <- run $ get store key vsn
+                            QCM.assert (res == ((\(_, _, v) -> v)
+                                                <$> find (\(k, vsn', _) ->
+                                                           k == key && vsn == vsn') kvs))
+                return (kvsns, kvs)
+            Set key value -> do
+                vsn <- run $ set store key value
+                let kvsns' = case M.lookup key kvsns of
+                        Nothing   -> M.insert key [vsn] kvsns
+                        Just vsns -> M.insert key (vsn:vsns) kvsns
+                return (kvsns', (key, vsn, value):kvs)
+
 --------------------------------
 -- Helpers
 --------------------------------
@@ -158,3 +185,14 @@ cleanEnvironmentP :: [FilePath] -> PropertyM IO a -> PropertyM IO a
 cleanEnvironmentP files prop = do
     run $ mapM_ rmrf files
     prop
+
+-- | Given a set of keys, generate an arbitrary command.  @Get@s and
+-- @Set@s have equal probability.
+makeCommand :: [Key] -> Gen Command
+makeCommand keys = do
+    n <- choose (1, 2 :: Int)
+    let key = elements keys
+    case n of
+        1 -> GetLatest <$> key
+        2 -> Set <$> key <*> arbitrary
+        _ -> fail "unknown case in 'Arbitrary Command'"
