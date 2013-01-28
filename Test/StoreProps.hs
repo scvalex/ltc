@@ -150,6 +150,9 @@ propFullHistory cmds = monadicIO $ do
                 case mvsns of
                     Nothing -> return ()
                     Just vsns ->
+                        -- Theoretically, getting the versions above,
+                        -- and iterating through them below is a race.
+                        -- Practically, meh.
                         forM_ vsns $ \vsn -> do
                             res <- run $ get store key vsn
                             QCM.assert (res == ((\(_, _, v) -> v)
