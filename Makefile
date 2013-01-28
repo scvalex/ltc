@@ -28,4 +28,8 @@ test: build
 	cabal-dev test
 
 p:
-	permamake.sh $(shell find Ltc/ -name '*.hs') $(shell find Test/ -name '*.hs') *.cabal Makefile
+	permamake.sh $(shell find Ltc/ -name '*.hs') \
+	             $(shell find Network/ -name '*.hs') \
+	             $(shell find Test/ -name '*.hs') \
+	             *.cabal \
+	             Makefile

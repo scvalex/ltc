@@ -22,19 +22,20 @@ Source-repository head
   Location:             https://github.com/scvalex/ltc.git
 
 Library
-  Build-depends:        base >= 4 && < 5, bytestring, containers, directory, filepath,
-                        hslogger, sexp, SHA, vector-clock, zlib
+  Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
+                        filepath, hslogger, sexp, SHA, vector-clock, zlib
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
-  Exposed-modules:      Ltc.Store
+  Exposed-modules:      Ltc.Store, Ltc.Store.Simple, Ltc.Store.Class
+  Other-modules:        Network.Redis
 
 Test-suite store
   Hs-Source-Dirs:       Test, .
   Main-Is:              StoreProps.hs
   Type:                 exitcode-stdio-1.0
 
-  Build-Depends:        base >= 4 && < 5, bytestring, containers, directory, filepath,
-                        hslogger, sexp, SHA, vector-clock, zlib
+  Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
+                        filepath, hslogger, sexp, SHA, vector-clock, zlib
   Ghc-Options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
 
