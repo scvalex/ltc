@@ -1,5 +1,5 @@
 Name:           ltc
-Version:        1.1
+Version:        0.5
 Cabal-Version:  >= 1.8
 License:        GPL-3
 License-File:   LICENSE
@@ -23,11 +23,12 @@ Source-repository head
 
 Library
   Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
-                        filepath, hslogger, sexp, SHA, vector-clock, zlib
+                        filepath, hslogger, network, pipes >= 3.1, sexp, SHA, vector-clock,
+                        zlib
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
   Exposed-modules:      Ltc.Store, Ltc.Store.Simple, Ltc.Store.Class
-  Other-modules:        Network.Redis
+  Other-modules:        Network.Redis, Network.RedisServer
 
 Test-suite store
   Hs-Source-Dirs:       Test, .
@@ -35,7 +36,8 @@ Test-suite store
   Type:                 exitcode-stdio-1.0
 
   Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
-                        filepath, hslogger, sexp, SHA, vector-clock, zlib
+                        filepath, hslogger, network, pipes >= 3.1, sexp, SHA, vector-clock,
+                        zlib
   Ghc-Options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
 
@@ -48,7 +50,8 @@ Test-suite redis
   Type:                 exitcode-stdio-1.0
 
   Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
-                        filepath, hslogger, sexp, SHA, vector-clock, zlib
+                        filepath, hslogger, network, pipes >= 3.1, sexp, SHA, vector-clock,
+                        zlib
   Ghc-Options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
 
