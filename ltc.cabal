@@ -34,6 +34,7 @@ Executable ltc
   Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
                         filepath, hslogger, network, pipes >= 3.1, sexp, SHA, vector-clock,
                         zlib
+  Build-depends:        cmdargs
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
   Main-is:              ltc.hs
