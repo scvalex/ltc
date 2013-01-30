@@ -6,10 +6,11 @@ import Network.Redis
 
 import Control.Concurrent ( forkIO )
 import qualified Control.Exception as CE
-import Control.Monad ( forever, unless )
-import qualified Data.ByteString.Lazy.Char8 as BL
-import Data.ByteString.Lazy.Char8 ( ByteString )
+import Control.Monad ( unless )
+import qualified Data.ByteString.Char8 as BS
+import Data.ByteString.Char8 ( ByteString )
 import Control.Proxy
+import Control.Proxy.Attoparsec ( parserInputD, parserD )
 import Network.Socket ( Socket, socket, accept, sClose, bindSocket
                       , listen, maxListenQueue, iNADDR_ANY
                       , Family(..), SocketType(..), SockAddr(..)
@@ -26,13 +27,23 @@ serve = do
     runSocketServer lsocket redisHandler
 
 redisHandler :: Handler ProxyFast
-redisHandler p c = runProxy $ p >-> redisProxy >-> c
+redisHandler p c =
+    runProxy $ p >-> parserInputD
+                 >-> parserD redisParser
+                 >-> redisProxy
+                 >-> redisEncoderD
+                 >-> c
 
-redisProxy :: (Proxy p) => () -> Pipe p ByteString ByteString IO ()
+redisProxy :: (Proxy p) => () -> Pipe p RedisMessage RedisMessage IO ()
 redisProxy () = runIdentityP $ forever $ do
     cmd <- request ()
     let reply = cmd
     respond reply
+
+redisEncoderD :: (Proxy p, Monad m) => () -> Pipe p RedisMessage ByteString m ()
+redisEncoderD () = runIdentityP $ forever $ do
+    reply <- request ()
+    respond (undefined reply)
 
 ----------------------
 -- Sockets
@@ -58,25 +69,24 @@ bindPort port = do
 
 runSocketServer :: (Proxy p) => Socket -> Handler p -> IO ()
 runSocketServer lsocket handler = forever $ do
-    (socket, _addr) <- accept lsocket
+    (sock, _addr) <- accept lsocket
     _ <- forkIO $ CE.finally
-                      (handler (socketReader socket) (socketWriter socket))
-                      (sClose socket)
+                      (handler (socketReader sock) (socketWriter sock))
+                      (sClose sock)
     return ()
 
 -- | Stream data from the socket.
 socketReader :: (Proxy p) => Socket -> () -> Producer p ByteString IO ()
-socketReader socket () = runIdentityP loop
+socketReader sock () = runIdentityP loop
   where
     loop = do
-        bin <- lift $ recv socket 4096
-        let bin' = BL.fromChunks [bin]
-        unless (BL.null bin') $ do
-            respond bin'
+        bin <- lift $ recv sock 4096
+        unless (BS.null bin) $ do
+            respond bin
             loop
 
 -- | Stream data to the socket.
 socketWriter :: (Proxy p) => Socket -> () -> Consumer p ByteString IO ()
-socketWriter socket () = runIdentityP $ forever $ do
+socketWriter sock () = runIdentityP $ forever $ do
     bin <- request ()
-    lift $ mapM_ (sendAll socket) (BL.toChunks bin)
+    lift $ sendAll sock bin

@@ -3,7 +3,7 @@ module Main where
 import Network.Redis ( RedisMessage, RedisMessage(..) )
 import qualified Network.Redis as R
 
-import Data.ByteString.Lazy.Char8 ( ByteString )
+import Data.ByteString.Char8 ( ByteString )
 import Data.Monoid ( mempty )
 import Test.Framework
 import Test.Framework.Providers.HUnit

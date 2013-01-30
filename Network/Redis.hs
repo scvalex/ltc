@@ -9,13 +9,12 @@ import Control.Applicative ( (<$>), (<*), many )
 import Control.Monad ( replicateM )
 import Control.Exception ( Exception )
 import qualified Control.Exception as CE
-import Data.Attoparsec.ByteString.Lazy ( Parser, Result(..) )
-import Data.Attoparsec.ByteString.Char8 ( char, notChar, (<?>) )
+import Data.Attoparsec.ByteString.Char8 ( Parser, IResult(..), char, notChar, (<?>) )
 import qualified Data.Attoparsec.ByteString.Char8 as AC
 import Data.Attoparsec.Combinator ( choice )
-import qualified Data.Attoparsec.ByteString.Lazy as A
-import Data.ByteString.Lazy.Char8 ( ByteString )
-import qualified Data.ByteString.Lazy.Char8 as BL
+import Data.ByteString.Char8 ( ByteString )
+import qualified Data.ByteString.Char8 as BS
+import Data.String ( fromString )
 import Data.Typeable ( Typeable )
 
 data ParseException = ParseException String ByteString
@@ -36,12 +35,14 @@ data RedisMessage = Status ByteString
 -- successful, @Right msg@ is returned; otherwise, @Left (errorMsg,
 -- leftover)@ is returned.
 parse :: ByteString -> Either (String, ByteString) RedisMessage
-parse = resultToEither . A.parse redisParser
+parse = resultToEither . AC.parse redisParser
   where
     resultToEither (Fail leftover _ctxs reason) =
         Left (reason, leftover)
+    resultToEither (Partial _) =
+        Left ("not enough input", "")
     resultToEither (Done leftover sexps) =
-        if BL.null leftover
+        if BS.null leftover
         then Right sexps
         else Left ("garbage at end", leftover)
 
@@ -64,12 +65,12 @@ redisParser =
            , char '$' >> bulkParser <?> "bulk"
            , char '*' >> multiBulkParser <?> "multibulk" ]
   where
-    statusParser = Status . BL.pack <$> crlfTerminatedString
-    errorParser = Error . BL.pack <$> crlfTerminatedString
+    statusParser = Status . fromString <$> crlfTerminatedString
+    errorParser = Error . fromString <$> crlfTerminatedString
     integerParser = Integer <$> crlfTerminatedInteger
     bulkParser = do
         n <- crlfTerminatedInteger
-        Bulk . BL.fromChunks . (:[]) <$> AC.take (fromIntegral n) <* crlf
+        Bulk <$> AC.take (fromIntegral n) <* crlf
     multiBulkParser = do
         n <- crlfTerminatedInteger
         MultiBulk <$> replicateM (fromIntegral n) redisParser
