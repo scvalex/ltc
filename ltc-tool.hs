@@ -6,6 +6,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Version ( showVersion )
 import Ltc.Store
 import Network.BSD ( getHostName )
+import Network.RedisServer ( serve )
 import System.Console.CmdArgs
 import Paths_ltc ( version )
 import Text.Printf ( printf )
@@ -37,4 +38,5 @@ main = do
             close store
         Redis d -> do
             _ <- printf "Running Redis server with %s\n" d
-            return ()
+            -- FIXME Implement clean termination for server.
+            serve
