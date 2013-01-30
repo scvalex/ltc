@@ -17,7 +17,9 @@ data Modes = Fsck { dir :: FilePath }
 ltcModes :: [Modes]
 ltcModes =
     [ Fsck { dir = def &= typDir &= argPos 1 }
+      &= help "check the integrity of a store"
     , Redis { dir = def &= typDir }
+      &= help "run a store with a Redis interface"
     ]
     &= program "ltc"
     &= summary (printf "ltc v%s - LTc utility" (showVersion version))
@@ -36,4 +38,3 @@ main = do
         Redis d -> do
             _ <- printf "Running Redis server with %s\n" d
             return ()
-
