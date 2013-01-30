@@ -37,7 +37,7 @@ Executable ltc
   Build-depends:        cmdargs
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
-  Main-is:              ltc.hs
+  Main-is:              ltc-tool.hs
 
 Test-suite store
   Hs-Source-Dirs:       Test, .
