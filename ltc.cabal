@@ -30,6 +30,14 @@ Library
   Exposed-modules:      Ltc.Store, Ltc.Store.Simple, Ltc.Store.Class
   Other-modules:        Network.Redis, Network.RedisServer
 
+Executable ltc
+  Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
+                        filepath, hslogger, network, pipes >= 3.1, sexp, SHA, vector-clock,
+                        zlib
+  Ghc-options:          -Wall
+  Extensions:           ScopedTypeVariables, OverloadedStrings
+  Main-is:              ltc.hs
+
 Test-suite store
   Hs-Source-Dirs:       Test, .
   Main-Is:              StoreProps.hs

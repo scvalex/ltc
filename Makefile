@@ -31,5 +31,6 @@ p:
 	permamake.sh $(shell find Ltc/ -name '*.hs') \
 	             $(shell find Network/ -name '*.hs') \
 	             $(shell find Test/ -name '*.hs') \
+	             ltc.sh \
 	             *.cabal \
 	             Makefile
