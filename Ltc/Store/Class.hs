@@ -21,6 +21,9 @@ class Store a where
     open :: OpenParameters a -> IO a
     close :: a -> IO ()
 
+    storeFormat :: a -> String
+    storeVersion :: a -> Int
+
     get :: a -> Key -> Version -> IO (Maybe Value)
     getLatest :: a -> Key -> IO (Maybe (Value, Version))
 

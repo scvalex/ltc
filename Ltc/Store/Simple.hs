@@ -66,8 +66,8 @@ import Text.Printf ( printf )
 formatString :: String
 formatString = "simple"
 
-storeVersion :: Int
-storeVersion = 2
+storeVsn :: Int
+storeVsn = 2
 
 tag :: String
 tag = "Simple"
@@ -91,6 +91,9 @@ instance Store Simple where
     open params = doOpen params
 
     close ref = doClose ref
+
+    storeFormat _ = formatString
+    storeVersion _ = storeVsn
 
     get ref key version = doGet ref key version
     getLatest ref key = doGetLatest ref key
@@ -222,7 +225,7 @@ initStore params = do
     let base = location params
     createDirectory base
     writeFile (locationFormat base) formatString
-    writeFile (locationVersion base) (show storeVersion)
+    writeFile (locationVersion base) (show storeVsn)
     BL.writeFile (locationNodeName base) (nodeName params)
     createDirectory (locationTemporary base)
     createDirectory (locationValues base)
