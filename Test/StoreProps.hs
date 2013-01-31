@@ -31,6 +31,7 @@ main = defaultMainWithOpts
        , testCase "simpleSetGet" testSimpleSetGet
        , testCase "simpleHistory" testSimpleHistory
        , testProperty "setGetLatest" propSetGetLatest
+       , testProperty "keysPresent" propKeysPresent
        , testProperty "fullHistory" propFullHistory
        ] mempty
 
@@ -127,7 +128,24 @@ propSetGetLatest = propWithCommands (\store cmds -> foldlM (runCmd store) M.empt
                     Just (_, vsnOld) -> QCM.assert (vsnOld `VC.causes` vsn)
                 return (M.insert key (value, vsn) kvs)
 
--- | For a non-forgetful $store$, /all/ values @v@ inserted by @set
+-- | For a non-forgetful @store@, /all/ keys @k@ inserted by @set
+-- store k v@ should be returned by subsequent @keys store@.
+propKeysPresent :: Commands -> Property
+propKeysPresent = propWithCommands (\store cmds -> foldlM (runCmd store) S.empty cmds)
+  where
+    runCmd store s cmd = do
+        case cmd of
+            GetLatest key -> do
+                _ <- run $ getLatest store key
+                return s
+            Set key value -> do
+                _ <- run $ set store key value
+                let s' = S.insert key s
+                ks <- run $ keys store
+                QCM.assert (ks == s')
+                return s'
+
+-- | For a non-forgetful @store@, /all/ values @v@ inserted by @set
 -- store k v$ should still be available to @get store k vsn@, where
 -- @vsn@ is the value returned by the corresponding @set@.
 propFullHistory :: Commands -> Property
