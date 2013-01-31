@@ -1,18 +1,28 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Main where
 
 import Network.Redis ( RedisMessage, RedisMessage(..) )
 import qualified Network.Redis as R
 
+import Control.Applicative ( (<$>) )
 import Data.ByteString.Char8 ( ByteString )
+import qualified Data.ByteString.Char8 as BS
 import Data.Monoid ( mempty )
 import Test.Framework
 import Test.Framework.Providers.HUnit
--- import Test.Framework.Providers.QuickCheck2
+import Test.Framework.Providers.QuickCheck2
 import Test.HUnit hiding ( Test )
--- import Test.QuickCheck
+import Test.QuickCheck
 
 main :: IO ()
-main = defaultMainWithOpts msgStructureTests mempty
+main = defaultMainWithOpts (concat [ msgStructureTests
+                                   , [testProperty "encodeParse" propEncodeParse]
+                                   ]) mempty
+
+--------------------------------
+-- Unit tests
+--------------------------------
 
 msgStructureTests :: [Test]
 msgStructureTests = map (\(n, t, m) -> testCase n (parseTest t m)) structureCommands
@@ -29,3 +39,25 @@ structureCommands =
 
 parseTest :: ByteString -> RedisMessage -> Assertion
 parseTest text msg = assertEqual "" msg (R.parseExn text)
+
+--------------------------------
+-- QuickCheck
+--------------------------------
+
+instance Arbitrary ByteString where
+    arbitrary = sized $ \n -> do
+        BS.pack <$> sequence [ choose (' ', '~') | _ <- [1..n] ]
+
+instance Arbitrary RedisMessage where
+    arbitrary = sized $ \sz -> do
+        n <- if sz > 1 then choose (1, 5 :: Int) else choose (1, 4)
+        case n of
+            1 -> Status <$> arbitrary
+            2 -> Error <$> arbitrary
+            3 -> Integer <$> arbitrary
+            4 -> Bulk <$> arbitrary
+            5 -> MultiBulk <$> resize (sz `div` 2) arbitrary
+            _ -> fail "not a real case of Arbitrary RedisMessage"
+
+propEncodeParse :: RedisMessage -> Bool
+propEncodeParse msg = msg == R.parseExn (R.redisEncode msg)
