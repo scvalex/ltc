@@ -112,13 +112,7 @@ instance Arbitrary Commands where
 -- recent @set store k v@, and @vsn@ is the returned value of the same
 -- command.
 propSetGetLatest :: Commands -> Property
-propSetGetLatest cmds = monadicIO $ do
-    cleanEnvironmentP ["test-store"] $ do
-        store <- run $ open (OpenParameters { location       = "test-store"
-                                            , useCompression = False
-                                            , nodeName       = "test" })
-        _ <- foldlM (runCmd store) M.empty (unCommands cmds)
-        run $ close store
+propSetGetLatest = propWithCommands (\store cmds -> foldlM (runCmd store) M.empty cmds)
   where
     runCmd store kvs cmd = do
         case cmd of
@@ -137,13 +131,7 @@ propSetGetLatest cmds = monadicIO $ do
 -- store k v$ should still be available to @get store k vsn@, where
 -- @vsn@ is the value returned by the corresponding @set@.
 propFullHistory :: Commands -> Property
-propFullHistory cmds = monadicIO $ do
-    cleanEnvironmentP ["test-store"] $ do
-        store <- run $ open (OpenParameters { location       = "test-store"
-                                            , useCompression = False
-                                            , nodeName       = "test" })
-        _ <- foldlM (runCmd store) (M.empty, []) (unCommands cmds)
-        run $ close store
+propFullHistory = propWithCommands (\store cmds -> foldlM (runCmd store) (M.empty, []) cmds)
   where
     runCmd store (kvsns, kvs) cmd = do
         case cmd of
@@ -202,3 +190,12 @@ makeCommand ks = do
         1 -> GetLatest <$> key
         2 -> Set <$> key <*> arbitrary
         _ -> fail "unknown case in 'Arbitrary Command'"
+
+propWithCommands :: (Simple -> [Command] -> PropertyM IO a) -> Commands -> Property
+propWithCommands prop cmds = monadicIO $ do
+    cleanEnvironmentP ["test-store"] $ do
+        store <- run $ open (OpenParameters { location       = "test-store"
+                                            , useCompression = False
+                                            , nodeName       = "test" })
+        _ <- prop store (unCommands cmds)
+        run $ close store
