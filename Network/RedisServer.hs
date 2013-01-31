@@ -43,7 +43,7 @@ redisProxy () = runIdentityP $ forever $ do
 redisEncoderD :: (Proxy p, Monad m) => () -> Pipe p RedisMessage ByteString m ()
 redisEncoderD () = runIdentityP $ forever $ do
     reply <- request ()
-    respond (undefined reply)
+    respond (redisEncode reply)
 
 ----------------------
 -- Sockets
