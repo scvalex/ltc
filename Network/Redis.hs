@@ -31,6 +31,7 @@ data RedisMessage = Status ByteString
                   | MultiBulk [RedisMessage]
                   deriving ( Eq, Show )
 
+-- | Encode a Redis message as a 'ByteString'.
 redisEncode :: RedisMessage -> ByteString
 redisEncode (Status s) = BS.append (BS.cons '+' s) "\r\n"
 redisEncode (Error s) = BS.append (BS.cons '-' s) "\r\n"
@@ -40,7 +41,7 @@ redisEncode (MultiBulk ms) =
     BS.concat (concat [ ["*", fromString (show (length ms)), "\r\n"]
                       , map redisEncode ms ])
 
--- | Parse a Redis command from a lazy 'ByteString'.  If the parse was
+-- | Parse a Redis message from a 'ByteString'.  If the parse was
 -- successful, @Right msg@ is returned; otherwise, @Left (errorMsg,
 -- leftover)@ is returned.
 parse :: ByteString -> Either (String, ByteString) RedisMessage
