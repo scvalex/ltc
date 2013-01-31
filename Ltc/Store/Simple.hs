@@ -50,7 +50,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Data ( Data, Typeable )
 import Data.Digest.Pure.SHA ( sha1, showDigest )
-import Data.Maybe ( catMaybes )
+import Data.Foldable ( foldlM )
 import Data.Set ( Set )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
@@ -162,8 +162,12 @@ doKeys ref = do
     debugM tag "keys"
     let keysDir = locationKeys (getBase ref)
     kfs <- getDirectoryContents keysDir
-    S.fromList . catMaybes <$> forM kfs (\kf ->
-        withKeyRecord (keysDir </> kf) (\kr -> return (Just (getKeyName kr))))
+    foldlM
+        (\s kf -> do
+          mk <- withKeyRecord (keysDir </> kf) (\kr -> return (Just (getKeyName kr)))
+          return (maybe s (\k -> S.insert k s) mk))
+        S.empty
+        kfs
 
 ----------------------
 -- Helpers
