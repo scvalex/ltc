@@ -22,12 +22,12 @@ redisProxyD store () = runIdentityP loop
             return (Status "OK", True)
         MultiBulk ["SET", Bulk key, Bulk value] -> do
             _ <- lift $ set store (lazy key) (lazy value)
-            return (Status "OK", True)
+            return (Status "OK", False)
         MultiBulk ["GET", Bulk key] -> do
             mv <- lift $ getLatest store (lazy key)
             case mv of
-                Nothing -> return (Nil, True)
-                Just (v, _) -> return (Bulk (strict v), True)
+                Nothing     -> return (Nil, False)
+                Just (v, _) -> return (Bulk (strict v), False)
         _ ->
             return (Error "ERR unknown command", False)
     respond reply

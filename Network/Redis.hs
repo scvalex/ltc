@@ -41,7 +41,7 @@ redisEncode (Status s) = BS.append (BS.cons '+' s) "\r\n"
 redisEncode (Error s) = BS.append (BS.cons '-' s) "\r\n"
 redisEncode (Integer n) = BS.append (BS.cons ':' (fromString (show n))) "\r\n"
 redisEncode (Bulk s) = BS.concat ["$", fromString (show (BS.length s)), "\r\n", s, "\r\n"]
-redisEncode Nil = "$-1"
+redisEncode Nil = "$-1\r\n"
 redisEncode (MultiBulk ms) =
     BS.concat (concat [ ["*", fromString (show (length ms)), "\r\n"]
                       , map redisEncode ms ])
