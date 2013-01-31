@@ -2,6 +2,7 @@ module Network.RedisServer (
         serve
     ) where
 
+import Ltc.Store ( Store )
 import Network.Redis
 
 import Control.Concurrent ( forkIO )
@@ -21,8 +22,8 @@ type Handler p = (() -> Producer p ByteString IO ())
                  -> (() -> Consumer p ByteString IO ())
                  -> IO ()
 
-serve :: IO ()
-serve = do
+serve :: (Store s) => s -> IO ()
+serve store = do
     lsocket <- bindPort redisPort
     runSocketServer lsocket redisHandler
 
@@ -38,6 +39,7 @@ redisProxy :: (Proxy p) => () -> Pipe p RedisMessage RedisMessage IO ()
 redisProxy () = runIdentityP $ forever $ do
     cmd <- request ()
     let reply = cmd
+    lift $ print reply
     respond reply
 
 redisEncoderD :: (Proxy p, Monad m) => () -> Pipe p RedisMessage ByteString m ()

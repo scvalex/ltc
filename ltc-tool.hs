@@ -2,6 +2,7 @@
 
 module Main where
 
+import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Version ( showVersion )
 import Ltc.Store
@@ -19,7 +20,7 @@ ltcModes :: [Modes]
 ltcModes =
     [ Fsck { dir = def &= typDir &= argPos 1 }
       &= help "check the integrity of a store"
-    , Redis { dir = def &= typDir }
+    , Redis { dir = "redis-store" &= typDir }
       &= help "run a store with a Redis interface"
     ]
     &= program "ltc"
@@ -37,6 +38,11 @@ main = do
                                           , nodeName       = (BL.pack hostname) })
             close store
         Redis d -> do
+            -- when (null d) $ fail "Given directory cannot be empty"
             _ <- printf "Running Redis server with %s\n" d
             -- FIXME Implement clean termination for server.
-            serve
+            hostname <- getHostName
+            store <- open (OpenParameters { location       = d
+                                          , useCompression = False
+                                          , nodeName       = (BL.pack hostname) })
+            serve store `CE.finally` close store
