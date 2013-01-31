@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Network.Redis (
-        RedisMessage(..), redisParser,
+        RedisMessage(..), redisParser, redisEncode,
         ParseException(..), parse, parseExn
     ) where
 
@@ -30,6 +30,15 @@ data RedisMessage = Status ByteString
                   | Bulk ByteString
                   | MultiBulk [RedisMessage]
                   deriving ( Eq, Show )
+
+redisEncode :: RedisMessage -> ByteString
+redisEncode (Status s) = BS.append (BS.cons '+' s) "\r\n"
+redisEncode (Error s) = BS.append (BS.cons '-' s) "\r\n"
+redisEncode (Integer n) = BS.append (BS.cons ':' (fromString (show n))) "\r\n"
+redisEncode (Bulk s) = BS.concat ["$", fromString (show (BS.length s)), "\r\n", s, "\r\n"]
+redisEncode (MultiBulk ms) =
+    BS.concat (concat [ ["*", fromString (show (length ms)), "\r\n"]
+                      , map redisEncode ms ])
 
 -- | Parse a Redis command from a lazy 'ByteString'.  If the parse was
 -- successful, @Right msg@ is returned; otherwise, @Left (errorMsg,
