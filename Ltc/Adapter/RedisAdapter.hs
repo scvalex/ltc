@@ -13,9 +13,9 @@ redisProxyD store () = runIdentityP loop
     loop = do
     cmd <- request ()
     (reply, stop) <- case cmd of
-        MultiBulk [Bulk "PING"] ->
+        MultiBulk ["PING"] ->
             return (Status "PONG", False)
-        MultiBulk [Bulk "QUIT"] ->
+        MultiBulk ["QUIT"] ->
             return (Status "OK", True)
         _ ->
             return (Error "ERR unknown command", False)

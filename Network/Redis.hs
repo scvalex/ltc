@@ -14,7 +14,7 @@ import qualified Data.Attoparsec.ByteString.Char8 as AC
 import Data.Attoparsec.Combinator ( choice )
 import Data.ByteString.Char8 ( ByteString )
 import qualified Data.ByteString.Char8 as BS
-import Data.String ( fromString )
+import Data.String ( IsString(..) )
 import Data.Typeable ( Typeable )
 
 data ParseException = ParseException String ByteString
@@ -30,6 +30,9 @@ data RedisMessage = Status ByteString
                   | Bulk ByteString
                   | MultiBulk [RedisMessage]
                   deriving ( Eq, Show )
+
+instance IsString RedisMessage where
+    fromString = Bulk . BS.pack
 
 -- | Encode a Redis message as a 'ByteString'.
 redisEncode :: RedisMessage -> ByteString
