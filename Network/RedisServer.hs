@@ -4,6 +4,7 @@ module Network.RedisServer (
 
 import Ltc.Store ( Store )
 import Network.Redis
+import Ltc.Adapter.RedisAdapter ( redisProxyD )
 
 import Control.Concurrent ( forkIO )
 import qualified Control.Exception as CE
@@ -25,22 +26,15 @@ type Handler p = (() -> Producer p ByteString IO ())
 serve :: (Store s) => s -> IO ()
 serve store = do
     lsocket <- bindPort redisPort
-    runSocketServer lsocket redisHandler
+    runSocketServer lsocket (redisHandler store)
 
-redisHandler :: Handler ProxyFast
-redisHandler p c =
+redisHandler :: (Store s) => s -> Handler ProxyFast
+redisHandler store p c =
     runProxy $ p >-> parserInputD
                  >-> parserD redisParser
-                 >-> redisProxy
+                 >-> (redisProxyD store)
                  >-> redisEncoderD
                  >-> c
-
-redisProxy :: (Proxy p) => () -> Pipe p RedisMessage RedisMessage IO ()
-redisProxy () = runIdentityP $ forever $ do
-    cmd <- request ()
-    let reply = cmd
-    lift $ print reply
-    respond reply
 
 redisEncoderD :: (Proxy p, Monad m) => () -> Pipe p RedisMessage ByteString m ()
 redisEncoderD () = runIdentityP $ forever $ do
