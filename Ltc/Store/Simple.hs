@@ -50,11 +50,14 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Data ( Data, Typeable )
 import Data.Digest.Pure.SHA ( sha1, showDigest )
+import Data.Maybe ( catMaybes )
+import Data.Set ( Set )
+import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( toSexp, fromSexp, parse, printHum )
 import Ltc.Store.Class
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
-                        , renameFile )
+                        , renameFile, getDirectoryContents )
 import System.FilePath ( (</>) )
 import System.IO ( hClose, openBinaryTempFile )
 import System.Log.Logger ( debugM )
@@ -95,6 +98,8 @@ instance Store Simple where
     keyVersions ref key = doKeyVersions ref key
 
     set ref key value = doSet ref key value
+
+    keys ref = doKeys ref
 
 doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
@@ -151,6 +156,14 @@ doSet ref key value = do
                 []   -> [(VC.insert nn 1 VC.empty, vhash)]
                 v@(vc, _):vs -> (VC.incWithDefault nn vc 0, vhash) : v : vs
         return (krOld { getVersions = versions' })
+
+doKeys :: Simple -> IO (Set Key)
+doKeys ref = do
+    debugM tag "keys"
+    let keysDir = locationKeys (getBase ref)
+    kfs <- getDirectoryContents keysDir
+    S.fromList . catMaybes <$> forM kfs (\kf ->
+        withKeyRecord (keysDir </> kf) (\kr -> return (Just (getKeyName kr))))
 
 ----------------------
 -- Helpers

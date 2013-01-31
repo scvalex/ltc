@@ -14,6 +14,7 @@ import Data.List ( find )
 import Data.Foldable ( foldlM )
 import qualified Data.Map as M
 import Data.Monoid
+import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import System.Directory
 
@@ -67,6 +68,8 @@ testSimpleSetGet = cleanEnvironment ["test-store"] $ do
     _ <- set store "foo" "boom"
     res4 <- getLatest store "foo"
     res4 @?= Just ("boom", VC.fromList [("test", 2)])
+    ks <- keys store
+    ks @?= S.fromList ["foo", "bar"]
     close store
 
 testSimpleHistory :: Assertion
@@ -100,8 +103,8 @@ instance Arbitrary ByteString where
 instance Arbitrary Commands where
     arbitrary = sized $ \n -> do
         let kn = ceiling (sqrt (fromIntegral n :: Double)) :: Int
-        keys <- replicateM kn arbitrary
-        Commands <$> replicateM n (makeCommand keys)
+        ks <- replicateM kn arbitrary
+        Commands <$> replicateM n (makeCommand ks)
 
 -- | For any store @store@, and any key @k@, the value of @getLatest
 -- store k@ should either be 'Nothing', if @key@ was never set in this
@@ -192,9 +195,9 @@ cleanEnvironmentP files prop = do
 -- | Given a set of keys, generate an arbitrary command.  @Get@s and
 -- @Set@s have equal probability.
 makeCommand :: [Key] -> Gen Command
-makeCommand keys = do
+makeCommand ks = do
     n <- choose (1, 2 :: Int)
-    let key = elements keys
+    let key = elements ks
     case n of
         1 -> GetLatest <$> key
         2 -> Set <$> key <*> arbitrary

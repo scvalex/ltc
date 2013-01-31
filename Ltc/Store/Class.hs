@@ -5,6 +5,7 @@ module Ltc.Store.Class (
     ) where
 
 import Data.ByteString.Lazy.Char8 ( ByteString )
+import Data.Set ( Set )
 import Data.VectorClock ( VectorClock )
 
 type Key       = ByteString
@@ -26,3 +27,5 @@ class Store a where
     keyVersions :: a -> Key -> IO (Maybe [Version])
 
     set :: a -> Key -> Value -> IO Version
+
+    keys :: a -> IO (Set Key)
