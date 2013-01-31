@@ -115,35 +115,31 @@ instance Arbitrary Commands where
 propSetGetLatest :: Commands -> Property
 propSetGetLatest = propWithCommands (\store cmds -> foldlM (runCmd store) M.empty cmds)
   where
-    runCmd store kvs cmd = do
-        case cmd of
-            GetLatest key -> do
-                res <- run $ getLatest store key
-                QCM.assert (res == M.lookup key kvs)
-                return kvs
-            Set key value -> do
-                vsn <- run $ set store key value
-                case M.lookup key kvs of
-                    Nothing          -> return ()
-                    Just (_, vsnOld) -> QCM.assert (vsnOld `VC.causes` vsn)
-                return (M.insert key (value, vsn) kvs)
+    runCmd store kvs (GetLatest key) = do
+        res <- run $ getLatest store key
+        QCM.assert (res == M.lookup key kvs)
+        return kvs
+    runCmd store kvs (Set key value) = do
+        vsn <- run $ set store key value
+        case M.lookup key kvs of
+            Nothing          -> return ()
+            Just (_, vsnOld) -> QCM.assert (vsnOld `VC.causes` vsn)
+        return (M.insert key (value, vsn) kvs)
 
 -- | For a non-forgetful @store@, /all/ keys @k@ inserted by @set
 -- store k v@ should be returned by subsequent @keys store@.
 propKeysPresent :: Commands -> Property
 propKeysPresent = propWithCommands (\store cmds -> foldlM (runCmd store) S.empty cmds)
   where
-    runCmd store s cmd = do
-        case cmd of
-            GetLatest key -> do
-                _ <- run $ getLatest store key
-                return s
-            Set key value -> do
-                _ <- run $ set store key value
-                let s' = S.insert key s
-                ks <- run $ keys store
-                QCM.assert (ks == s')
-                return s'
+    runCmd store s (GetLatest key) = do
+        _ <- run $ getLatest store key
+        return s
+    runCmd store s (Set key value) = do
+        _ <- run $ set store key value
+        let s' = S.insert key s
+        ks <- run $ keys store
+        QCM.assert (ks == s')
+        return s'
 
 -- | For a non-forgetful @store@, /all/ values @v@ inserted by @set
 -- store k v$ should still be available to @get store k vsn@, where
@@ -151,29 +147,27 @@ propKeysPresent = propWithCommands (\store cmds -> foldlM (runCmd store) S.empty
 propFullHistory :: Commands -> Property
 propFullHistory = propWithCommands (\store cmds -> foldlM (runCmd store) (M.empty, []) cmds)
   where
-    runCmd store (kvsns, kvs) cmd = do
-        case cmd of
-            GetLatest key -> do
-                mvsns <- run $ keyVersions store key
-                QCM.assert (mvsns == M.lookup key kvsns)
-                case mvsns of
-                    Nothing -> return ()
-                    Just vsns ->
-                        -- Theoretically, getting the versions above,
-                        -- and iterating through them below is a race.
-                        -- Practically, meh.
-                        forM_ vsns $ \vsn -> do
-                            res <- run $ get store key vsn
-                            QCM.assert (res == ((\(_, _, v) -> v)
-                                                <$> find (\(k, vsn', _) ->
-                                                           k == key && vsn == vsn') kvs))
-                return (kvsns, kvs)
-            Set key value -> do
-                vsn <- run $ set store key value
-                let kvsns' = case M.lookup key kvsns of
-                        Nothing   -> M.insert key [vsn] kvsns
-                        Just vsns -> M.insert key (vsn:vsns) kvsns
-                return (kvsns', (key, vsn, value):kvs)
+    runCmd store (kvsns, kvs) (GetLatest key) = do
+        mvsns <- run $ keyVersions store key
+        QCM.assert (mvsns == M.lookup key kvsns)
+        case mvsns of
+            Nothing -> return ()
+            Just vsns ->
+                -- Theoretically, getting the versions above, and
+                -- iterating through them below is a race.
+                -- Practically, meh.
+                forM_ vsns $ \vsn -> do
+                    res <- run $ get store key vsn
+                    QCM.assert (res == ((\(_, _, v) -> v)
+                                        <$> find (\(k, vsn', _) ->
+                                                   k == key && vsn == vsn') kvs))
+        return (kvsns, kvs)
+    runCmd store (kvsns, kvs) (Set key value) = do
+        vsn <- run $ set store key value
+        let kvsns' = case M.lookup key kvsns of
+                Nothing   -> M.insert key [vsn] kvsns
+                Just vsns -> M.insert key (vsn:vsns) kvsns
+        return (kvsns', (key, vsn, value):kvs)
 
 --------------------------------
 -- Helpers
