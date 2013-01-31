@@ -1,6 +1,6 @@
 all: build test
 
-.PHONY: all build dist install clean doc site p
+.PHONY: all build dist install clean doc site p ghci
 
 build: dist/setup-config
 	rm -rf _site _cache
@@ -34,3 +34,6 @@ p:
 	             ltc-tool.hs \
 	             *.cabal \
 	             Makefile
+
+ghci: build
+	cabal-dev ghci
