@@ -28,6 +28,7 @@ data RedisMessage = Status ByteString
                   | Error ByteString
                   | Integer Integer
                   | Bulk ByteString
+                  | Nil
                   | MultiBulk [RedisMessage]
                   deriving ( Eq, Show )
 
@@ -40,6 +41,7 @@ redisEncode (Status s) = BS.append (BS.cons '+' s) "\r\n"
 redisEncode (Error s) = BS.append (BS.cons '-' s) "\r\n"
 redisEncode (Integer n) = BS.append (BS.cons ':' (fromString (show n))) "\r\n"
 redisEncode (Bulk s) = BS.concat ["$", fromString (show (BS.length s)), "\r\n", s, "\r\n"]
+redisEncode Nil = "$-1"
 redisEncode (MultiBulk ms) =
     BS.concat (concat [ ["*", fromString (show (length ms)), "\r\n"]
                       , map redisEncode ms ])
@@ -83,7 +85,9 @@ redisParser =
     integerParser = Integer <$> crlfTerminatedInteger
     bulkParser = do
         n <- crlfTerminatedInteger
-        Bulk <$> AC.take (fromIntegral n) <* crlf
+        if n == -1
+            then return Nil
+            else Bulk <$> AC.take (fromIntegral n) <* crlf
     multiBulkParser = do
         n <- crlfTerminatedInteger
         MultiBulk <$> replicateM (fromIntegral n) redisParser
