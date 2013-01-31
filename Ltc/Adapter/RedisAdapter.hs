@@ -2,6 +2,8 @@ module Ltc.Adapter.RedisAdapter (
         redisProxyD
     ) where
 
+import Data.ByteString.Char8 ( ByteString )
+import qualified Data.ByteString.Lazy.Char8 as BL
 import Control.Monad ( unless )
 import Control.Proxy
 import Ltc.Store
@@ -17,7 +19,14 @@ redisProxyD store () = runIdentityP loop
             return (Status "PONG", False)
         MultiBulk ["QUIT"] ->
             return (Status "OK", True)
+        MultiBulk ["SET", Bulk key, Bulk value] -> do
+            _ <- lift $ set store (lazy key) (lazy value)
+            return (Status "OK", True)
         _ ->
             return (Error "ERR unknown command", False)
     respond reply
     unless stop loop
+
+-- | Make a strict 'ByteString' lazy.
+lazy :: ByteString -> BL.ByteString
+lazy s = BL.fromChunks [s]
