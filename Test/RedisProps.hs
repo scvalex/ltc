@@ -25,7 +25,9 @@ main :: IO ()
 main = defaultMainWithOpts (concat [ msgStructureTests
                                    , endToEndTests
                                    , [testProperty "encodeParse" propEncodeParse]
-                                   ]) mempty
+                                   ]) options
+  where
+    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 5000000) }) }
 
 --------------------------------
 -- Unit tests
