@@ -2,13 +2,19 @@
 
 module Main where
 
-import Network.Redis ( RedisMessage, RedisMessage(..) )
-import qualified Network.Redis as R
-
 import Control.Applicative ( (<$>) )
+import qualified Control.Exception as CE
 import Data.ByteString.Char8 ( ByteString )
 import qualified Data.ByteString.Char8 as BS
 import Data.Monoid ( mempty )
+import Ltc.Store
+import Network.Socket ( Socket, Family(..), SocketType(..), HostName
+                      , socket, sClose, connect, defaultProtocol
+                      , AddrInfo(..), getAddrInfo, addrAddress, defaultHints )
+import Network.Socket.ByteString ( sendAll, recv )
+import qualified Network.Redis as R
+import Network.Redis ( RedisMessage, RedisMessage(..) )
+import Network.RedisServer ( serveWithPort )
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
@@ -45,7 +51,24 @@ endToEndTests :: [Test]
 endToEndTests = map (\(n, m, r) -> testCase n (endToEndTest m r)) endToEndMessages
 
 endToEndTest :: ByteString -> ByteString -> Assertion
-endToEndTest request reply = undefined
+endToEndTest request reply = do
+    store <- open (OpenParameters { location       = "test-store"
+                                  , useCompression = False
+                                  , nodeName       = "test" })
+    let port = 26279
+    shutdown <- serveWithPort port store
+    sock <- getSocket "localhost" port
+    sendAll sock request
+    checkRecv sock reply
+    shutdown
+    close store
+  where
+    checkRecv _ leftover | BS.length leftover == 0 =
+        return ()
+    checkRecv sock leftover = do
+        s <- recv sock (BS.length leftover)
+        assertBool "reply does not match" (BS.isPrefixOf s leftover)
+        checkRecv sock (BS.drop (BS.length s) leftover)
 
 endToEndMessages :: [(String, ByteString, ByteString)]
 endToEndMessages = [("ping", "*1\r\n$4\r\nPING\r\n", "+PONG\r\n")]
@@ -71,3 +94,20 @@ instance Arbitrary RedisMessage where
 
 propEncodeParse :: RedisMessage -> Bool
 propEncodeParse msg = msg == R.parseExn (R.redisEncode msg)
+
+--------------------------------
+-- Helpers
+--------------------------------
+
+-- | Create a socket connected to the given network address.
+getSocket :: HostName -> Int -> IO Socket
+getSocket hostname port = do
+    addrInfos <- getAddrInfo (Just (defaultHints { addrFamily = AF_INET }))
+                             (Just hostname)
+                             (Just $ show port)
+    CE.bracketOnError
+        (socket AF_INET Stream defaultProtocol)
+        sClose
+        (\s -> do
+             connect s (addrAddress $ head addrInfos)
+             return s)
