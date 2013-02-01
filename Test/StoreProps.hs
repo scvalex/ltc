@@ -16,8 +16,8 @@ import qualified Data.Map as M
 import Data.Monoid
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
-import System.Directory
 
+import Test.Common ( cleanEnvironment, cleanEnvironmentP )
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
@@ -172,25 +172,6 @@ propFullHistory = propWithCommands (\store cmds -> foldlM (runCmd store) (M.empt
 --------------------------------
 -- Helpers
 --------------------------------
-
--- | Remove a file or a directory recursively.
-rmrf :: FilePath -> IO ()
-rmrf fp = do
-    dde <- doesDirectoryExist fp
-    when dde $ removeDirectoryRecursive fp
-    dfe <- doesFileExist fp
-    when dfe $ removeFile fp
-
--- | Test an assertion in a clean environment and cleanup afterwards.
-cleanEnvironment :: [FilePath] -> Assertion -> Assertion
-cleanEnvironment files ass = do
-    mapM_ rmrf files
-    ass
-
-cleanEnvironmentP :: [FilePath] -> PropertyM IO a -> PropertyM IO a
-cleanEnvironmentP files prop = do
-    run $ mapM_ rmrf files
-    prop
 
 -- | Given a set of keys, generate an arbitrary command.  @Get@s and
 -- @Set@s have equal probability.
