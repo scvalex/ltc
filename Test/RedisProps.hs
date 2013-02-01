@@ -4,6 +4,7 @@ module Main where
 
 import Control.Applicative ( (<$>) )
 import qualified Control.Exception as CE
+import Control.Monad ( when )
 import Data.ByteString.Char8 ( ByteString )
 import qualified Data.ByteString.Char8 as BS
 import Data.Monoid ( mempty )
@@ -15,11 +16,13 @@ import Network.Socket.ByteString ( sendAll, recv )
 import qualified Network.Redis as R
 import Network.Redis ( RedisMessage, RedisMessage(..) )
 import Network.RedisServer ( serveWithPort )
+import Test.Common ( cleanEnvironment )
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
 import Test.HUnit hiding ( Test )
 import Test.QuickCheck
+import Text.Printf ( printf )
 
 main :: IO ()
 main = defaultMainWithOpts (concat [ msgStructureTests
@@ -53,7 +56,7 @@ endToEndTests :: [Test]
 endToEndTests = map (\(n, m, r) -> testCase n (endToEndTest m r)) endToEndMessages
 
 endToEndTest :: ByteString -> ByteString -> Assertion
-endToEndTest request reply = do
+endToEndTest request reply = cleanEnvironment ["test-store"] $ do
     store <- open (OpenParameters { location       = "test-store"
                                   , useCompression = False
                                   , nodeName       = "test" })
@@ -61,19 +64,23 @@ endToEndTest request reply = do
     shutdown <- serveWithPort port store
     sock <- getSocket "localhost" port
     sendAll sock request
-    checkRecv sock reply
-    shutdown
-    close store
+    checkRecv sock reply `CE.finally` (shutdown >> close store)
   where
     checkRecv _ leftover | BS.length leftover == 0 =
         return ()
     checkRecv sock leftover = do
         s <- recv sock (BS.length leftover)
+        when (BS.null s) $
+            assertFailure (printf "reply was not long enough ('%s' left)" (show leftover))
         assertBool "reply does not match" (BS.isPrefixOf s leftover)
         checkRecv sock (BS.drop (BS.length s) leftover)
 
 endToEndMessages :: [(String, ByteString, ByteString)]
-endToEndMessages = [("ping", "*1\r\n$4\r\nPING\r\n", "+PONG\r\n")]
+endToEndMessages = [ ("ping", "*1\r\n$4\r\nPING\r\n", "+PONG\r\n")
+                   , ("getNE", "*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", "$-1\r\n")
+                   , ("setGet", "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$2\r\nba\r\n\
+                                \*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", "+OK\r\n$2\r\nba\r\n")
+                   ]
 
 --------------------------------
 -- QuickCheck
