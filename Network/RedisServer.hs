@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Network.RedisServer (
         serve
     ) where
@@ -8,9 +10,11 @@ import Ltc.Adapter.RedisAdapter ( redisProxyD )
 
 import Control.Concurrent ( forkIO )
 import qualified Control.Exception as CE
+import Control.Exception ( Exception )
 import Control.Monad ( unless )
 import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Char8 ( ByteString )
+import Data.Data ( Data, Typeable )
 import Control.Proxy
 import Control.Proxy.Attoparsec ( parserInputD, parserD )
 import Network.Socket ( Socket, socket, accept, sClose, bindSocket
@@ -23,10 +27,18 @@ type Handler p = (() -> Producer p ByteString IO ())
                  -> (() -> Consumer p ByteString IO ())
                  -> IO ()
 
-serve :: (Store s) => s -> IO ()
+data Shutdown = Shutdown
+              deriving ( Data, Show, Typeable )
+
+instance Exception Shutdown
+
+serve :: (Store s) => s -> IO (IO ())
 serve store = do
-    lsocket <- bindPort redisPort
-    runSocketServer lsocket (redisHandler store)
+    tid <- forkIO $
+           CE.handle (\(_ :: Shutdown) -> return ()) $ do
+               lsocket <- bindPort redisPort
+               runSocketServer lsocket (redisHandler store)
+    return (CE.throwTo tid Shutdown)
 
 redisHandler :: (Store s) => s -> Handler ProxyFast
 redisHandler store p c =

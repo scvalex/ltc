@@ -24,7 +24,7 @@ Source-repository head
 Library
   Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
                         filepath, hslogger, network, pipes >= 3.1, pipes-attoparsec,
-                        regex-tdfa, sexp, SHA, vector-clock, zlib
+                        regex-tdfa, sexp, SHA, unix, vector-clock, zlib
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
   Exposed-modules:      Ltc.Store, Ltc.Store.Simple, Ltc.Store.Class
@@ -33,7 +33,7 @@ Library
 Executable ltc
   Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
                         filepath, hslogger, network, pipes >= 3.1, pipes-attoparsec,
-                        regex-tdfa, sexp, SHA, vector-clock, zlib
+                        regex-tdfa, sexp, SHA, unix, vector-clock, zlib
   Build-depends:        cmdargs
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
@@ -45,7 +45,7 @@ Test-suite store
   Type:                 exitcode-stdio-1.0
   Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
                         filepath, hslogger, network, pipes >= 3.1, pipes-attoparsec,
-                        regex-tdfa, sexp, SHA, vector-clock, zlib
+                        regex-tdfa, sexp, SHA, unix, vector-clock, zlib
   Ghc-Options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
 
@@ -58,7 +58,7 @@ Test-suite redis
   Type:                 exitcode-stdio-1.0
   Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
                         filepath, hslogger, network, pipes >= 3.1, pipes-attoparsec,
-                        regex-tdfa, sexp, SHA, vector-clock, zlib
+                        regex-tdfa, sexp, SHA, unix, vector-clock, zlib
   Ghc-Options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
 

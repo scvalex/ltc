@@ -3,6 +3,7 @@
 module Main where
 
 import Control.Applicative ( (<$>) )
+import Control.Concurrent.MVar ( newEmptyMVar, putMVar, takeMVar )
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Foldable ( foldlM )
@@ -12,6 +13,7 @@ import Ltc.Store
 import Network.BSD ( getHostName )
 import Network.RedisServer ( serve )
 import System.Console.CmdArgs
+import System.Posix.Signals ( Handler(..), installHandler, sigINT )
 import Paths_ltc ( version )
 import Text.Printf ( printf )
 
@@ -63,4 +65,12 @@ main = do
             store <- open (OpenParameters { location       = d
                                           , useCompression = False
                                           , nodeName       = (BL.pack hostname) })
-            serve store `CE.finally` close store
+            shutdown <- serve store
+            done <- newEmptyMVar
+            _ <- installHandler sigINT (Catch $ putMVar done ()) Nothing
+            takeMVar done `CE.finally` (do
+                _ <- printf "Shutting down... "
+                shutdown
+                close store
+                _ <- printf "done\n"
+                return ())
