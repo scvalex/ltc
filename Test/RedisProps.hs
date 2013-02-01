@@ -72,7 +72,8 @@ endToEndTest request reply = cleanEnvironment ["test-store"] $ do
         s <- recv sock (BS.length leftover)
         when (BS.null s) $
             assertFailure (printf "reply was not long enough ('%s' left)" (show leftover))
-        assertBool "reply does not match" (BS.isPrefixOf s leftover)
+        assertBool (printf "reply does not match: expected '%s'; got '%s'" (show leftover) (show s))
+            (BS.isPrefixOf s leftover)
         checkRecv sock (BS.drop (BS.length s) leftover)
 
 endToEndMessages :: [(String, ByteString, ByteString)]
