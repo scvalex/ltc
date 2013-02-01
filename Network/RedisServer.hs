@@ -42,9 +42,11 @@ serve = serveWithPort redisPort
 serveWithPort :: (Store s) => Int -> s -> IO (IO ())
 serveWithPort port store = do
     tid <- forkIO $
-           CE.handle (\(_ :: Shutdown) -> return ()) $ do
-               lsocket <- bindPort port
-               runSocketServer lsocket (redisHandler store)
+           CE.bracket
+               (bindPort port)
+               (\lsocket -> sClose lsocket)
+               (\lsocket -> CE.handle (\(_ :: Shutdown) -> return ())
+                                      (runSocketServer lsocket (redisHandler store)))
     return (CE.throwTo tid Shutdown)
 
 redisHandler :: (Store s) => s -> Handler ProxyFast
