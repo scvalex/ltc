@@ -17,6 +17,7 @@ import Test.QuickCheck
 
 main :: IO ()
 main = defaultMainWithOpts (concat [ msgStructureTests
+                                   , endToEndTests
                                    , [testProperty "encodeParse" propEncodeParse]
                                    ]) mempty
 
@@ -39,6 +40,15 @@ structureCommands =
 
 parseTest :: ByteString -> RedisMessage -> Assertion
 parseTest text msg = assertEqual "" msg (R.parseExn text)
+
+endToEndTests :: [Test]
+endToEndTests = map (\(n, m, r) -> testCase n (endToEndTest m r)) endToEndMessages
+
+endToEndTest :: ByteString -> ByteString -> Assertion
+endToEndTest request reply = undefined
+
+endToEndMessages :: [(String, ByteString, ByteString)]
+endToEndMessages = [("ping", "*1\r\n$4\r\nPING\r\n", "+PONG\r\n")]
 
 --------------------------------
 -- QuickCheck
