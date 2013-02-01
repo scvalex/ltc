@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Network.RedisServer (
-        serve
+        serve, serveWithPort
     ) where
 
 import Ltc.Store ( Store )
@@ -32,11 +32,18 @@ data Shutdown = Shutdown
 
 instance Exception Shutdown
 
+-- | Start the Redis interface on the standard Redis port (6379).
 serve :: (Store s) => s -> IO (IO ())
-serve store = do
+serve = serveWithPort redisPort
+
+-- | Start the Redis interface on the given port, backed by the given
+-- store.  "Ltc.Adapter.RedisAdapter" is used to translate between
+-- Redis and LTc commands.
+serveWithPort :: (Store s) => Int -> s -> IO (IO ())
+serveWithPort port store = do
     tid <- forkIO $
            CE.handle (\(_ :: Shutdown) -> return ()) $ do
-               lsocket <- bindPort redisPort
+               lsocket <- bindPort port
                runSocketServer lsocket (redisHandler store)
     return (CE.throwTo tid Shutdown)
 
