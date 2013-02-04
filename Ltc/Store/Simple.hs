@@ -84,9 +84,12 @@ data KeyVersion = KeyVersion { getVersion :: Version
                              , getValueHash :: ValueHash
                              } deriving ( Data, Typeable )
 
--- | Represents a single 'Key' with possibly many versions.
+-- | Represents a single 'Key' with at least one value ('getTip'), and
+-- possibly many older values ('getHistory').  History is ordered
+-- most-recent-first.
 data KeyRecord = KR { getKeyName :: Key
-                    , getVersions :: [KeyVersion]
+                    , getTip     :: KeyVersion
+                    , getHistory :: [KeyVersion]
                     } deriving ( Data, Typeable )
 
 instance Store Simple where
@@ -135,7 +138,7 @@ doGet ref key version = do
     debugM tag (printf "get %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
         withKeyRecord (locationKey ref key) $ \kr -> do
-            case findVersion version (getVersions kr) of
+            case findVersion version kr of
                 Nothing ->
                     return Nothing
                 Just kvsn -> do
@@ -145,14 +148,14 @@ doGet ref key version = do
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
-        let latestVersion = getVersion (head (getVersions kr))
+        let latestVersion = getVersion (getTip kr)
         Just value <- doGet ref key latestVersion
         return (Just (value, latestVersion))
 
 doKeyVersions :: Simple -> Key -> IO (Maybe [Version])
 doKeyVersions ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
-        return . Just . map getVersion $ getVersions kr
+        return . Just . map getVersion $ getTip kr : getHistory kr
 
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
@@ -160,17 +163,22 @@ doSet ref key value = do
     let vhash = valueHash value
     atomicWriteFile ref (locationValueHash ref vhash)
         ((if getUseCompression ref then Z.compress else id) value)
-    setKeyRecord ref (locationKey ref key) $ \mkrOld -> do
-        let krOld = maybe (KR { getKeyName = key, getVersions = [] }) id mkrOld
-            nn = getNodeName ref
-            versions = getVersions krOld
-            versions' = case versions of
-                []    -> [KeyVersion { getVersion   = VC.insert nn 1 VC.empty
-                                     , getValueHash = vhash }]
-                v :vs -> KeyVersion { getVersion   = VC.incWithDefault nn (getVersion v) 0
-                                    , getValueHash = vhash
-                                    } : v : vs
-        return (krOld { getVersions = versions' })
+    setKeyRecord ref (locationKey ref key) $ \mkrOld -> return $
+        let nn = getNodeName ref in
+        case mkrOld of
+            Nothing ->
+                KR { getKeyName = key
+                   , getTip     = KeyVersion { getVersion   = VC.insert nn 1 VC.empty
+                                             , getValueHash = vhash }
+                   , getHistory = []
+                   }
+            Just krOld ->
+                let v = getTip krOld in
+                krOld { getTip = KeyVersion { getVersion   = VC.incWithDefault nn (getVersion v) 0
+                                            , getValueHash = vhash
+                                            }
+                      , getHistory = v : getHistory krOld
+                      }
 
 doKeys :: Simple -> IO (Set Key)
 doKeys ref = do
@@ -193,7 +201,7 @@ setKeyRecord ref path update = do
     mkr <- readKeyRecord path
     kr' <- update mkr
     atomicWriteFile ref path (printHum (toSexp kr'))
-    return (getVersion (head (getVersions kr')))
+    return (getVersion (getTip kr'))
 
 -- | Wrapper around 'readKeyRecord'.
 withKeyRecord :: FilePath -> (KeyRecord -> IO (Maybe a)) -> IO (Maybe a)
@@ -254,8 +262,8 @@ valueHash :: Value -> ValueHash
 valueHash = BL.pack . showDigest . sha1
 
 -- | Find the 'KeyVersion' with the given 'Version'.
-findVersion :: Version -> [KeyVersion] -> Maybe KeyVersion
-findVersion vsn = find (\kv -> getVersion kv == vsn)
+findVersion :: Version -> KeyRecord -> Maybe KeyVersion
+findVersion vsn kr = find (\kv -> getVersion kv == vsn) (getTip kr : getHistory kr)
 
 ----------------------
 -- Locations
