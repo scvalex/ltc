@@ -142,7 +142,7 @@ doGet ref key version = do
                 Nothing ->
                     return Nothing
                 Just kvsn -> do
-                    Just . (if getUseCompression ref then Z.decompress else id)
+                    Just . VaString . (if getUseCompression ref then Z.decompress else id)
                         <$> BL.readFile (locationValueHash ref (getValueHash kvsn))
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
@@ -162,7 +162,7 @@ doSet ref key value = do
     debugM tag (printf "set %s" (BL.unpack key))
     let vhash = valueHash value
     atomicWriteFile ref (locationValueHash ref vhash)
-        ((if getUseCompression ref then Z.compress else id) value)
+        ((if getUseCompression ref then Z.compress else id) (valueString value))
     setKeyRecord ref (locationKey ref key) $ \mkrOld -> return $
         let nn = getNodeName ref in
         case mkrOld of
@@ -259,7 +259,7 @@ keyHash = BL.pack . showDigest . sha1
 -- | The hash of a value.  This hash is used as the filename under
 -- which the value is stored in the @values/@ folder.
 valueHash :: Value -> ValueHash
-valueHash = BL.pack . showDigest . sha1
+valueHash = BL.pack . showDigest . sha1 . valueString
 
 -- | Find the 'KeyVersion' with the given 'Version'.
 findVersion :: Version -> KeyRecord -> Maybe KeyVersion

@@ -101,6 +101,9 @@ instance Arbitrary ByteString where
     arbitrary = sized $ \n -> do
         BL.pack <$> sequence [ choose (' ', '~') | _ <- [1..n] ]
 
+instance Arbitrary Value where
+    arbitrary = VaString <$> arbitrary
+
 instance Arbitrary Commands where
     arbitrary = sized $ \n -> do
         let kn = ceiling (sqrt (fromIntegral n :: Double)) :: Int

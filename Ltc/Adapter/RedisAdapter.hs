@@ -26,13 +26,13 @@ redisProxyD store () = runIdentityP loop
         MultiBulk ["QUIT"] ->
             return (Status "OK", True)
         MultiBulk ["SET", Bulk key, Bulk value] -> do
-            _ <- lift $ set store (lazy key) (lazy value)
+            _ <- lift $ set store (lazy key) (VaString (lazy value))
             return (Status "OK", False)
         MultiBulk ["GET", Bulk key] -> do
             mv <- lift $ getLatest store (lazy key)
             case mv of
                 Nothing     -> return (Nil, False)
-                Just (v, _) -> return (Bulk (strict v), False)
+                Just (v, _) -> return (Bulk (strict (valueString v)), False)
         MultiBulk ["KEYS", Bulk pat] -> do
             case globToRegex (BL.unpack (lazy pat)) of
                 Nothing -> return (Error "ERR bad pattern", False)
