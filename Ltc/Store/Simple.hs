@@ -50,7 +50,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Data ( Data, Typeable )
 import Data.Digest.Pure.SHA ( sha1, showDigest )
-import Data.Foldable ( foldlM )
+import Data.Foldable ( find, foldlM )
 import Data.Set ( Set )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
@@ -67,7 +67,7 @@ formatString :: String
 formatString = "simple"
 
 storeVsn :: Int
-storeVsn = 2
+storeVsn = 3
 
 tag :: String
 tag = "Simple"
@@ -77,8 +77,16 @@ data Simple = Simple { getBase           :: FilePath
                      , getNodeName       :: NodeName
                      }
 
+-- | There is one 'KeyVersion' record for each *value* stored for a
+-- key.  So, a key whose value was set, and then changed twice, will
+-- have three of these records.
+data KeyVersion = KeyVersion { getVersion :: Version
+                             , getValueHash :: ValueHash
+                             } deriving ( Data, Typeable )
+
+-- | Represents a single 'Key' with possibly many versions.
 data KeyRecord = KR { getKeyName :: Key
-                    , getVersions :: [(Version, ValueHash)]
+                    , getVersions :: [KeyVersion]
                     } deriving ( Data, Typeable )
 
 instance Store Simple where
@@ -127,23 +135,24 @@ doGet ref key version = do
     debugM tag (printf "get %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
         withKeyRecord (locationKey ref key) $ \kr -> do
-            case lookup version (getVersions kr) of
-                Nothing -> return Nothing
-                Just vhash -> do
+            case findVersion version (getVersions kr) of
+                Nothing ->
+                    return Nothing
+                Just kvsn -> do
                     Just . (if getUseCompression ref then Z.decompress else id)
-                        <$> BL.readFile (locationValueHash ref vhash)
+                        <$> BL.readFile (locationValueHash ref (getValueHash kvsn))
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
-        let latestVersion = fst (head (getVersions kr))
+        let latestVersion = getVersion (head (getVersions kr))
         Just value <- doGet ref key latestVersion
         return (Just (value, latestVersion))
 
 doKeyVersions :: Simple -> Key -> IO (Maybe [Version])
 doKeyVersions ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
-        return . Just . map fst $ getVersions kr
+        return . Just . map getVersion $ getVersions kr
 
 doSet :: Simple -> Key -> Value -> IO Version
 doSet ref key value = do
@@ -156,8 +165,11 @@ doSet ref key value = do
             nn = getNodeName ref
             versions = getVersions krOld
             versions' = case versions of
-                []   -> [(VC.insert nn 1 VC.empty, vhash)]
-                v@(vc, _):vs -> (VC.incWithDefault nn vc 0, vhash) : v : vs
+                []    -> [KeyVersion { getVersion   = VC.insert nn 1 VC.empty
+                                     , getValueHash = vhash }]
+                v :vs -> KeyVersion { getVersion   = VC.incWithDefault nn (getVersion v) 0
+                                    , getValueHash = vhash
+                                    } : v : vs
         return (krOld { getVersions = versions' })
 
 doKeys :: Simple -> IO (Set Key)
@@ -181,7 +193,7 @@ setKeyRecord ref path update = do
     mkr <- readKeyRecord path
     kr' <- update mkr
     atomicWriteFile ref path (printHum (toSexp kr'))
-    return (fst (head (getVersions kr')))
+    return (getVersion (head (getVersions kr')))
 
 -- | Wrapper around 'readKeyRecord'.
 withKeyRecord :: FilePath -> (KeyRecord -> IO (Maybe a)) -> IO (Maybe a)
@@ -240,6 +252,10 @@ keyHash = BL.pack . showDigest . sha1
 -- which the value is stored in the @values/@ folder.
 valueHash :: Value -> ValueHash
 valueHash = BL.pack . showDigest . sha1
+
+-- | Find the 'KeyVersion' with the given 'Version'.
+findVersion :: Version -> [KeyVersion] -> Maybe KeyVersion
+findVersion vsn = find (\kv -> getVersion kv == vsn)
 
 ----------------------
 -- Locations
