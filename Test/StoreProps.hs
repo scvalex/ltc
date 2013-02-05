@@ -48,8 +48,10 @@ testOpen = cleanEnvironment ["test-store"] $ do
     close store
     store' <- open op
     close store'
-    opened <- CE.handle (\(_ :: CE.SomeException) -> return False) $ do
-        _ <- open (op { nodeName = "other-test" })
+    opened <- CE.handle (\(exn :: NodeNameMismatchError) ->
+                          return (not (requestedName exn == "other"
+                                       && storeName exn == "test"))) $ do
+        _ <- open (op { nodeName = "other" })
         return True
     when opened $ assertFailure "re-opened store with different node name"
 
