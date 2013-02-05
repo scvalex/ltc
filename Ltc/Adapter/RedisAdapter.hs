@@ -47,15 +47,12 @@ redisProxyD store () = runIdentityP loop
                 mv <- lift $ getLatest store (lazy key)
                 resply (maybe (Integer 0) (const (Integer 1)) mv)
             MultiBulk ["APPEND", Bulk key, Bulk value] -> do
-                mv <- lift $ getLatest store (lazy key)
+                mv <- lift $ getWithDefault (lazy key) (VaString "")
                 case mv of
-                    Nothing -> do
-                        _ <- lift $ set store (lazy key) (VaString (lazy value))
-                        resply (Integer (fromIntegral (BS.length value)))
-                    Just (VaString s, _) -> do
+                    VaString s -> do
                         _ <- lift $ set store (lazy key) (VaString (BL.append s (lazy value)))
                         resply (Integer (fromIntegral (BL.length s + fromIntegral (BS.length value))))
-                    Just _ -> do
+                    _ -> do
                         resply (toError (printf "WRONGTYPE key %s does not hold a string" (show key)))
             _ ->
                 resply (Error "ERR unknown command")
@@ -78,15 +75,12 @@ redisProxyD store () = runIdentityP loop
                         resply (MultiBulk (map Bulk ks'))
 
     handleIncr key delta = do
-        mv <- lift $ getLatest store (lazy key)
+        mv <- lift $ getWithDefault (lazy key) (VaInt 0)
         case mv of
-            Nothing -> do
-                _ <- lift $ set store (lazy key) (VaInt delta)
-                resply (Integer delta)
-            Just (VaInt n, _) -> do
+            VaInt n -> do
                 _ <- lift $ set store (lazy key) (VaInt (n + delta))
                 resply (Integer (n + delta))
-            Just (_, _) -> do
+            _ -> do
                 resply (toError (printf "WRONGTYPE key %s does not hold a number" (show key)))
 
     -- | Because, usually, we want to not stop the loop.
@@ -95,6 +89,11 @@ redisProxyD store () = runIdentityP loop
 
     toError :: String -> RedisMessage
     toError = Error . strict . BL.pack
+
+    getWithDefault :: Key -> Value -> IO Value
+    getWithDefault key def = do
+        mv <- getLatest store key
+        return (maybe def fst mv)
 
 -- | Make a strict 'ByteString' lazy.
 lazy :: ByteString -> BL.ByteString
