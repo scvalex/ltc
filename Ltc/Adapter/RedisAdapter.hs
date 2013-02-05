@@ -52,9 +52,7 @@ redisProxyD store () = runIdentityP loop
                 mv <- lift $ getWithDefault (lazy key) ""
                 case mv of
                     VaString s -> resply (Integer (fromIntegral (BL.length s)))
-                    _          -> resply (toError
-                                          (printf "WRONGTYPE key %s hoes not hold a string"
-                                           (show key)))
+                    _          -> notAStringReply key
             MultiBulk ["GETRANGE", Bulk key, Integer start, Integer end] -> do
                 handleGetRange key start end
             _ ->
@@ -93,7 +91,7 @@ redisProxyD store () = runIdentityP loop
                 _ <- lift $ set store (lazy key) (VaString (BL.append s (lazy value)))
                 resply (Integer (fromIntegral (BL.length s + fromIntegral (BS.length value))))
             _ -> do
-                resply (toError (printf "WRONGTYPE key %s does not hold a string" (show key)))
+                notAStringReply key
 
     handleGetRange key start end = do
         mv <- lift $ getWithDefault (lazy key) ""
