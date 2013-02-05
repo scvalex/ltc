@@ -29,12 +29,13 @@ import Text.Printf ( printf )
 
 main :: IO ()
 main = defaultMainWithOpts (concat [ msgStructureTests
+                                   , endToEndBinaryTests
                                    , endToEndTests
                                    , [ testProperty "encodeParse" propEncodeParse
                                      , testProperty "numericDance" propNumericDance ]
                                    ]) options
   where
-    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 10000000) }) }
+    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 15000000) }) }
 
 --------------------------------
 -- Unit tests
@@ -56,11 +57,19 @@ structureCommands =
 parseTest :: ByteString -> RedisMessage -> Assertion
 parseTest text msg = assertEqual "" msg (R.parseExn text)
 
-endToEndTests :: [Test]
-endToEndTests = map (\(n, m, r) -> testCase n (endToEndTest m r)) endToEndMessages
+endToEndBinaryTests :: [Test]
+endToEndBinaryTests =
+    map (\(n, m, r) -> testCase n (endToEndBinaryTest m r)) endToEndBinaryMessages
 
-endToEndTest :: ByteString -> ByteString -> Assertion
-endToEndTest request reply = cleanEnvironment ["test-store"] $ do
+endToEndTests :: [Test]
+endToEndTests =
+    map (\(n, ms, rs) -> testCase n (endToEndBinaryTest (prepare ms) (prepare rs)))
+        endToEndMessages
+  where
+    prepare = BS.concat . map R.redisEncode
+
+endToEndBinaryTest :: ByteString -> ByteString -> Assertion
+endToEndBinaryTest request reply = cleanEnvironment ["test-store"] $ do
     store <- open testParameters
     let port = 26279
     shutdown <- serveWithPort port store
@@ -78,27 +87,37 @@ endToEndTest request reply = cleanEnvironment ["test-store"] $ do
             (BS.isPrefixOf s leftover)
         checkRecv sock (BS.drop (BS.length s) leftover)
 
-endToEndMessages :: [(String, ByteString, ByteString)]
-endToEndMessages = [ ("ping", "*1\r\n$4\r\nPING\r\n", "+PONG\r\n")
-                   , ("getNE", "*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", "$-1\r\n")
-                   , ("setGet", "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$2\r\nba\r\n\
-                                \*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", "+OK\r\n$2\r\nba\r\n")
-                   , ("setSetGet", "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$2\r\nba\r\n\
-                                   \*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbaz\r\n\
-                                   \*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", "+OK\r\n+OK\r\n$3\r\nbaz\r\n")
-                   , ("setSetKeys", "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$2\r\nba\r\n\
-                                   \*3\r\n$3\r\nSET\r\n$3\r\nbar\r\n$3\r\nbaz\r\n\
-                                   \*2\r\n$4\r\nKEYS\r\n$1\r\n*\r\n",
-                                   "+OK\r\n+OK\r\n*2\r\n$3\r\nbar\r\n$3\r\nfoo\r\n")
-                   , ("incr", "*2\r\n$4\r\nINCR\r\n$5\r\nmykey\r\n\
-                              \*2\r\n$4\r\nINCR\r\n$5\r\nmykey\r\n",":1\r\n:2\r\n")
-                   , ("incrby", "*2\r\n$4\r\nINCR\r\n$5\r\nmykey\r\n\
-                                \*3\r\n$6\r\nINCRBY\r\n$5\r\nmykey\r\n:5\r\n",":1\r\n:6\r\n")
-                   , ("decr", "*3\r\n$6\r\nINCRBY\r\n$5\r\nmykey\r\n:5\r\n\
-                              \*2\r\n$4\r\nDECR\r\n$5\r\nmykey\r\n",":5\r\n:4\r\n")
-                   , ("decrby", "*3\r\n$6\r\nINCRBY\r\n$5\r\nmykey\r\n:5\r\n\
-                                \*3\r\n$6\r\nDECRBY\r\n$5\r\nmykey\r\n:4\r\n",":5\r\n:1\r\n")
-                   ]
+endToEndBinaryMessages :: [(String, ByteString, ByteString)]
+endToEndBinaryMessages =
+    [ ("ping", "*1\r\n$4\r\nPING\r\n", "+PONG\r\n")
+    , ("getNE", "*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", "$-1\r\n")
+    , ("setGet", "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$2\r\nba\r\n\
+                 \*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", "+OK\r\n$2\r\nba\r\n")
+    , ("setSetGet", "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$2\r\nba\r\n\
+                    \*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbaz\r\n\
+                    \*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", "+OK\r\n+OK\r\n$3\r\nbaz\r\n")
+    , ("setSetKeys", "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$2\r\nba\r\n\
+                     \*3\r\n$3\r\nSET\r\n$3\r\nbar\r\n$3\r\nbaz\r\n\
+                     \*2\r\n$4\r\nKEYS\r\n$1\r\n*\r\n",
+                     "+OK\r\n+OK\r\n*2\r\n$3\r\nbar\r\n$3\r\nfoo\r\n")
+    , ("incr", "*2\r\n$4\r\nINCR\r\n$5\r\nmykey\r\n\
+               \*2\r\n$4\r\nINCR\r\n$5\r\nmykey\r\n",":1\r\n:2\r\n")
+    , ("incrby", "*2\r\n$4\r\nINCR\r\n$5\r\nmykey\r\n\
+                 \*3\r\n$6\r\nINCRBY\r\n$5\r\nmykey\r\n:5\r\n",":1\r\n:6\r\n")
+    , ("decr", "*3\r\n$6\r\nINCRBY\r\n$5\r\nmykey\r\n:5\r\n\
+                \*2\r\n$4\r\nDECR\r\n$5\r\nmykey\r\n",":5\r\n:4\r\n")
+    , ("decrby", "*3\r\n$6\r\nINCRBY\r\n$5\r\nmykey\r\n:5\r\n\
+                 \*3\r\n$6\r\nDECRBY\r\n$5\r\nmykey\r\n:4\r\n",":5\r\n:1\r\n")
+    ]
+
+endToEndMessages :: [(String, [RedisMessage], [RedisMessage])]
+endToEndMessages =
+    [ ("exists",
+       [ MultiBulk ["SET", "key1", "Hello"]
+       , MultiBulk ["EXISTS", "key1"]
+       , MultiBulk ["EXISTS", "key2"] ],
+       [ Status "OK", Integer 1, Integer 0])
+    ]
 
 --------------------------------
 -- QuickCheck
