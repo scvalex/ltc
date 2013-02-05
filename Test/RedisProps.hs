@@ -143,6 +143,11 @@ endToEndMessages =
        , MultiBulk ["SET", "key2", "World"]
        , MultiBulk ["MGET", "key1", "key2", "nonexisting"] ],
        [ Status "OK", Status "OK", MultiBulk [ "Hello", "World", Nil ] ])
+    , ("sadd",
+       [ MultiBulk ["SADD", "myset", "Hello"]
+       , MultiBulk ["SADD", "myset", "World"]
+       , MultiBulk ["SADD", "myset", "World"] ],
+       [ Integer 1, Integer 1, Integer 0 ])
     ]
 
 --------------------------------
