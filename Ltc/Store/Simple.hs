@@ -125,7 +125,8 @@ doOpen params = do
     when (not storeExists) (initStore params)
     nn <- BL.readFile (locationNodeName (location params))
     when (nn /= nodeName params) $
-        fail (printf "node name mismatch: store has %s" (BL.unpack nn))
+        CE.throw (NodeNameMismatchError { expectedName = nodeName params
+                                        , foundName    = nn })
     return (Simple { getBase           = location params
                    , getUseCompression = useCompression params
                    , getNodeName       = nodeName params

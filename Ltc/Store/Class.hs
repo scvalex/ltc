@@ -8,7 +8,7 @@ module Ltc.Store.Class (
         Key, KeyHash, ValueHash, Version, NodeName,
 
         -- * Errors
-        TypeMismatchError(..),
+        TypeMismatchError(..), NodeNameMismatchError(..),
 
         -- * Value types
         Type(..), Value(..), valueString, valueType
@@ -65,12 +65,23 @@ data Value = VaString ByteString
 instance IsString Value where
     fromString = VaString . pack
 
+----------------------
+-- Exceptions
+----------------------
+
 data TypeMismatchError = TypeMismatchError { expectedType :: Type
                                            , foundType    :: Type
                                            }
                        deriving ( Show, Typeable )
 
 instance Exception TypeMismatchError
+
+data NodeNameMismatchError = NodeNameMismatchError { expectedName :: ByteString
+                                                   , foundName    :: ByteString
+                                                   }
+                           deriving ( Show, Typeable )
+
+instance Exception NodeNameMismatchError
 
 ----------------------
 -- Helpers
