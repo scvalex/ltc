@@ -169,24 +169,27 @@ doSet ref key value = do
     let vhash = valueHash value
     atomicWriteFile ref (locationValueHash ref vhash)
         ((if getUseCompression ref then Z.compress else id) (valueString value))
-    setKeyRecord ref (locationKey ref key) $ \mkrOld -> return $
-        let nn = getNodeName ref in
+    setKeyRecord ref (locationKey ref key) $ \mkrOld -> do
+        let nn = getNodeName ref
         case mkrOld of
-            Nothing ->
+            Nothing -> return $
                 KR { getKeyName = key
                    , getValueType = valueType value
                    , getTip     = KeyVersion { getVersion   = VC.insert nn 1 VC.empty
                                              , getValueHash = vhash }
                    , getHistory = []
                    }
-            Just krOld ->
-                let v = getTip krOld in
-                -- FIXME assert @getValueType == valueType value@
-                krOld { getTip = KeyVersion { getVersion   = VC.incWithDefault nn (getVersion v) 0
-                                            , getValueHash = vhash
-                                            }
-                      , getHistory = v : getHistory krOld
-                      }
+            Just krOld -> do
+                when (getValueType krOld /= valueType value) $ do
+                    CE.throw (TypeMismatchError { expected = getValueType krOld
+                                                , found    = valueType value })
+                let v = getTip krOld
+                return $ krOld { getTip = KeyVersion { getVersion   = VC.incWithDefault
+                                                                          nn (getVersion v) 0
+                                                     , getValueHash = vhash
+                                                     }
+                               , getHistory = v : getHistory krOld
+                               }
 
 doKeys :: Simple -> IO (Set Key)
 doKeys ref = do

@@ -56,7 +56,7 @@ type Version   = VectorClock NodeName Int
 -- | The type of a value stored in the store.
 data Type = TyString
           | TyInt
-          deriving ( Data, Show, Typeable )
+          deriving ( Data, Eq, Show, Typeable )
 
 data Value = VaString ByteString
            | VaInt Integer
@@ -65,17 +65,12 @@ data Value = VaString ByteString
 instance IsString Value where
     fromString = VaString . pack
 
-class Store a where
-    data OpenParameters a :: *
+data TypeMismatchError = TypeMismatchError { expected :: Type
+                                           , found    :: Type
+                                           }
+                       deriving ( Show, Typeable )
 
-    open :: OpenParameters a -> IO a
-    close :: a -> IO ()
-
-    storeFormat :: a -> String
-    storeVersion :: a -> Int
-
-    get :: a -> Key -> Version -> IO (Maybe Value)
-    getLatest :: a -> Key -> IO (Maybe (Value, Version))
+instance Exception TypeMismatchError
 
 ----------------------
 -- Helpers
