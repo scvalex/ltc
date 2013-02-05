@@ -30,6 +30,7 @@ main = defaultMainWithOpts
        [ testCase "open" testOpen
        , testCase "simpleSetGet" testSimpleSetGet
        , testCase "simpleHistory" testSimpleHistory
+       , testCase "simpleFieldType" testSimpleFieldType
        , testProperty "setGetLatest" propSetGetLatest
        , testProperty "keysPresent" propKeysPresent
        , testProperty "fullHistory" propFullHistory
@@ -88,6 +89,22 @@ testSimpleHistory = cleanEnvironment ["test-store"] $ do
     res2 @?= Just ("baz", v2)
     res3 <- get store "foo" v1
     res3 @?= Just "bar"
+    close store
+
+testSimpleFieldType :: Assertion
+testSimpleFieldType = cleanEnvironment ["test-store"] $ do
+    store <- open (OpenParameters { location       = "test-store"
+                                  , useCompression = False
+                                  , nodeName       = "test" })
+    v1 <- set store "foo" (VaInt 23)
+    res1 <- getLatest store "foo"
+    res1 @?= Just (VaInt 23, v1)
+    done <- CE.handle (\(exn :: TypeMismatchError) ->
+                          return (not (expectedType exn == TyInt
+                                       && foundType exn == TyString))) $ do
+        _ <- set store "foo" "bar"
+        return True
+    when done $ assertFailure "set a key with a different type"
     close store
 
 --------------------------------
