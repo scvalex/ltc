@@ -76,6 +76,9 @@ endToEndBinaryTest request reply = cleanEnvironment ["test-store"] $ do
     sock <- getSocket "localhost" port
     sendAll sock request
     checkRecv sock reply `CE.finally` (shutdown >> close store)
+    sClose sock
+    shutdown
+    close store
   where
     checkRecv _ leftover | BS.length leftover == 0 =
         return ()
