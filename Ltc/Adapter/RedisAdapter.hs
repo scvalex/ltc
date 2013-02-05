@@ -55,6 +55,7 @@ redisProxyD store () = runIdentityP loop
                     _          -> notAStringReply key
             MultiBulk ["GETRANGE", Bulk key, Integer start, Integer end] -> do
                 handleGetRange key start end
+            -- SETRANGE is not supported because Francesco is a pedant.
             _ ->
                 resply (Error "ERR unknown command")
         respond reply
