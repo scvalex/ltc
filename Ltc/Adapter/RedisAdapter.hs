@@ -3,6 +3,7 @@ module Ltc.Adapter.RedisAdapter (
     ) where
 
 import Control.Applicative ( (<$>) )
+import Control.Monad ( forM )
 import Data.ByteString.Char8 ( ByteString )
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -56,6 +57,8 @@ redisProxyD store () = runIdentityP loop
             MultiBulk ["GETRANGE", Bulk key, Integer start, Integer end] -> do
                 handleGetRange key start end
             -- SETRANGE is not supported because Francesco is a pedant.
+            MultiBulk ("MGET" : ks) -> do
+                handleMGet ks
             _ ->
                 resply (Error "ERR unknown command")
         respond reply
@@ -104,6 +107,18 @@ redisProxyD store () = runIdentityP loop
                 resply (Bulk (strict (BL.take (end' - start' + 1) (BL.drop start' s))))
             _ ->
                 notAStringReply key
+
+    handleMGet ks = do
+        values <- forM ks $ \vkey -> do
+            case vkey of
+                Bulk key -> do
+                    mv <- lift $ getLatest store (lazy key)
+                    return $ case mv of
+                        Just (VaString s, _) -> Bulk (strict s)
+                        _                    -> Nil
+                _ -> do
+                    return Nil  -- | FIXME Returning nil for bad parameters is a no-no.
+        resply (MultiBulk values)
 
     notAStringReply key =
         resply (toError (printf "WRONGTYPE key %s hoes not hold a string" (show key)))

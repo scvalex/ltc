@@ -138,6 +138,11 @@ endToEndMessages =
        , MultiBulk ["GETRANGE", "mykey", Integer 0, Integer (-1)]
        , MultiBulk ["GETRANGE", "mykey", Integer 10, Integer 100]],
        [ Status "OK", "This", "ing", "This is a string", "string" ])
+    , ("mget",
+       [ MultiBulk ["SET", "key1", "Hello"]
+       , MultiBulk ["SET", "key2", "World"]
+       , MultiBulk ["MGET", "key1", "key2", "nonexisting"] ],
+       [ Status "OK", Status "OK", MultiBulk [ "Hello", "World", Nil ] ])
     ]
 
 --------------------------------
