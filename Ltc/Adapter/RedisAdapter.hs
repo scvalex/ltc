@@ -48,6 +48,13 @@ redisProxyD store () = runIdentityP loop
                 resply (maybe (Integer 0) (const (Integer 1)) mv)
             MultiBulk ["APPEND", Bulk key, Bulk value] -> do
                 handleAppend key value
+            MultiBulk ["STRLEN", Bulk key] -> do
+                mv <- lift $ getWithDefault (lazy key) ""
+                case mv of
+                    VaString s -> resply (Integer (fromIntegral (BL.length s)))
+                    _          -> resply (toError
+                                          (printf "WRONGTYPE key %s hoes not hold a string"
+                                           (show key)))
             _ ->
                 resply (Error "ERR unknown command")
         respond reply

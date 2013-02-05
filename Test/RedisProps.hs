@@ -126,6 +126,11 @@ endToEndMessages =
        , MultiBulk ["APPEND", "mykey", " World"]
        , MultiBulk ["GET", "mykey"] ],
        [ Integer 0, Integer 5, Integer 11, "Hello World" ])
+    , ("strlen",
+       [ MultiBulk ["SET", "mykey", "Hello world"]
+       , MultiBulk ["STRLEN", "mykey"]
+       , MultiBulk ["STRLEN", "nonexisting"] ],
+       [ Status "OK", Integer 11, Integer 0 ])
     ]
 
 --------------------------------
