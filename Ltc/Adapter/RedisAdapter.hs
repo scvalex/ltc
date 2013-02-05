@@ -55,7 +55,7 @@ redisProxyD store () = runIdentityP loop
             Just reg -> do
                 case T.compile defaultCompOpt defaultExecOpt reg of
                     Left err ->
-                        resply (Error (strict (BL.pack (printf "ERR bad pattern '%s'" err))))
+                        resply (toError (printf "ERR bad pattern '%s'" err))
                     Right reg' -> do
                         ks <- lift $ keys store
                         let ks' = filter (\k -> isRightJust (T.execute reg' k))
@@ -73,11 +73,14 @@ redisProxyD store () = runIdentityP loop
                 _ <- lift $ set store (lazy key) (VaInt (n + delta))
                 resply (Integer (n + delta))
             Just (_, _) -> do
-                resply (Error (strict (BL.pack (printf "WRONGTYPE Key %s does not hold a number" (show key)))))
+                resply (toError (printf "WRONGTYPE Key %s does not hold a number" (show key)))
 
     -- | Because, usually, we want to not stop the loop.
     resply :: (Monad m) => RedisMessage -> m (RedisMessage, Bool)
     resply msg = return (msg, False)
+
+    toError :: String -> RedisMessage
+    toError = Error . strict . BL.pack
 
 -- | Make a strict 'ByteString' lazy.
 lazy :: ByteString -> BL.ByteString
