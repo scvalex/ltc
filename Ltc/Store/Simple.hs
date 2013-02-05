@@ -80,7 +80,8 @@ data Simple = Simple { getBase           :: FilePath
 -- | There is one 'KeyVersion' record for each *value* stored for a
 -- key.  So, a key whose value was set, and then changed twice, will
 -- have three of these records.
-data KeyVersion = KeyVersion { getVersion :: Version
+data KeyVersion = KeyVersion { getVersion   :: Version
+                             , getValueType :: Type
                              , getValueHash :: ValueHash
                              } deriving ( Data, Typeable )
 
@@ -169,12 +170,14 @@ doSet ref key value = do
             Nothing ->
                 KR { getKeyName = key
                    , getTip     = KeyVersion { getVersion   = VC.insert nn 1 VC.empty
+                                             , getValueType = valueType value
                                              , getValueHash = vhash }
                    , getHistory = []
                    }
             Just krOld ->
                 let v = getTip krOld in
                 krOld { getTip = KeyVersion { getVersion   = VC.incWithDefault nn (getVersion v) 0
+                                            , getValueType = valueType value
                                             , getValueHash = vhash
                                             }
                       , getHistory = v : getHistory krOld

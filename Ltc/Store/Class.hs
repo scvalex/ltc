@@ -8,7 +8,7 @@ module Ltc.Store.Class (
         Key, KeyHash, ValueHash, Version, NodeName,
 
         -- * Value types
-        Type(..), Value(..), valueString
+        Type(..), Value(..), valueString, valueType
     ) where
 
 import Data.ByteString.Lazy.Char8 ( ByteString, pack )
@@ -29,6 +29,7 @@ data Type = TyString
           deriving ( Data, Show, Typeable )
 
 data Value = VaString ByteString
+           | VaInt Integer
            deriving ( Eq, Show )
 
 instance IsString Value where
@@ -55,3 +56,9 @@ class Store a where
 -- | Get the 'ByteString' representation of a value.
 valueString :: Value -> ByteString
 valueString (VaString s) = s
+valueString (VaInt s) = pack (show s)
+
+-- | Get the type of a 'Value'.
+valueType :: Value -> Type
+valueType (VaString _) = TyString
+valueType (VaInt _)    = TyInt
