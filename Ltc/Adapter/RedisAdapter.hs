@@ -46,6 +46,17 @@ redisProxyD store () = runIdentityP loop
             MultiBulk ["EXISTS", Bulk key] -> do
                 mv <- lift $ getLatest store (lazy key)
                 resply (maybe (Integer 0) (const (Integer 1)) mv)
+            MultiBulk ["APPEND", Bulk key, Bulk value] -> do
+                mv <- lift $ getLatest store (lazy key)
+                case mv of
+                    Nothing -> do
+                        _ <- lift $ set store (lazy key) (VaString (lazy value))
+                        resply (Integer (fromIntegral (BS.length value)))
+                    Just (VaString s, _) -> do
+                        _ <- lift $ set store (lazy key) (VaString (BL.append s (lazy value)))
+                        resply (Integer (fromIntegral (BL.length s + fromIntegral (BS.length value))))
+                    Just _ -> do
+                        resply (toError (printf "WRONGTYPE key %s does not hold a string" (show key)))
             _ ->
                 resply (Error "ERR unknown command")
         respond reply
@@ -76,7 +87,7 @@ redisProxyD store () = runIdentityP loop
                 _ <- lift $ set store (lazy key) (VaInt (n + delta))
                 resply (Integer (n + delta))
             Just (_, _) -> do
-                resply (toError (printf "WRONGTYPE Key %s does not hold a number" (show key)))
+                resply (toError (printf "WRONGTYPE key %s does not hold a number" (show key)))
 
     -- | Because, usually, we want to not stop the loop.
     resply :: (Monad m) => RedisMessage -> m (RedisMessage, Bool)

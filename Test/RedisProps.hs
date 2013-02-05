@@ -120,6 +120,12 @@ endToEndMessages =
        , MultiBulk ["EXISTS", "key1"]
        , MultiBulk ["EXISTS", "key2"] ],
        [ Status "OK", Integer 1, Integer 0])
+    , ("append",
+       [ MultiBulk ["EXISTS", "mykey"]
+       , MultiBulk ["APPEND", "mykey", "Hello"]
+       , MultiBulk ["APPEND", "mykey", " World"]
+       , MultiBulk ["GET", "mykey"] ],
+       [ Integer 0, Integer 5, Integer 11, "Hello World" ])
     ]
 
 --------------------------------
