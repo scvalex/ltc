@@ -19,6 +19,7 @@ import Control.Exception ( Exception )
 import Data.ByteString.Lazy.Char8 ( ByteString, pack )
 import Data.Data ( Data, Typeable )
 import Data.Set ( Set )
+import qualified Data.Set as S
 import Data.String ( IsString(..) )
 import Data.VectorClock ( VectorClock )
 import Language.Sexp ( toSexp, printHum )
@@ -65,7 +66,7 @@ data Type = TyString
 data Value = VaString ByteString
            | VaInt Integer
            | VaIntSet (Set Integer)
-           | VaStringSet (Set Integer)
+           | VaStringSet (Set ByteString)
            deriving ( Eq, Show )
 
 instance IsString Value where
@@ -111,8 +112,8 @@ instance Exception CorruptValueFileError
 valueString :: Value -> ByteString
 valueString (VaString s)     = s
 valueString (VaInt n)        = pack (show n)
-valueString (VaStringSet ss) = printHum (toSexp ss)
-valueString (VaIntSet is)    = printHum (toSexp is)
+valueString (VaStringSet ss) = printHum (toSexp (S.toList ss))
+valueString (VaIntSet is)    = printHum (toSexp (S.toList is))
 
 -- | Get the type of a 'Value'.
 valueType :: Value -> Type

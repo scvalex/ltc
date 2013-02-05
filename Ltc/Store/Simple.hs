@@ -168,7 +168,7 @@ doGet ref key version = do
             Just [sexp] -> do
                 case fromSexp sexp of
                     Nothing -> CE.throw (err "corrupt set in value file")
-                    Just ss -> return (Just ss)
+                    Just ss -> return (Just (S.fromList ss))
             Just _ ->
                 CE.throw (err "corrupt set in value file")
 
