@@ -2,9 +2,9 @@
 
 module Main where
 
-import Control.Applicative ( (<$>) )
+import Control.Applicative ( (<$>), (<*>) )
 import qualified Control.Exception as CE
-import Control.Monad ( when )
+import Control.Monad ( replicateM, when )
 import Data.ByteString.Char8 ( ByteString )
 import qualified Data.ByteString.Char8 as BS
 import Data.Monoid ( mempty )
@@ -16,18 +16,20 @@ import Network.Socket.ByteString ( sendAll, recv )
 import qualified Network.Redis as R
 import Network.Redis ( RedisMessage, RedisMessage(..) )
 import Network.RedisServer ( serveWithPort )
-import Test.Common ( cleanEnvironment )
+import Test.Common ( cleanEnvironment, cleanEnvironmentP, testParameters )
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
 import Test.HUnit hiding ( Test )
 import Test.QuickCheck
+import Test.QuickCheck.Monadic as QCM
 import Text.Printf ( printf )
 
 main :: IO ()
 main = defaultMainWithOpts (concat [ msgStructureTests
                                    , endToEndTests
-                                   , [testProperty "encodeParse" propEncodeParse]
+                                   , [ testProperty "encodeParse" propEncodeParse
+                                     , testProperty "numericDance" propNumericDance ]
                                    ]) options
   where
     options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 5000000) }) }
@@ -57,9 +59,7 @@ endToEndTests = map (\(n, m, r) -> testCase n (endToEndTest m r)) endToEndMessag
 
 endToEndTest :: ByteString -> ByteString -> Assertion
 endToEndTest request reply = cleanEnvironment ["test-store"] $ do
-    store <- open (OpenParameters { location       = "test-store"
-                                  , useCompression = False
-                                  , nodeName       = "test" })
+    store <- open testParameters
     let port = 26279
     shutdown <- serveWithPort port store
     sock <- getSocket "localhost" port
@@ -117,8 +117,44 @@ instance Arbitrary RedisMessage where
             5 -> MultiBulk <$> resize (sz `div` 2) arbitrary
             _ -> fail "not a real case of Arbitrary RedisMessage"
 
+data NumericRedisMessage = Incr Key
+                         | IncrBy Key Integer
+                         | Decr Key
+                         | DecrBy Key Integer
+                         deriving ( Show )
+
+newtype NumericRedisMessages = NRMs { unNRMs :: [NumericRedisMessage] }
+                             deriving ( Show )
+
+instance Arbitrary NumericRedisMessages where
+    arbitrary = sized $ \n -> do
+        let kn = ceiling (sqrt (fromIntegral n :: Double)) :: Int
+        ks <- replicateM kn arbitrary
+        NRMs <$> replicateM n (makeNumericMessage ks)
+      where
+        makeNumericMessage ks = do
+            n <- choose (1, 4 :: Int)
+            let key = elements ks
+            case n of
+                1 -> Incr <$> key
+                2 -> IncrBy <$> key <*> arbitrary
+                3 -> Decr <$> key
+                4 -> DecrBy <$> key <*> arbitrary
+                _ -> fail "unknown case in 'Arbitrary Command'"
+
 propEncodeParse :: RedisMessage -> Bool
 propEncodeParse msg = msg == R.parseExn (R.redisEncode msg)
+
+propNumericDance :: NumericRedisMessages -> Property
+propNumericDance (NRMs _) = monadicIO $ cleanEnvironmentP ["test-store"] $ do
+    store <- run $ open testParameters
+    let port = 26279
+    shutdown <- run $ serveWithPort port store
+    sock <- run $ getSocket "localhost" port
+    -- FIXME Actually run tests here
+    run $ sClose sock
+    run $ shutdown
+    run $ close store
 
 --------------------------------
 -- Helpers
