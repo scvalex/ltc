@@ -55,6 +55,8 @@ redisProxyD store () = runIdentityP loop
                     _          -> resply (toError
                                           (printf "WRONGTYPE key %s hoes not hold a string"
                                            (show key)))
+            MultiBulk ["GETRANGE", Bulk key, Integer start, Integer end] -> do
+                handleGetRange key start end
             _ ->
                 resply (Error "ERR unknown command")
         respond reply
@@ -92,6 +94,20 @@ redisProxyD store () = runIdentityP loop
                 resply (Integer (fromIntegral (BL.length s + fromIntegral (BS.length value))))
             _ -> do
                 resply (toError (printf "WRONGTYPE key %s does not hold a string" (show key)))
+
+    handleGetRange key start end = do
+        mv <- lift $ getWithDefault (lazy key) ""
+        case mv of
+            VaString s -> do
+                let normalize n = if n < 0 then fromIntegral (BL.length s) + n else n
+                    start' = fromIntegral (normalize start)
+                    end' = fromIntegral (normalize end)
+                resply (Bulk (strict (BL.take (end' - start' + 1) (BL.drop start' s))))
+            _ ->
+                notAStringReply key
+
+    notAStringReply key =
+        resply (toError (printf "WRONGTYPE key %s hoes not hold a string" (show key)))
 
     -- | Because, usually, we want to not stop the loop.
     resply :: (Monad m) => RedisMessage -> m (RedisMessage, Bool)
