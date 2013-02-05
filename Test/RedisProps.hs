@@ -92,6 +92,10 @@ endToEndMessages = [ ("ping", "*1\r\n$4\r\nPING\r\n", "+PONG\r\n")
                               \*2\r\n$4\r\nINCR\r\n$5\r\nmykey\r\n",":1\r\n:2\r\n")
                    , ("incrby", "*2\r\n$4\r\nINCR\r\n$5\r\nmykey\r\n\
                                 \*3\r\n$6\r\nINCRBY\r\n$5\r\nmykey\r\n:5\r\n",":1\r\n:6\r\n")
+                   , ("decr", "*3\r\n$6\r\nINCRBY\r\n$5\r\nmykey\r\n:5\r\n\
+                              \*2\r\n$4\r\nDECR\r\n$5\r\nmykey\r\n",":5\r\n:4\r\n")
+                   , ("decrby", "*3\r\n$6\r\nINCRBY\r\n$5\r\nmykey\r\n:5\r\n\
+                                \*3\r\n$6\r\nDECRBY\r\n$5\r\nmykey\r\n:4\r\n",":5\r\n:1\r\n")
                    ]
 
 --------------------------------
