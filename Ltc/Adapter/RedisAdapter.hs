@@ -61,17 +61,7 @@ redisProxyD store () = runIdentityP loop
             MultiBulk ("MGET" : ks) -> do
                 handleMGet ks
             MultiBulk ["SADD", Bulk key, Bulk s] -> do
-                mv <- lift $ getWithDefault (lazy key) (VaStringSet S.empty)
-                case mv of
-                    VaStringSet ss -> do
-                        let size = S.size ss
-                            ss' = S.insert (lazy s) ss
-                        _ <- lift $ set store (lazy key) (VaStringSet ss')
-                        let size' = S.size ss'
-                        resply (Integer (fromIntegral (size' - size)))
-                    _ -> do
-                        resply . toError
-                            $ printf "WRONGTYPE key %s hoes not hold a string set" (show key)
+                handleSAdd key s
             _ ->
                 resply (Error "ERR unknown command")
         respond reply
@@ -132,6 +122,19 @@ redisProxyD store () = runIdentityP loop
                 _ -> do
                     return Nil  -- | FIXME Returning nil for bad parameters is a no-no.
         resply (MultiBulk values)
+
+    handleSAdd key s = do
+        mv <- lift $ getWithDefault (lazy key) (VaStringSet S.empty)
+        case mv of
+            VaStringSet ss -> do
+                let size = S.size ss
+                    ss' = S.insert (lazy s) ss
+                _ <- lift $ set store (lazy key) (VaStringSet ss')
+                let size' = S.size ss'
+                resply (Integer (fromIntegral (size' - size)))
+            _ -> do
+                resply . toError
+                    $ printf "WRONGTYPE key %s hoes not hold a string set" (show key)
 
     notAStringReply key =
         resply (toError (printf "WRONGTYPE key %s hoes not hold a string" (show key)))
