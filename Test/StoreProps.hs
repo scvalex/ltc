@@ -40,27 +40,27 @@ main = defaultMainWithOpts
 -- Unit tests
 --------------------------------
 
+testParameters :: OpenParameters Simple
+testParameters = OpenParameters { location       = "test-store"
+                                , useCompression = False
+                                , nodeName       = "test" }
+
 testOpen :: Assertion
 testOpen = cleanEnvironment ["test-store"] $ do
-    let op = OpenParameters { location       = "test-store"
-                            , useCompression = False
-                            , nodeName       = "test" }
-    store <- open op
+    store <- open testParameters
     close store
-    store' <- open op
+    store' <- open testParameters
     close store'
     opened <- CE.handle (\(exn :: NodeNameMismatchError) ->
                           return (not (requestedName exn == "other"
                                        && storeName exn == "test"))) $ do
-        _ <- open (op { nodeName = "other" })
+        _ <- open (testParameters { nodeName = "other" })
         return True
     when opened $ assertFailure "re-opened store with different node name"
 
 testSimpleSetGet :: Assertion
 testSimpleSetGet = cleanEnvironment ["test-store"] $ do
-    store <- open (OpenParameters { location       = "test-store"
-                                  , useCompression = False
-                                  , nodeName       = "test" })
+    store <- open testParameters
     _ <- set store "foo" "bar"
     res1 <- getLatest store "foo"
     res1 @?= Just ("bar", VC.fromList [("test", 1)])
@@ -78,9 +78,7 @@ testSimpleSetGet = cleanEnvironment ["test-store"] $ do
 
 testSimpleHistory :: Assertion
 testSimpleHistory = cleanEnvironment ["test-store"] $ do
-    store <- open (OpenParameters { location       = "test-store"
-                                  , useCompression = False
-                                  , nodeName       = "test" })
+    store <- open testParameters
     v1 <- set store "foo" "bar"
     res1 <- getLatest store "foo"
     res1 @?= Just ("bar", v1)
@@ -93,9 +91,7 @@ testSimpleHistory = cleanEnvironment ["test-store"] $ do
 
 testSimpleFieldType :: Assertion
 testSimpleFieldType = cleanEnvironment ["test-store"] $ do
-    store <- open (OpenParameters { location       = "test-store"
-                                  , useCompression = False
-                                  , nodeName       = "test" })
+    store <- open testParameters
     v1 <- set store "foo" (VaInt 23)
     res1 <- getLatest store "foo"
     res1 @?= Just (VaInt 23, v1)
