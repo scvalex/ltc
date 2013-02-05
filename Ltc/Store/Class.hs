@@ -9,6 +9,7 @@ module Ltc.Store.Class (
 
         -- * Errors
         TypeMismatchError(..), NodeNameMismatchError(..),
+        CorruptKeyFileError(..),
 
         -- * Value types
         Type(..), Value(..), valueString, valueType
@@ -82,6 +83,13 @@ data NodeNameMismatchError = NodeNameMismatchError { expectedName :: ByteString
                            deriving ( Show, Typeable )
 
 instance Exception NodeNameMismatchError
+
+data CorruptKeyFileError = CorruptKeyFileError { keyFilePath :: FilePath
+                                               , reason      :: String
+                                               }
+                         deriving ( Show, Typeable )
+
+instance Exception CorruptKeyFileError
 
 ----------------------
 -- Helpers
