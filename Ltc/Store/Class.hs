@@ -77,8 +77,8 @@ data TypeMismatchError = TypeMismatchError { expectedType :: Type
 
 instance Exception TypeMismatchError
 
-data NodeNameMismatchError = NodeNameMismatchError { expectedName :: ByteString
-                                                   , foundName    :: ByteString
+data NodeNameMismatchError = NodeNameMismatchError { storeName     :: ByteString
+                                                   , requestedName :: ByteString
                                                    }
                            deriving ( Show, Typeable )
 
