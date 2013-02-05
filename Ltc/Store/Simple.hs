@@ -251,19 +251,17 @@ readKeyRecord path = do
     if keyExists
           then do
               text <- BL.readFile path
+              let mkErr reason = CorruptKeyFileError { keyFilePath = path
+                                                     , ckfReason  = reason }
               case parse text of
                   Left err ->
-                      CE.throw (CorruptKeyFileError { keyFilePath = path
-                                                    , reason      = show err })
+                      CE.throw (mkErr (show err))
                   Right [s] ->
                       case fromSexp s of
-                          Nothing ->
-                              CE.throw (CorruptKeyFileError { keyFilePath = path
-                                                            , reason = "invalid sexp" })
+                          Nothing -> CE.throw (mkErr "invalid sexp")
                           Just kr -> return (Just kr)
                   Right _ ->
-                      CE.throw (CorruptKeyFileError { keyFilePath = path
-                                                    , reason = "multiple sexps" })
+                      CE.throw (mkErr "multiple sexps")
           else return Nothing
 
 -- | Write the given 'ByteString' to the file atomically.  Overwrite
