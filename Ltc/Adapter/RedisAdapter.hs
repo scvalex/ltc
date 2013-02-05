@@ -32,8 +32,9 @@ redisProxyD store () = runIdentityP loop
             MultiBulk ["GET", Bulk key] -> do
                 mv <- lift $ getLatest store (lazy key)
                 case mv of
-                    Nothing     -> resply Nil
-                    Just (v, _) -> resply (Bulk (strict (valueString v)))
+                    Nothing              -> resply Nil
+                    Just (VaString s, _) -> resply (Bulk (strict s))
+                    _                    -> notAStringReply key
             MultiBulk ["KEYS", Bulk pat] ->
                 handleKeys pat
             MultiBulk ["INCR", Bulk key] ->
