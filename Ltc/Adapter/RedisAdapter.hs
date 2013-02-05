@@ -43,6 +43,9 @@ redisProxyD store () = runIdentityP loop
                 handleIncr key (-1)
             MultiBulk ["DECRBY", Bulk key, Integer delta] ->
                 handleIncr key (-delta)
+            MultiBulk ["EXISTS", Bulk key] -> do
+                mv <- lift $ getLatest store (lazy key)
+                resply (maybe (Integer 0) (const (Integer 1)) mv)
             _ ->
                 resply (Error "ERR unknown command")
         respond reply
