@@ -21,16 +21,16 @@ redisProxyD store () = runIdentityP loop
   where
     loop = do
         cmd <- request ()
-        (reply, stop) <- case cmd of
+        (reply, stop) <- lift $ case cmd of
             MultiBulk ["PING"] ->
                 resply (Status "PONG")
             MultiBulk ["QUIT"] ->
                 return (Status "OK", True)
             MultiBulk ["SET", Bulk key, Bulk value] -> do
-                _ <- lift $ set store (lazy key) (VaString (lazy value))
+                _ <- set store (lazy key) (VaString (lazy value))
                 resply (Status "OK")
             MultiBulk ["GET", Bulk key] -> do
-                mv <- lift $ getLatest store (lazy key)
+                mv <- getLatest store (lazy key)
                 case mv of
                     Nothing              -> resply Nil
                     Just (VaString s, _) -> resply (Bulk (strict s))
@@ -46,12 +46,12 @@ redisProxyD store () = runIdentityP loop
             MultiBulk ["DECRBY", Bulk key, Integer delta] ->
                 handleIncr key (-delta)
             MultiBulk ["EXISTS", Bulk key] -> do
-                mv <- lift $ getLatest store (lazy key)
+                mv <- getLatest store (lazy key)
                 resply (maybe (Integer 0) (const (Integer 1)) mv)
             MultiBulk ["APPEND", Bulk key, Bulk value] -> do
                 handleAppend key value
             MultiBulk ["STRLEN", Bulk key] -> do
-                mv <- lift $ getWithDefault (lazy key) ""
+                mv <- getWithDefault (lazy key) ""
                 case mv of
                     VaString s -> resply (Integer (fromIntegral (BL.length s)))
                     _          -> notAStringReply key
@@ -59,7 +59,7 @@ redisProxyD store () = runIdentityP loop
                 handleGetRange key start end
             -- SETRANGE is not supported because Francesco is a pedant.
             MultiBulk ("MGET" : ks) -> do
-                lift $ messagesToKeys ks handleMGet
+                messagesToKeys ks handleMGet
             MultiBulk ["SADD", Bulk key, Bulk s] -> do
                 handleSAdd key s
             _ ->
@@ -76,32 +76,32 @@ redisProxyD store () = runIdentityP loop
                     Left err ->
                         resply (toError (printf "ERR bad pattern '%s'" err))
                     Right reg' -> do
-                        ks <- lift $ keys store
+                        ks <- keys store
                         let ks' = filter (\k -> isRightJust (T.execute reg' k))
                                   . map strict
                                   $ S.toList ks
                         resply (MultiBulk (map Bulk ks'))
 
     handleIncr key delta = do
-        mv <- lift $ getWithDefault (lazy key) (VaInt 0)
+        mv <- getWithDefault (lazy key) (VaInt 0)
         case mv of
             VaInt n -> do
-                _ <- lift $ set store (lazy key) (VaInt (n + delta))
+                _ <- set store (lazy key) (VaInt (n + delta))
                 resply (Integer (n + delta))
             _ -> do
                 resply (toError (printf "WRONGTYPE key %s does not hold a number" (show key)))
 
     handleAppend key value = do
-        mv <- lift $ getWithDefault (lazy key) (VaString "")
+        mv <- getWithDefault (lazy key) (VaString "")
         case mv of
             VaString s -> do
-                _ <- lift $ set store (lazy key) (VaString (BL.append s (lazy value)))
+                _ <- set store (lazy key) (VaString (BL.append s (lazy value)))
                 resply (Integer (fromIntegral (BL.length s + fromIntegral (BS.length value))))
             _ -> do
                 notAStringReply key
 
     handleGetRange key start end = do
-        mv <- lift $ getWithDefault (lazy key) ""
+        mv <- getWithDefault (lazy key) ""
         case mv of
             VaString s -> do
                 let normalize n = if n < 0 then fromIntegral (BL.length s) + n else n
@@ -120,12 +120,12 @@ redisProxyD store () = runIdentityP loop
         resply (MultiBulk values)
 
     handleSAdd key s = do
-        mv <- lift $ getWithDefault (lazy key) (VaStringSet S.empty)
+        mv <- getWithDefault (lazy key) (VaStringSet S.empty)
         case mv of
             VaStringSet ss -> do
                 let size = S.size ss
                     ss' = S.insert (lazy s) ss
-                _ <- lift $ set store (lazy key) (VaStringSet ss')
+                _ <- set store (lazy key) (VaStringSet ss')
                 let size' = S.size ss'
                 resply (Integer (fromIntegral (size' - size)))
             _ -> do
