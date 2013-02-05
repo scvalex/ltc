@@ -181,8 +181,8 @@ doSet ref key value = do
                    }
             Just krOld -> do
                 when (getValueType krOld /= valueType value) $ do
-                    CE.throw (TypeMismatchError { expected = getValueType krOld
-                                                , found    = valueType value })
+                    CE.throw (TypeMismatchError { expectedType = getValueType krOld
+                                                , foundType    = valueType value })
                 let v = getTip krOld
                 return $ krOld { getTip = KeyVersion { getVersion   = VC.incWithDefault
                                                                           nn (getVersion v) 0

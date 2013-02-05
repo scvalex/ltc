@@ -65,8 +65,8 @@ data Value = VaString ByteString
 instance IsString Value where
     fromString = VaString . pack
 
-data TypeMismatchError = TypeMismatchError { expected :: Type
-                                           , found    :: Type
+data TypeMismatchError = TypeMismatchError { expectedType :: Type
+                                           , foundType    :: Type
                                            }
                        deriving ( Show, Typeable )
 
