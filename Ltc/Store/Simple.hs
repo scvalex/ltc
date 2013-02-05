@@ -143,8 +143,11 @@ doGet ref key version = do
                 Nothing ->
                     return Nothing
                 Just kvsn -> do
-                    Just . VaString . (if getUseCompression ref then Z.decompress else id)
-                        <$> BL.readFile (locationValueHash ref (getValueHash kvsn))
+                    s <- (if getUseCompression ref then Z.decompress else id)
+                         <$> BL.readFile (locationValueHash ref (getValueHash kvsn))
+                    case getValueType kvsn of
+                        TyString -> return (Just (VaString s))
+                        TyInt    -> return (Just (VaInt (read (BL.unpack s))))
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
