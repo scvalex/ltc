@@ -7,15 +7,45 @@ module Ltc.Store.Class (
         -- * Common types
         Key, KeyHash, ValueHash, Version, NodeName,
 
+        -- * Errors
+        TypeMismatchError(..),
+
         -- * Value types
         Type(..), Value(..), valueString, valueType
     ) where
 
+import Control.Exception ( Exception )
 import Data.ByteString.Lazy.Char8 ( ByteString, pack )
 import Data.Data ( Data, Typeable )
 import Data.Set ( Set )
 import Data.String ( IsString(..) )
 import Data.VectorClock ( VectorClock )
+
+----------------------
+-- Classes
+----------------------
+
+class Store a where
+    data OpenParameters a :: *
+
+    open :: OpenParameters a -> IO a
+    close :: a -> IO ()
+
+    storeFormat :: a -> String
+    storeVersion :: a -> Int
+
+    get :: a -> Key -> Version -> IO (Maybe Value)
+    getLatest :: a -> Key -> IO (Maybe (Value, Version))
+
+    keyVersions :: a -> Key -> IO (Maybe [Version])
+
+    set :: a -> Key -> Value -> IO Version
+
+    keys :: a -> IO (Set Key)
+
+----------------------
+-- Types & instances
+----------------------
 
 type Key       = ByteString
 type KeyHash   = ByteString
@@ -47,11 +77,9 @@ class Store a where
     get :: a -> Key -> Version -> IO (Maybe Value)
     getLatest :: a -> Key -> IO (Maybe (Value, Version))
 
-    keyVersions :: a -> Key -> IO (Maybe [Version])
-
-    set :: a -> Key -> Value -> IO Version
-
-    keys :: a -> IO (Set Key)
+----------------------
+-- Helpers
+----------------------
 
 -- | Get the 'ByteString' representation of a value.
 valueString :: Value -> ByteString
