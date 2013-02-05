@@ -67,7 +67,7 @@ formatString :: String
 formatString = "simple"
 
 storeVsn :: Int
-storeVsn = 3
+storeVsn = 4
 
 tag :: String
 tag = "Simple"
@@ -81,16 +81,18 @@ data Simple = Simple { getBase           :: FilePath
 -- key.  So, a key whose value was set, and then changed twice, will
 -- have three of these records.
 data KeyVersion = KeyVersion { getVersion   :: Version
-                             , getValueType :: Type
                              , getValueHash :: ValueHash
                              } deriving ( Data, Typeable )
 
 -- | Represents a single 'Key' with at least one value ('getTip'), and
 -- possibly many older values ('getHistory').  History is ordered
--- most-recent-first.
-data KeyRecord = KR { getKeyName :: Key
-                    , getTip     :: KeyVersion
-                    , getHistory :: [KeyVersion]
+-- most-recent-first.  The values of a key are of a particular type
+-- ('getValueType'); this is determined when the key is first created,
+-- and cannot be later changed.
+data KeyRecord = KR { getKeyName   :: Key
+                    , getValueType :: Type
+                    , getTip       :: KeyVersion
+                    , getHistory   :: [KeyVersion]
                     } deriving ( Data, Typeable )
 
 instance Store Simple where
@@ -145,7 +147,7 @@ doGet ref key version = do
                 Just kvsn -> do
                     s <- (if getUseCompression ref then Z.decompress else id)
                          <$> BL.readFile (locationValueHash ref (getValueHash kvsn))
-                    case getValueType kvsn of
+                    case getValueType kr of
                         TyString -> return (Just (VaString s))
                         TyInt    -> return (Just (VaInt (read (BL.unpack s))))
 
@@ -172,15 +174,15 @@ doSet ref key value = do
         case mkrOld of
             Nothing ->
                 KR { getKeyName = key
+                   , getValueType = valueType value
                    , getTip     = KeyVersion { getVersion   = VC.insert nn 1 VC.empty
-                                             , getValueType = valueType value
                                              , getValueHash = vhash }
                    , getHistory = []
                    }
             Just krOld ->
                 let v = getTip krOld in
+                -- FIXME assert @getValueType == valueType value@
                 krOld { getTip = KeyVersion { getVersion   = VC.incWithDefault nn (getVersion v) 0
-                                            , getValueType = valueType value
                                             , getValueHash = vhash
                                             }
                       , getHistory = v : getHistory krOld
