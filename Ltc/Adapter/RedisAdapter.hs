@@ -19,48 +19,53 @@ redisProxyD :: (Proxy p, Store s) => s -> () -> Pipe p RedisMessage RedisMessage
 redisProxyD store () = runIdentityP loop
   where
     loop = do
-    cmd <- request ()
-    (reply, stop) <- case cmd of
-        MultiBulk ["PING"] ->
-            return (Status "PONG", False)
-        MultiBulk ["QUIT"] ->
-            return (Status "OK", True)
-        MultiBulk ["SET", Bulk key, Bulk value] -> do
-            _ <- lift $ set store (lazy key) (VaString (lazy value))
-            return (Status "OK", False)
-        MultiBulk ["GET", Bulk key] -> do
-            mv <- lift $ getLatest store (lazy key)
-            case mv of
-                Nothing     -> return (Nil, False)
-                Just (v, _) -> return (Bulk (strict (valueString v)), False)
-        MultiBulk ["KEYS", Bulk pat] -> do
-            case globToRegex (BL.unpack (lazy pat)) of
-                Nothing -> return (Error "ERR bad pattern", False)
-                Just reg -> do
-                    case T.compile defaultCompOpt defaultExecOpt reg of
-                        Left err ->
-                            return (Error (strict (BL.pack (printf "ERR bad pattern '%s'" err))), False)
-                        Right reg' -> do
-                            ks <- lift $ keys store
-                            let ks' = filter (\k -> isRightJust (T.execute reg' k))
-                                      . map strict
-                                      $ S.toList ks
-                            return (MultiBulk (map Bulk ks'), False)
-        MultiBulk ["INCR", Bulk key] -> do
-            mv <- lift $ getLatest store (lazy key)
-            case mv of
-                Nothing -> do
-                    _ <- lift $ set store (lazy key) (VaInt 1)
-                    return (Integer 1, False)
-                Just (VaInt n, _) -> do
-                    _ <- lift $ set store (lazy key) (VaInt (n + 1))
-                    return (Integer (n + 1), False)
-                Just (_, _) -> do
-                    return (Error (strict (BL.pack (printf "WRONGTYPE Key %s does not hold a number" (show key)))), False)
-        _ ->
-            return (Error "ERR unknown command", False)
-    respond reply
-    unless stop loop
+        cmd <- request ()
+        (reply, stop) <- case cmd of
+            MultiBulk ["PING"] ->
+                resply (Status "PONG")
+            MultiBulk ["QUIT"] ->
+                return (Status "OK", True)
+            MultiBulk ["SET", Bulk key, Bulk value] -> do
+                _ <- lift $ set store (lazy key) (VaString (lazy value))
+                resply (Status "OK")
+            MultiBulk ["GET", Bulk key] -> do
+                mv <- lift $ getLatest store (lazy key)
+                case mv of
+                    Nothing     -> resply Nil
+                    Just (v, _) -> resply (Bulk (strict (valueString v)))
+            MultiBulk ["KEYS", Bulk pat] -> do
+                case globToRegex (BL.unpack (lazy pat)) of
+                    Nothing ->
+                        resply (Error "ERR bad pattern")
+                    Just reg -> do
+                        case T.compile defaultCompOpt defaultExecOpt reg of
+                            Left err ->
+                                resply (Error (strict (BL.pack (printf "ERR bad pattern '%s'" err))))
+                            Right reg' -> do
+                                ks <- lift $ keys store
+                                let ks' = filter (\k -> isRightJust (T.execute reg' k))
+                                          . map strict
+                                          $ S.toList ks
+                                resply (MultiBulk (map Bulk ks'))
+            MultiBulk ["INCR", Bulk key] -> do
+                mv <- lift $ getLatest store (lazy key)
+                case mv of
+                    Nothing -> do
+                        _ <- lift $ set store (lazy key) (VaInt 1)
+                        resply (Integer 1)
+                    Just (VaInt n, _) -> do
+                        _ <- lift $ set store (lazy key) (VaInt (n + 1))
+                        resply (Integer (n + 1))
+                    Just (_, _) -> do
+                        resply (Error (strict (BL.pack (printf "WRONGTYPE Key %s does not hold a number" (show key)))))
+            _ ->
+                resply (Error "ERR unknown command")
+        respond reply
+        unless stop loop
+
+    -- | Because, usually, we want to not stop the loop.
+    resply :: (Monad m) => RedisMessage -> m (RedisMessage, Bool)
+    resply msg = return (msg, False)
 
 -- | Make a strict 'ByteString' lazy.
 lazy :: ByteString -> BL.ByteString
