@@ -59,7 +59,7 @@ redisProxyD store () = runIdentityP loop
                 handleGetRange key start end
             -- SETRANGE is not supported because Francesco is a pedant.
             MultiBulk ("MGET" : ks) -> do
-                handleMGet ks
+                lift $ messagesToKeys ks handleMGet
             MultiBulk ["SADD", Bulk key, Bulk s] -> do
                 handleSAdd key s
             _ ->
@@ -112,15 +112,11 @@ redisProxyD store () = runIdentityP loop
                 notAStringReply key
 
     handleMGet ks = do
-        values <- forM ks $ \vkey -> do
-            case vkey of
-                Bulk key -> do
-                    mv <- lift $ getLatest store (lazy key)
-                    return $ case mv of
-                        Just (VaString s, _) -> Bulk (strict s)
-                        _                    -> Nil
-                _ -> do
-                    return Nil  -- | FIXME Returning nil for bad parameters is a no-no.
+        values <- forM ks $ \key -> do
+            mv <- getLatest store key
+            return $ case mv of
+                Just (VaString s, _) -> Bulk (strict s)
+                _                    -> Nil
         resply (MultiBulk values)
 
     handleSAdd key s = do
@@ -135,6 +131,15 @@ redisProxyD store () = runIdentityP loop
             _ -> do
                 resply . toError
                     $ printf "WRONGTYPE key %s hoes not hold a string set" (show key)
+
+    -- | Convert a list of 'RedisMessage's to a list of 'Key's.  This
+    -- is useful for commands with variable numbers of arguments.
+    messagesToKeys :: [RedisMessage] -> ([Key] -> IO (RedisMessage, Bool)) -> IO (RedisMessage, Bool)
+    messagesToKeys ks act = go [] ks
+      where
+        go acc [] = act (reverse acc)
+        go acc (Bulk k : kt) = go (lazy k : acc) kt
+        go _ _ = resply (toError "WRONGTYPE some arguments are not keys")
 
     notAStringReply key =
         resply (toError (printf "WRONGTYPE key %s hoes not hold a string" (show key)))
