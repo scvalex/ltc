@@ -131,7 +131,7 @@ endToEndMessages =
        , MultiBulk ["STRLEN", "mykey"]
        , MultiBulk ["STRLEN", "nonexisting"] ],
        [ Status "OK", Integer 11, Integer 0 ])
-    , ("GETRANGE",
+    , ("getrange",
        [ MultiBulk ["SET", "mykey", "This is a string"]
        , MultiBulk ["GETRANGE", "mykey", Integer 0, Integer 3]
        , MultiBulk ["GETRANGE", "mykey", Integer (-3), Integer (-1)]
