@@ -7,6 +7,8 @@ import qualified Control.Exception as CE
 import Control.Monad ( replicateM, when )
 import Data.ByteString.Char8 ( ByteString )
 import qualified Data.ByteString.Char8 as BS
+import Data.Foldable ( foldlM )
+import qualified Data.Map as M
 import Data.Monoid ( mempty )
 import Ltc.Store
 import Network.Socket ( Socket, Family(..), SocketType(..), HostName
@@ -32,7 +34,7 @@ main = defaultMainWithOpts (concat [ msgStructureTests
                                      , testProperty "numericDance" propNumericDance ]
                                    ]) options
   where
-    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 5000000) }) }
+    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 10000000) }) }
 
 --------------------------------
 -- Unit tests
@@ -117,10 +119,12 @@ instance Arbitrary RedisMessage where
             5 -> MultiBulk <$> resize (sz `div` 2) arbitrary
             _ -> fail "not a real case of Arbitrary RedisMessage"
 
-data NumericRedisMessage = Incr Key
-                         | IncrBy Key Integer
-                         | Decr Key
-                         | DecrBy Key Integer
+type TestKey = ByteString
+
+data NumericRedisMessage = Incr TestKey
+                         | IncrBy TestKey Integer
+                         | Decr TestKey
+                         | DecrBy TestKey Integer
                          deriving ( Show )
 
 newtype NumericRedisMessages = NRMs { unNRMs :: [NumericRedisMessage] }
@@ -146,15 +150,37 @@ propEncodeParse :: RedisMessage -> Bool
 propEncodeParse msg = msg == R.parseExn (R.redisEncode msg)
 
 propNumericDance :: NumericRedisMessages -> Property
-propNumericDance (NRMs _) = monadicIO $ cleanEnvironmentP ["test-store"] $ do
+propNumericDance (NRMs msgs) = monadicIO $ cleanEnvironmentP ["test-store"] $ do
     store <- run $ open testParameters
     let port = 26279
     shutdown <- run $ serveWithPort port store
     sock <- run $ getSocket "localhost" port
-    -- FIXME Actually run tests here
+    _ <- foldlM (runCmd sock) M.empty msgs
     run $ sClose sock
     run $ shutdown
     run $ close store
+  where
+    runCmd sock kns (Incr key) = do
+        run $ sendMessage sock (MultiBulk ["INCR", Bulk key])
+        r <- run $ receiveMessage sock
+        runCmdWithDelta kns key 1 r
+    runCmd sock kns (Decr key) = do
+        run $ sendMessage sock (MultiBulk ["DECR", Bulk key])
+        r <- run $ receiveMessage sock
+        runCmdWithDelta kns key (-1) r
+    runCmd sock kns (IncrBy key delta) = do
+        run $ sendMessage sock (MultiBulk ["INCRBY", Bulk key, Integer delta])
+        r <- run $ receiveMessage sock
+        runCmdWithDelta kns key delta r
+    runCmd sock kns (DecrBy key delta) = do
+        run $ sendMessage sock (MultiBulk ["DECRBY", Bulk key, Integer delta])
+        r <- run $ receiveMessage sock
+        runCmdWithDelta kns key (-delta) r
+
+    runCmdWithDelta kns key delta r = do
+        let (Integer n) = M.findWithDefault (Integer 0) key kns
+        QCM.assert (Integer (n + delta) == r)
+        return (M.insert key (Integer (n + delta)) kns)
 
 --------------------------------
 -- Helpers
@@ -172,3 +198,12 @@ getSocket hostname port = do
         (\s -> do
              connect s (addrAddress $ head addrInfos)
              return s)
+
+-- | Send a Redis message to a server.
+sendMessage :: Socket -> RedisMessage -> IO ()
+sendMessage sock msg = sendAll sock (R.redisEncode msg)
+
+-- | Receive a Redis message from a server in a stupid way.
+receiveMessage :: Socket -> IO RedisMessage
+receiveMessage sock = do
+    R.parseExn <$> recv sock 4096 -- FIXME We should handle leftovers somehow.
