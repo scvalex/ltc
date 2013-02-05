@@ -34,7 +34,9 @@ main = defaultMainWithOpts
        , testProperty "setGetLatest" propSetGetLatest
        , testProperty "keysPresent" propKeysPresent
        , testProperty "fullHistory" propFullHistory
-       ] mempty
+       ] options
+  where
+    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 10000000) }) }
 
 --------------------------------
 -- Unit tests
