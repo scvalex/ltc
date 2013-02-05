@@ -8,6 +8,8 @@ import Ltc.Store
 import Control.Applicative
 import qualified Control.Exception as CE
 import Control.Monad
+import Data.ByteString.Lazy.Char8 ( ByteString )
+import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.List ( find )
 import Data.Foldable ( foldlM )
 import qualified Data.Map as M
@@ -99,6 +101,10 @@ testSimpleFieldType = cleanEnvironment ["test-store"] $ do
 --------------------------------
 -- QuickCheck
 --------------------------------
+
+instance Arbitrary ByteString where
+    arbitrary = sized $ \n -> do
+        BL.pack <$> sequence [ choose (' ', '~') | _ <- [1..n] ]
 
 data Command = GetLatest Key | Set Key Value
              deriving ( Show )
