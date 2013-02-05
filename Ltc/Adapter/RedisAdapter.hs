@@ -37,6 +37,8 @@ redisProxyD store () = runIdentityP loop
                 handleKeys pat
             MultiBulk ["INCR", Bulk key] ->
                 handleIncr key 1
+            MultiBulk ["INCRBY", Bulk key, Integer delta] ->
+                handleIncr key delta
             _ ->
                 resply (Error "ERR unknown command")
         respond reply
