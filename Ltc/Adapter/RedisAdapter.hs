@@ -46,6 +46,17 @@ redisProxyD store () = runIdentityP loop
                                       . map strict
                                       $ S.toList ks
                             return (MultiBulk (map Bulk ks'), False)
+        MultiBulk ["INCR", Bulk key] -> do
+            mv <- lift $ getLatest store (lazy key)
+            case mv of
+                Nothing -> do
+                    _ <- lift $ set store (lazy key) (VaInt 1)
+                    return (Integer 1, False)
+                Just (VaInt n, _) -> do
+                    _ <- lift $ set store (lazy key) (VaInt (n + 1))
+                    return (Integer (n + 1), False)
+                Just (_, _) -> do
+                    return (Error (strict (BL.pack (printf "WRONGTYPE Key %s does not hold a number" (show key)))), False)
         _ ->
             return (Error "ERR unknown command", False)
     respond reply

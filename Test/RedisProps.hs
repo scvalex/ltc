@@ -88,6 +88,8 @@ endToEndMessages = [ ("ping", "*1\r\n$4\r\nPING\r\n", "+PONG\r\n")
                                    \*3\r\n$3\r\nSET\r\n$3\r\nbar\r\n$3\r\nbaz\r\n\
                                    \*2\r\n$4\r\nKEYS\r\n$1\r\n*\r\n",
                                    "+OK\r\n+OK\r\n*2\r\n$3\r\nbar\r\n$3\r\nfoo\r\n")
+                   , ("incr", "*2\r\n$4\r\nINCR\r\n$5\r\nmykey\r\n\
+                              \*2\r\n$4\r\nINCR\r\n$5\r\nmykey\r\n",":1\r\n:2\r\n")
                    ]
 
 --------------------------------
