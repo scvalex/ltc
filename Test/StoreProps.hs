@@ -8,8 +8,6 @@ import Ltc.Store
 import Control.Applicative
 import qualified Control.Exception as CE
 import Control.Monad
-import Data.ByteString.Lazy.Char8 ( ByteString )
-import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.List ( find )
 import Data.Foldable ( foldlM )
 import qualified Data.Map as M
@@ -17,7 +15,7 @@ import Data.Monoid
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 
-import Test.Common ( cleanEnvironment, cleanEnvironmentP )
+import Test.Common ( cleanEnvironment, cleanEnvironmentP, testParameters )
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
@@ -39,11 +37,6 @@ main = defaultMainWithOpts
 --------------------------------
 -- Unit tests
 --------------------------------
-
-testParameters :: OpenParameters Simple
-testParameters = OpenParameters { location       = "test-store"
-                                , useCompression = False
-                                , nodeName       = "test" }
 
 testOpen :: Assertion
 testOpen = cleanEnvironment ["test-store"] $ do
@@ -112,10 +105,6 @@ data Command = GetLatest Key | Set Key Value
 
 newtype Commands = Commands { unCommands :: [Command] }
                  deriving ( Show )
-
-instance Arbitrary ByteString where
-    arbitrary = sized $ \n -> do
-        BL.pack <$> sequence [ choose (' ', '~') | _ <- [1..n] ]
 
 instance Arbitrary Value where
     arbitrary = VaString <$> arbitrary
