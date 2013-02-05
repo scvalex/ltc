@@ -9,7 +9,7 @@ module Ltc.Store.Class (
 
         -- * Errors
         TypeMismatchError(..), NodeNameMismatchError(..),
-        CorruptKeyFileError(..),
+        CorruptKeyFileError(..), CorruptValueFileError(..),
 
         -- * Value types
         Type(..), Value(..), valueString, valueType
@@ -21,6 +21,7 @@ import Data.Data ( Data, Typeable )
 import Data.Set ( Set )
 import Data.String ( IsString(..) )
 import Data.VectorClock ( VectorClock )
+import Language.Sexp ( toSexp, printHum )
 
 ----------------------
 -- Classes
@@ -57,10 +58,14 @@ type Version   = VectorClock NodeName Int
 -- | The type of a value stored in the store.
 data Type = TyString
           | TyInt
+          | TyIntSet
+          | TyStringSet
           deriving ( Data, Eq, Show, Typeable )
 
 data Value = VaString ByteString
            | VaInt Integer
+           | VaIntSet (Set Integer)
+           | VaStringSet (Set Integer)
            deriving ( Eq, Show )
 
 instance IsString Value where
@@ -85,11 +90,18 @@ data NodeNameMismatchError = NodeNameMismatchError { storeName     :: ByteString
 instance Exception NodeNameMismatchError
 
 data CorruptKeyFileError = CorruptKeyFileError { keyFilePath :: FilePath
-                                               , reason      :: String
+                                               , ckfReason   :: String
                                                }
                          deriving ( Show, Typeable )
 
 instance Exception CorruptKeyFileError
+
+data CorruptValueFileError = CorruptValueFileError { valueFilePath :: FilePath
+                                                   , cvfReason     :: String
+                                                   }
+                           deriving ( Show, Typeable )
+
+instance Exception CorruptValueFileError
 
 ----------------------
 -- Helpers
@@ -97,10 +109,14 @@ instance Exception CorruptKeyFileError
 
 -- | Get the 'ByteString' representation of a value.
 valueString :: Value -> ByteString
-valueString (VaString s) = s
-valueString (VaInt s) = pack (show s)
+valueString (VaString s)     = s
+valueString (VaInt n)        = pack (show n)
+valueString (VaStringSet ss) = printHum (toSexp ss)
+valueString (VaIntSet is)    = printHum (toSexp is)
 
 -- | Get the type of a 'Value'.
 valueType :: Value -> Type
-valueType (VaString _) = TyString
-valueType (VaInt _)    = TyInt
+valueType (VaString _)    = TyString
+valueType (VaInt _)       = TyInt
+valueType (VaStringSet _) = TyStringSet
+valueType (VaIntSet _)    = TyIntSet

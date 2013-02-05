@@ -54,7 +54,7 @@ import Data.Foldable ( find, foldlM )
 import Data.Set ( Set )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
-import Language.Sexp ( toSexp, fromSexp, parse, printHum )
+import Language.Sexp ( toSexp, fromSexp, parse, parseMaybe, printHum )
 import Ltc.Store.Class
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents )
@@ -146,11 +146,31 @@ doGet ref key version = do
                 Nothing ->
                     return Nothing
                 Just kvsn -> do
+                    let valueFile = locationValueHash ref (getValueHash kvsn)
                     s <- (if getUseCompression ref then Z.decompress else id)
-                         <$> BL.readFile (locationValueHash ref (getValueHash kvsn))
+                         <$> BL.readFile valueFile
                     case getValueType kr of
                         TyString -> return (Just (VaString s))
                         TyInt    -> return (Just (VaInt (read (BL.unpack s))))
+                        TyStringSet -> do
+                            mss <- parseSet valueFile s
+                            return (maybe Nothing (Just . VaStringSet) mss)
+                        TyIntSet -> do
+                            mis <- parseSet valueFile s
+                            return (maybe Nothing (Just . VaIntSet) mis)
+  where
+    parseSet valueFile s = do
+        let err reason = CorruptValueFileError { valueFilePath = valueFile
+                                               , cvfReason     = reason }
+        case parseMaybe s of
+            Nothing ->
+                CE.throw (err "no sexp")
+            Just [sexp] -> do
+                case fromSexp sexp of
+                    Nothing -> CE.throw (err "corrupt set in value file")
+                    Just ss -> return (Just ss)
+            Just _ ->
+                CE.throw (err "corrupt set in value file")
 
 doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
 doGetLatest ref key = do
