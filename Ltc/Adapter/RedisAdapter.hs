@@ -33,35 +33,41 @@ redisProxyD store () = runIdentityP loop
                 case mv of
                     Nothing     -> resply Nil
                     Just (v, _) -> resply (Bulk (strict (valueString v)))
-            MultiBulk ["KEYS", Bulk pat] -> do
-                case globToRegex (BL.unpack (lazy pat)) of
-                    Nothing ->
-                        resply (Error "ERR bad pattern")
-                    Just reg -> do
-                        case T.compile defaultCompOpt defaultExecOpt reg of
-                            Left err ->
-                                resply (Error (strict (BL.pack (printf "ERR bad pattern '%s'" err))))
-                            Right reg' -> do
-                                ks <- lift $ keys store
-                                let ks' = filter (\k -> isRightJust (T.execute reg' k))
-                                          . map strict
-                                          $ S.toList ks
-                                resply (MultiBulk (map Bulk ks'))
-            MultiBulk ["INCR", Bulk key] -> do
-                mv <- lift $ getLatest store (lazy key)
-                case mv of
-                    Nothing -> do
-                        _ <- lift $ set store (lazy key) (VaInt 1)
-                        resply (Integer 1)
-                    Just (VaInt n, _) -> do
-                        _ <- lift $ set store (lazy key) (VaInt (n + 1))
-                        resply (Integer (n + 1))
-                    Just (_, _) -> do
-                        resply (Error (strict (BL.pack (printf "WRONGTYPE Key %s does not hold a number" (show key)))))
+            MultiBulk ["KEYS", Bulk pat] ->
+                handleKeys pat
+            MultiBulk ["INCR", Bulk key] ->
+                handleIncr key 1
             _ ->
                 resply (Error "ERR unknown command")
         respond reply
         unless stop loop
+
+    handleKeys pat = do
+        case globToRegex (BL.unpack (lazy pat)) of
+            Nothing ->
+                resply (Error "ERR bad pattern")
+            Just reg -> do
+                case T.compile defaultCompOpt defaultExecOpt reg of
+                    Left err ->
+                        resply (Error (strict (BL.pack (printf "ERR bad pattern '%s'" err))))
+                    Right reg' -> do
+                        ks <- lift $ keys store
+                        let ks' = filter (\k -> isRightJust (T.execute reg' k))
+                                  . map strict
+                                  $ S.toList ks
+                        resply (MultiBulk (map Bulk ks'))
+
+    handleIncr key delta = do
+        mv <- lift $ getLatest store (lazy key)
+        case mv of
+            Nothing -> do
+                _ <- lift $ set store (lazy key) (VaInt delta)
+                resply (Integer delta)
+            Just (VaInt n, _) -> do
+                _ <- lift $ set store (lazy key) (VaInt (n + delta))
+                resply (Integer (n + delta))
+            Just (_, _) -> do
+                resply (Error (strict (BL.pack (printf "WRONGTYPE Key %s does not hold a number" (show key)))))
 
     -- | Because, usually, we want to not stop the loop.
     resply :: (Monad m) => RedisMessage -> m (RedisMessage, Bool)
