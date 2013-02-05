@@ -88,6 +88,7 @@ testSimpleHistory = cleanEnvironment ["test-store"] $ do
     res2 @?= Just ("baz", v2)
     res3 <- get store "foo" v1
     res3 @?= Just "bar"
+    close store
 
 --------------------------------
 -- QuickCheck
