@@ -7,6 +7,7 @@ import Control.Monad ( forM )
 import Data.ByteString.Char8 ( ByteString )
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
+import Data.Set ( Set )
 import qualified Data.Set as S
 import Control.Monad ( unless )
 import Control.Proxy
@@ -62,6 +63,8 @@ redisProxyD store () = runIdentityP loop
                 messagesToKeys ks handleMGet
             MultiBulk ["SADD", Bulk key, Bulk s] -> do
                 handleSAdd key s
+            MultiBulk ("SINTER" : ks) ->
+                messagesToKeys ks handleSInter
             _ ->
                 resply (Error "ERR unknown command")
         respond reply
@@ -131,6 +134,41 @@ redisProxyD store () = runIdentityP loop
             _ -> do
                 resply . toError
                     $ printf "WRONGTYPE key %s hoes not hold a string set" (show key)
+
+    handleSInter [] = resply (MultiBulk [])
+    handleSInter (k:ks) = do
+        mv <- getLatest store k
+        case mv of
+            Nothing -> resply (MultiBulk [])
+            Just (VaStringSet s, _) -> do
+                mss <- getTypedSets VaStringSet fromVaStringSet ks
+                case mss of
+                    Nothing -> resply (toError "WRONGTYPE some arguments are not string sets")
+                    Just ss -> do
+                        let isct = foldl S.intersection s ss
+                        resply (MultiBulk (map (Bulk . strict) (S.toList isct)))
+            Just (VaIntSet s, _) -> do
+                mss <- getTypedSets VaIntSet fromVaIntSet ks
+                case mss of
+                    Nothing -> resply (toError "WRONGTYPE some arguments are not int sets")
+                    Just ss -> do
+                        let isct = foldl S.intersection s ss
+                        resply (MultiBulk (map Integer (S.toList isct)))
+            _ -> resply (toError "WRONGTYPE some arguments are not sets")
+      where
+        fromVaStringSet (VaStringSet s) = Just s
+        fromVaStringSet _               = Nothing
+
+        fromVaIntSet (VaIntSet s) = Just s
+        fromVaIntSet _            = Nothing
+
+    -- | Get all the sets associated with the given keys.  Any missing
+    -- values default to empty sets.  If any of the sets are not
+    -- sets of the right type, return 'Nothing'.
+    getTypedSets :: (Set a -> Value) -> (Value -> Maybe (Set a)) -> [Key] -> IO (Maybe [Set a])
+    getTypedSets ktr ex ks = do
+        sets <- map (maybe (ktr S.empty) fst) <$> forM ks (getLatest store)
+        return $ foldl (\mss vs -> ex vs >>= \s -> (s:) <$> mss) (Just []) sets
 
     -- | Convert a list of 'RedisMessage's to a list of 'Key's.  This
     -- is useful for commands with variable numbers of arguments.

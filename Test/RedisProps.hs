@@ -148,6 +148,15 @@ endToEndMessages =
        , MultiBulk ["SADD", "myset", "World"]
        , MultiBulk ["SADD", "myset", "World"] ],
        [ Integer 1, Integer 1, Integer 0 ])
+    , ("sinter",
+       [ MultiBulk ["SADD", "key1", "a"]
+       , MultiBulk ["SADD", "key1", "b"]
+       , MultiBulk ["SADD", "key1", "c"]
+       , MultiBulk ["SADD", "key2", "c"]
+       , MultiBulk ["SADD", "key2", "d"]
+       , MultiBulk ["SADD", "key2", "e"]
+       , MultiBulk ["SINTER", "key1", "key2"] ],
+       [Integer 1, Integer 1, Integer 1, Integer 1, Integer 1, Integer 1, MultiBulk ["c"]])
     ]
 
 --------------------------------
