@@ -73,14 +73,14 @@ redisProxyD store () = runIdentityP loop
                     VaStringSet s ->
                         resply (Integer (fromIntegral (fromEnum (lazy value `S.member` s))))
                     _ ->
-                        resply (toError (printf "key %s is not a string set" (show key)))
+                        resply (toError (printf "WRONGTYPE key %s is not a string set" (show key)))
             MultiBulk ["SISMEMBER", Bulk key, Integer value] -> do
                 vs <- getWithDefault (lazy key) (VaIntSet S.empty)
                 case vs of
                     VaIntSet s ->
                         resply (Integer (fromIntegral (fromEnum (value `S.member` s))))
                     _ ->
-                        resply (toError (printf "key %s is not an int set" (show key)))
+                        resply (toError (printf "WRONGTYPE key %s is not an int set" (show key)))
             _ ->
                 resply (Error "ERR invalid command")
         respond reply
