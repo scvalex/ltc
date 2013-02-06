@@ -163,6 +163,11 @@ endToEndMessages =
        , MultiBulk ["SISMEMBER", "myset", "one"]
        , MultiBulk ["SISMEMBER", "myset", "two"] ],
        [Integer 1, Integer 1, Integer 0])
+    , ("scard",
+       [ MultiBulk ["SADD", "myset", "Hello"]
+       , MultiBulk ["SADD", "myset", "World"]
+       , MultiBulk ["SCARD", "myset"] ],
+       [Integer 1, Integer 1, Integer 2])
     ]
 
 --------------------------------
