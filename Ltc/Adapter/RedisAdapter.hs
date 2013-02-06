@@ -67,8 +67,22 @@ redisProxyD store () = runIdentityP loop
                 messagesToKeys ks handleSInter
             MultiBulk ["SMEMBERS", key] ->
                 messagesToKeys [key] handleSInter
+            MultiBulk ["SISMEMBER", Bulk key, Bulk value] -> do
+                vs <- getWithDefault (lazy key) (VaStringSet S.empty)
+                case vs of
+                    VaStringSet s ->
+                        resply (Integer (fromIntegral (fromEnum (lazy value `S.member` s))))
+                    _ ->
+                        resply (toError (printf "key %s is not a string set" (show key)))
+            MultiBulk ["SISMEMBER", Bulk key, Integer value] -> do
+                vs <- getWithDefault (lazy key) (VaIntSet S.empty)
+                case vs of
+                    VaIntSet s ->
+                        resply (Integer (fromIntegral (fromEnum (value `S.member` s))))
+                    _ ->
+                        resply (toError (printf "key %s is not an int set" (show key)))
             _ ->
-                resply (Error "ERR unknown command")
+                resply (Error "ERR invalid command")
         respond reply
         unless stop loop
 

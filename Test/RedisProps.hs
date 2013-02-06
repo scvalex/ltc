@@ -158,6 +158,11 @@ endToEndMessages =
        , MultiBulk ["SADD", "key2", "e"]
        , MultiBulk ["SINTER", "key1", "key2"] ],
        [Integer 1, Integer 1, Integer 1, Integer 1, Integer 1, Integer 1, MultiBulk ["c"]])
+    , ("sismember",
+       [ MultiBulk ["SADD", "myset", "one"]
+       , MultiBulk ["SISMEMBER", "myset", "one"]
+       , MultiBulk ["SISMEMBER", "myset", "two"] ],
+       [Integer 1, Integer 1, Integer 0])
     ]
 
 --------------------------------
