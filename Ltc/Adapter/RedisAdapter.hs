@@ -65,6 +65,8 @@ redisProxyD store () = runIdentityP loop
                 handleSAdd key s
             MultiBulk ("SINTER" : ks) ->
                 messagesToKeys ks handleSInter
+            MultiBulk ["SMEMBERS", key] ->
+                messagesToKeys [key] handleSInter
             _ ->
                 resply (Error "ERR unknown command")
         respond reply
