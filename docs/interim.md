@@ -1,15 +1,16 @@
 \begin{abstract}
 
-A frequent problem in computing is keeping replicated data sets
-synchronized.  Solutions include distributed version control systems
-such as git, traditional databases such as MySQL, and modern NoSQL
-data stores such as Redis.  But all these make tacit assumptions about
-the communication medium: that the round-trip times between nodes is
-relatively short, and that the channel is mostly error-free.  Although
-these assumptions hold withing data centers, and sometimes, on the
-Internet, they do not hold for some extreme situations such as
-interplanetary communications.  LTc aims to define and implement
-synchronization protocols for such situations.
+One of the difficulties of engineering a distributed system is keeping
+the data on different nodes synchronized.  Solutions include
+distributed version control systems such as git, traditional databases
+such as MySQL, and modern NoSQL data stores such as Redis.  But all
+these make tacit assumptions about the communication medium: that the
+round-trip time between nodes is relatively short, and that the
+channel is mostly error-free.  Although these assumptions hold within
+data centers, and sometimes, on the Internet, they do not hold for
+some extreme situations such as interplanetary communications.  LTc
+aims to define and implement synchronization protocols for such
+situations.
 
 \end{abstract}
 
@@ -34,13 +35,14 @@ suffer such as developing parts of the world." \citep{dtnrg}
 
 \label{sec:motivation}
 
-Current systems such as distributed version control systems (DVCS),
-traditional databases (DBMS), and modern NoSQL data stores are
-unsuitable for such situations because they make tacit assumptions
-about the communications medium.  We discuss these assumptions in
-detail in Section \ref{sec:dtn}, but, broadly speaking, these systems
-assume that the communication channel uses a protocol, with strong
-reliability and ordering guarantees, such as TCP/IP.
+Data replication is a problem tacked in by Distributed Version Control
+Systems (DVCSs), traditional databases (DBMSs), and modern NoSQL data
+stores.  Such current systems are unsuitable for some situations
+because they make tacit assumptions about the communications medium.
+We discuss these assumptions in detail in Section \ref{sec:dtn}, but,
+broadly speaking, these systems assume that the communication channel
+uses a protocol such as TCP/IP, which has strong reliability and
+ordering guarantees.
 
 Unlike other systems, LTc makes only the following explicit
 assumptions.  First of all, nodes\footnote{when speaking of nodes, we
@@ -164,9 +166,9 @@ lossy, and unpredictable.
 Although a traditional database system could function in such an
 environment, it would also have to handle the inevitable network
 partitions gracefully.  This is not often the case.  For instance,
-\href{http://redis.io/}{Redis} requires nodes to perform a
-re-synchronization of all the data once the connection has been
-re-established \citep{redis-replication}.
+\href{http://redis.io/}{Redis}, a widely used key-value store,
+requires nodes to perform a re-synchronization of all the data once
+the connection has been re-established \citep{redis-replication}.
 
 \clearpage
 
@@ -203,7 +205,7 @@ makes writing adapters a simple order of business.
     +================+================+
     | users          | alex,bob       |
     +----------------+----------------+
-    + alex:karma     + 43             +
+    + alex:karma     + 42             +
     +----------------+----------------+
     + alex:email     + alex@email.com +
     +----------------+----------------+
@@ -237,6 +239,8 @@ partitions happen, we cannot relax the last guarantee. \citep{Vog08}
 LTc takes this observation further: not only do network partitions
 happen, the network *is* partitioned.
 
+<!-- FIXME: Susan: Expand the above. -->
+
 Since communication between nodes can be very slow, guaranteeing
 consistency would mean that most operations have to be equally slow.
 So, we relax the strict consistency guarantee and use *eventual
@@ -254,15 +258,15 @@ supports ACID transactions. \citet{wiki:ACID} defines ACID as the
 following four characteristics which transactions need to have:
 atomicity, consistency, isolation, durability.
 
-LTc does *not* support transactions at the moment, but they would be a
-very useful future development.  Although this makes LTc less useful,
-it does allow us to focus on the data store, and on the
+LTc does *not* support any transactions at the moment, but they would
+be a very useful future development.  Although this makes LTc less
+useful, it does allow us to focus on the data store, and on the
 synchronization protocols, both of which would be greatly complicated
 by the addition of transactions.
 
-So, ACID-wise, LTc only supports atomic write operations, but this is
-not as limiting as it first seems: widely used data stores such as
-MongoDB and CouchDB have similar limitations.
+So, ACID-wise, LTc only supports atomic, isolated, durable write
+operations, but this is not as limiting as it first seems: widely used
+data stores such as MongoDB and CouchDB have similar limitations.
 \citep{mongodb-transactions} \citep{couchdb-transactions}
 
 ## UDP
@@ -295,7 +299,7 @@ there is no way for the source to tell if a packet was lost or not.
 Worse yet, even assuming a perfect connection that does not lose
 packets, if the destination does not process them quickly enough, its
 UDP buffer will spill over causing lost packets.  So, LTc's
-synchronization mechanism must be able to make forward progress even
+synchronization mechanism must be able to make forward progress even <!-- FIXME: Susan: Explain incomplete updates -->
 if only incomplete updates are available.  Second, UDP makes no
 guarantee that sent packets will be received in order.  This is
 problematic because the order of updates is important.  Finally, UDP
@@ -315,13 +319,13 @@ data set?
 
 Because of the disconnected nature of the network, we do not have much
 choice in the matter, and updates can only be propagated on a
-node-by-node basis.  We note that this is the same problem routers in
-partially connected have when updating their routing tables.  "When
-instantaneous end-to-end paths are difficult or impossible to
-establish, routing protocols must take to a 'store and forward'
-approach, where data is incrementally moved and stored throughout the
-network in hopes that it will eventually reach its destination."
-\citep{wiki:dtn-routing}
+node-by-node basis.  We note that this is the same problem routers
+that are in partially connected have when updating their routing
+tables.  "When instantaneous end-to-end paths are difficult or
+impossible to establish, routing protocols must take to a 'store and
+forward' approach, where data is incrementally moved and stored
+throughout the network in hopes that it will eventually reach its
+destination."  \citep{wiki:dtn-routing}
 
 Our update propagation algorithm will be a variant of epidemic
 routing: When a node becomes "infected" by an update, it seeks out
@@ -588,8 +592,8 @@ be done. \citep{And10} Because both these approaches work well in
 practice, in LTc, we first attempt to solve conflict through automatic
 merging, and fallback to application specific conflict resolution.
 
-Among DVCSs, \href{http://darcs.net/}{Darcs} is different in that it
-tries to mathematically formalize its behaviour.  This formalism is
+Among DVCSs, \href{http://darcs.net/}{Darcs} is the only one with a
+mathematical formalism underlying its behaviour.  This formalism is
 known as Patch Theory, and is a way of reasoning about what happens
 when two repositories exchange patches.  It begins by defining basic
 concepts such as patches, and changes, and the properties these may
