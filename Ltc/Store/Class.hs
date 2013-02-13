@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, DeriveDataTypeable, EmptyDataDecls #-}
+{-# LANGUAGE TypeFamilies, DeriveDataTypeable #-}
 
 module Ltc.Store.Class (
         -- * Store interface
@@ -56,21 +56,14 @@ type ValueHash = ByteString
 type NodeName  = ByteString
 type Version   = VectorClock NodeName Int
 
-data InhabitedTy
-
-data FunctionTy
-
 -- | The type of a value stored in the store.
-data Type a where
-    TyString :: Type InhabitedTy
-    TyInt    :: Type InhabitedTy
-    TySet    :: Type InhabitedTy -> Type FunctionTy
-  deriving ( Data, Eq, Show, Typeable )
+data Type = TyString
+          | TyInt
+          | TyIntSet
+          | TyStringSet
+          deriving ( Data, Eq, Show, Typeable )
 
-data Value a where
-     VaString :: ByteString -> Value InhabitedTy
-     VaInt    :: Integer -> Value InhabitedTy
-     VaSet    :: Set 
+data Value = VaString ByteString
            | VaInt Integer
            | VaIntSet (Set Integer)
            | VaStringSet (Set ByteString)
