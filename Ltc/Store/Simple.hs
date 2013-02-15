@@ -137,7 +137,7 @@ doClose _handle = do
     debugM tag "close"
     return ()
 
-doGet :: Simple -> Key -> Version -> IO (Maybe Value)
+doGet :: Simple -> Key -> Version -> IO (Maybe (Value a))
 doGet ref key version = do
     debugM tag (printf "get %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
@@ -150,14 +150,18 @@ doGet ref key version = do
                     s <- (if getUseCompression ref then Z.decompress else id)
                          <$> BL.readFile valueFile
                     case getValueType kr of
-                        TyString -> return (Just (VaString s))
-                        TyInt    -> return (Just (VaInt (read (BL.unpack s))))
-                        TyStringSet -> do
+                        SingleString ->
+                            return (Just (VaString s))
+                        SingleInteger ->
+                            return (Just (VaInt (read (BL.unpack s))))
+                        CollectionString -> do
                             mss <- parseSet valueFile s
-                            return (maybe Nothing (Just . VaStringSet) mss)
-                        TyIntSet -> do
+                            let mss' = S.map VaString mss
+                            return (maybe Nothing (Just . VaSet) mss')
+                        CollectionInteger -> do
                             mis <- parseSet valueFile s
-                            return (maybe Nothing (Just . VaIntSet) mis)
+                            let mis' = S.map VaInt mis
+                            return (maybe Nothing (Just . VaSet) mis')
   where
     parseSet valueFile s = do
         let err reason = CorruptValueFileError { valueFilePath = valueFile
@@ -172,7 +176,7 @@ doGet ref key version = do
             Just _ ->
                 CE.throw (err "corrupt set in value file")
 
-doGetLatest :: Simple -> Key -> IO (Maybe (Value, Version))
+doGetLatest :: Simple -> Key -> IO (Maybe (Value a, Version))
 doGetLatest ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
         let latestVersion = getVersion (getTip kr)
@@ -184,7 +188,7 @@ doKeyVersions ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
         return . Just . map getVersion $ getTip kr : getHistory kr
 
-doSet :: Simple -> Key -> Value -> IO Version
+doSet :: Simple -> Key -> Value a -> IO Version
 doSet ref key value = do
     debugM tag (printf "set %s" (BL.unpack key))
     let vhash = valueHash value
@@ -294,7 +298,7 @@ keyHash = BL.pack . showDigest . sha1
 
 -- | The hash of a value.  This hash is used as the filename under
 -- which the value is stored in the @values/@ folder.
-valueHash :: Value -> ValueHash
+valueHash :: Value a -> ValueHash
 valueHash = BL.pack . showDigest . sha1 . valueString
 
 -- | Find the 'KeyVersion' with the given 'Version'.

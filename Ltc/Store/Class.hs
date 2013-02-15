@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies, DeriveDataTypeable, GADTs, FlexibleInstances #-}
+{-# LANGUAGE EmptyDataDecls, StandaloneDeriving #-}
 
 module Ltc.Store.Class (
         -- * Store interface
@@ -12,13 +13,12 @@ module Ltc.Store.Class (
         CorruptKeyFileError(..), CorruptValueFileError(..),
 
         -- * Value types
-        Type(..), Value(..), valueString, valueType
+        Value(..), Single, Collection, Type(..), valueString, valueType
     ) where
 
 import Control.Exception ( Exception )
 import Data.ByteString.Lazy.Char8 ( ByteString, pack )
-import Data.Data ( Data(..), Typeable(..), Fixity(..), DataType, Constr
-                 , mkDataType, mkConstr, mkTyConApp, mkTyCon3, constrIndex )
+import Data.Data ( Data(..), Typeable(..) )
 import Data.Set ( Set )
 import qualified Data.Set as S
 import Data.String ( IsString(..) )
@@ -57,81 +57,70 @@ type ValueHash = ByteString
 type NodeName  = ByteString
 type Version   = VectorClock NodeName Int
 
-data BasicValue a where
-    VaInt :: Integer -> BasicValue Integer
-    VaString :: ByteString -> BasicValue ByteString
+data Single a
 
-instance Typeable (BasicValue a) where
-    typeOf (VaInt _) = mkTyConApp (mkTyCon3 "ltc" "Ltc.Store.Class" "VaInt")
-                                  [typeOf (undefined :: Integer)]
-    typeOf (VaString _) = mkTyConApp (mkTyCon3 "ltc" "Ltc.Store.Class" "VaString")
-                                     [typeOf (undefined :: ByteString)]
-
-instance Data (BasicValue Integer) where
-    gunfold k z con =
-        case constrIndex con of
-            1 -> k (z VaInt)
-            _ -> error "Data (BasicValue Integer) gunfold"
-
-    dataTypeOf _ = basicValueDataType
-
-    toConstr _ = vaIntConstr
-
-basicValueDataType :: DataType
-basicValueDataType = mkDataType "Ltc.Store.Class.BasicValue" [vaIntConstr, vaStringConstr]
-
-vaIntConstr, vaStringConstr :: Constr
-vaIntConstr = mkConstr basicValueDataType "VaInt" [] Prefix
-vaStringConstr = mkConstr basicValueDataType "VaString" [] Prefix
-
-instance Data (BasicValue ByteString) where
-    gunfold k z con =
-        case constrIndex con of
-            2 -> k (z VaString)
-            _ -> error "Data (BasicValue ByteString) gunfold"
-
-    dataTypeOf _ = basicValueDataType
-
-    toConstr _ = vaStringConstr
-
-instance Data (BasicValue a) where
-    gunfold = error "Data (BasicValue a) gunfold"
-
-    dataTypeOf = error "Data (BasicValue a) dataTypeOf"
-
-    toConstr = error "Data (BasicValue a) toConstr"
-
-instance IsString (BasicValue ByteString) where
-    fromString = VaString . pack
+data Collection a
 
 data Value a where
-    VaBasic :: BasicValue a -> Value a
-    VaSet :: Set (BasicValue a) -> Value (BasicValue a)
+    VaInt :: Integer -> Value (Single Integer)
+    VaString :: ByteString -> Value (Single ByteString)
+    VaSet :: Set (Value (Single b)) -> Value (Collection b)
 
-instance IsString (Value ByteString) where
-    fromString = VaBasic . fromString
+instance Eq (Value (Single a)) where
+    (VaInt n1) == (VaInt n2)       = n1 == n2
+    (VaString s1) == (VaString s2) = s1 == s2
+    _ == _                         = False
 
--- | The type of a value stored in the store.
-data Type = TyString
-          | TyInt
-          | TyIntSet
-          | TyStringSet
+instance Ord (Value (Single Integer)) where
+    (VaInt n1) `compare` (VaInt n2) = n1 `compare` n2
+
+instance Ord (Value (Single ByteString)) where
+    (VaString s1) `compare` (VaString s2) = s1 `compare` s2
+
+instance IsString (Value (Single ByteString)) where
+    fromString = VaString . pack
+
+----------------------
+-- Value Helpers
+----------------------
+
+-- | A concrete representation of the types supported by LTc.
+data Type = SingleString
+          | SingleInteger
+          | CollectionString
+          | CollectionInteger
           deriving ( Data, Eq, Show, Typeable )
 
 class ValueType a where
     valueType :: a -> Type
 
-instance ValueType (Value Integer) where
-    valueType _ = TyInt
+instance ValueType (Value (Single Integer)) where
+    valueType _ = SingleInteger
 
-instance ValueType (Value ByteString) where
-    valueType _ = TyString
+instance ValueType (Value (Single ByteString)) where
+    valueType _ = SingleString
 
-instance ValueType (Value (BasicValue Integer)) where
-    valueType _ = TyIntSet
+instance ValueType (Value (Collection Integer)) where
+    valueType _ = CollectionInteger
 
-instance ValueType (Value (BasicValue ByteString)) where
-    valueType _ = TyStringSet
+instance ValueType (Value (Collection ByteString)) where
+    valueType _ = CollectionString
+
+class ValueString a where
+    -- | Get the 'ByteString' representation of a value.
+    valueString :: a -> ByteString
+
+instance ValueString (Value (Single Integer)) where
+    valueString (VaInt n) = pack (show n)
+
+instance ValueString (Value (Single ByteString)) where
+    valueString (VaString s) = s
+
+instance ValueString (Value (Collection Integer)) where
+    valueString (VaSet ss) =
+        let sl = S.toList ss in
+        let sl' = map (\(VaInt n) -> n) sl in
+        printHum (toSexp (sl' :: [Integer]))
 
 ----------------------
 -- Exceptions
@@ -164,20 +153,3 @@ data CorruptValueFileError = CorruptValueFileError { valueFilePath :: FilePath
                            deriving ( Show, Typeable )
 
 instance Exception CorruptValueFileError
-
-----------------------
--- Helpers
-----------------------
-
--- | Get the 'ByteString' representation of a value.
-valueString :: Value a -> ByteString
-valueString (VaBasic (VaString s)) = s
-valueString (VaBasic (VaInt n))    = pack (show n)
-valueString (VaSet ss)             = printHum (toSexp (S.toList ss))
-
--- -- | Get the type of a 'Value'.
--- valueType :: Value a -> Type
--- valueType (VaString _)    = TyString
--- valueType (VaInt _)       = TyInt
--- valueType (VaStringSet _) = TyStringSet
--- valueType (VaIntSet _)    = TyIntSet
