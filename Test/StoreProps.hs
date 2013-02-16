@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main where
@@ -58,17 +58,17 @@ testOpen = cleanEnvironment ["test-store"] $ do
 testSimpleSetGet :: Assertion
 testSimpleSetGet = cleanEnvironment ["test-store"] $ do
     store <- open testParameters
-    _ <- set store "foo" "bar"
+    _ <- set store "foo" (vs "bar")
     res1 <- getLatest store "foo"
-    res1 @?= Just ("bar", VC.fromList [("test", 1)])
+    res1 @?= Just (vs "bar", VC.fromList [("test", 1)])
     res2 <- getLatest store "bar"
-    res2 @?= Nothing
-    _ <- set store "bar" "baz"
+    res2 @?= (Nothing :: Maybe (Value (Single ByteString), Version))
+    _ <- set store "bar" (vs "baz")
     res3 <- getLatest store "bar"
-    res3 @?= Just ("baz", VC.fromList [("test", 1)])
-    _ <- set store "foo" "boom"
+    res3 @?= Just (vs "baz", VC.fromList [("test", 1)])
+    _ <- set store "foo" (vs "boom")
     res4 <- getLatest store "foo"
-    res4 @?= Just ("boom", VC.fromList [("test", 2)])
+    res4 @?= Just (vs "boom", VC.fromList [("test", 2)])
     ks <- keys store
     ks @?= S.fromList ["foo", "bar"]
     close store
@@ -76,14 +76,14 @@ testSimpleSetGet = cleanEnvironment ["test-store"] $ do
 testSimpleHistory :: Assertion
 testSimpleHistory = cleanEnvironment ["test-store"] $ do
     store <- open testParameters
-    v1 <- set store "foo" "bar"
+    v1 <- set store "foo" (vs "bar")
     res1 <- getLatest store "foo"
-    res1 @?= Just ("bar", v1)
-    v2 <- set store "foo" "baz"
+    res1 @?= Just (vs "bar", v1)
+    v2 <- set store "foo" (vs "baz")
     res2 <- getLatest store "foo"
-    res2 @?= Just ("baz", v2)
+    res2 @?= Just (vs "baz", v2)
     res3 <- get store "foo" v1
-    res3 @?= Just "bar"
+    res3 @?= Just (vs "bar")
     close store
 
 testSimpleFieldType :: Assertion
@@ -93,9 +93,9 @@ testSimpleFieldType = cleanEnvironment ["test-store"] $ do
     res1 <- getLatest store "foo"
     res1 @?= Just (VaInt 23, v1)
     done <- CE.handle (\(exn :: TypeMismatchError) ->
-                          return (not (expectedType exn == TyInt
-                                       && foundType exn == TyString))) $ do
-        _ <- set store "foo" "bar"
+                          return (not (expectedType exn == SingleInteger
+                                       && foundType exn == SingleString))) $ do
+        _ <- set store "foo" (vs "bar")
         return True
     when done $ assertFailure "set a key with a different type"
     close store
@@ -108,13 +108,13 @@ instance Arbitrary ByteString where
     arbitrary = sized $ \n -> do
         BL.pack <$> sequence [ choose (' ', '~') | _ <- [1..n] ]
 
-data Command = GetLatest Key | Set Key Value
+data Command = GetLatest Key | Set Key (Value (Single ByteString))
              deriving ( Show )
 
 newtype Commands = Commands { unCommands :: [Command] }
                  deriving ( Show )
 
-instance Arbitrary Value where
+instance Arbitrary (Value (Single ByteString)) where
     arbitrary = VaString <$> arbitrary
 
 instance Arbitrary Commands where
@@ -148,7 +148,7 @@ propKeysPresent :: Commands -> Property
 propKeysPresent = propWithCommands (\store cmds -> foldlM (runCmd store) S.empty cmds)
   where
     runCmd store s (GetLatest key) = do
-        _ <- run $ getLatest store key
+        (_ :: Maybe (Value (Single ByteString), Version)) <- run $ getLatest store key
         return s
     runCmd store s (Set key value) = do
         _ <- run $ set store key value
@@ -208,3 +208,6 @@ propWithCommands prop cmds = monadicIO $ do
                                             , nodeName       = "test" })
         _ <- prop store (unCommands cmds)
         run $ close store
+
+vs :: String -> Value (Single ByteString)
+vs = VaString . BL.pack

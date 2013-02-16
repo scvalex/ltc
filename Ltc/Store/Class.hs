@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeFamilies, DeriveDataTypeable, GADTs, FlexibleInstances #-}
-{-# LANGUAGE EmptyDataDecls, StandaloneDeriving #-}
+{-# LANGUAGE EmptyDataDecls, StandaloneDeriving, FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Ltc.Store.Class (
         -- * Store interface
@@ -13,17 +14,20 @@ module Ltc.Store.Class (
         CorruptKeyFileError(..), CorruptValueFileError(..),
 
         -- * Value types
-        Value(..), Single, Collection, Type(..), valueString, valueType
+        Value(..), Single, Collection, Type(..), ValueString(..), ValueType(..),
+
+        -- * Type proxies
+        singleString, singleInteger, collectionInteger, collectionString
     ) where
 
+import Control.Applicative ( (<$>) )
 import Control.Exception ( Exception )
-import Data.ByteString.Lazy.Char8 ( ByteString, pack )
+import Data.ByteString.Lazy.Char8 ( ByteString, pack, unpack )
 import Data.Data ( Data(..), Typeable(..) )
 import Data.Set ( Set )
 import qualified Data.Set as S
-import Data.String ( IsString(..) )
 import Data.VectorClock ( VectorClock )
-import Language.Sexp ( toSexp, printHum )
+import Language.Sexp ( fromSexp, toSexp, printHum, parseMaybe )
 
 ----------------------
 -- Classes
@@ -38,12 +42,12 @@ class Store a where
     storeFormat :: a -> String
     storeVersion :: a -> Int
 
-    get :: a -> Key -> Version -> IO (Maybe (Value b))
-    getLatest :: a -> Key -> IO (Maybe (Value b, Version))
+    get :: (ValueString (Value b)) => a -> Key ->  Version -> IO (Maybe (Value b))
+    getLatest :: (ValueString (Value b)) => a -> Key -> IO (Maybe (Value b, Version))
 
     keyVersions :: a -> Key -> IO (Maybe [Version])
 
-    set :: a -> Key -> Value b -> IO Version
+    set :: (ValueString (Value b), ValueType (Value b)) => a -> Key -> Value b -> IO Version
 
     keys :: a -> IO (Set Key)
 
@@ -66,6 +70,10 @@ data Value a where
     VaString :: ByteString -> Value (Single ByteString)
     VaSet :: Set (Value (Single b)) -> Value (Collection b)
 
+instance (Show a) => Show (Value (Single a)) where
+    show (VaInt n) = show n
+    show (VaString s) = show s
+
 instance Eq (Value (Single a)) where
     (VaInt n1) == (VaInt n2)       = n1 == n2
     (VaString s1) == (VaString s2) = s1 == s2
@@ -77,8 +85,8 @@ instance Ord (Value (Single Integer)) where
 instance Ord (Value (Single ByteString)) where
     (VaString s1) `compare` (VaString s2) = s1 `compare` s2
 
-instance IsString (Value (Single ByteString)) where
-    fromString = VaString . pack
+instance Ord (Value (Single a)) where
+    _ `compare` _ = error "non-exhaustive particular instances for Ord (Value (Single a))"
 
 ----------------------
 -- Value Helpers
@@ -110,17 +118,63 @@ class ValueString a where
     -- | Get the 'ByteString' representation of a value.
     valueString :: a -> ByteString
 
+    -- | Get a value from its 'ByteString' representation.
+    unValueString :: ByteString -> Maybe a
+
 instance ValueString (Value (Single Integer)) where
     valueString (VaInt n) = pack (show n)
+
+    unValueString s =
+        case readsPrec 1 (unpack s) of
+            [(n, _)] -> Just (VaInt n)
+            _        -> Nothing
 
 instance ValueString (Value (Single ByteString)) where
     valueString (VaString s) = s
 
-instance ValueString (Value (Collection Integer)) where
+    unValueString = Just . VaString
+
+-- instance ValueString (Value (Single a)) where
+--     valueString _ = error "non-exhaustive particular instances for ValueString (Value (Single a))"
+
+--     unValueString _ = error "non-exhaustive particular instances for ValueString (Value (Single a))"
+
+instance ValueString (Value (Single a)) => ValueString (Value (Collection a)) where
     valueString (VaSet ss) =
         let sl = S.toList ss in
         let sl' = map (\(VaInt n) -> n) sl in
         printHum (toSexp (sl' :: [Integer]))
+
+    unValueString s =
+        case parseMaybe s of
+            Nothing ->
+                Nothing         -- no sexp
+            Just [sexp] -> do
+                case fromSexp sexp of
+                    Nothing ->
+                        Nothing -- invalid sexp
+                    Just (ss :: [ByteString]) ->
+                        VaSet . S.fromList <$>
+                        (mapM unValueString ss :: Maybe [Value (Single a)])
+            Just _ ->
+                Nothing         -- more than one sexp
+
+-- instance ValueString (Value a) where
+--     valueString _ = error "non-exhaustive particular instances for ValueString (Value a)"
+
+--     unValueString _ = error "non-exhaustive particular instances for ValueString (Value a)"
+
+singleString :: Single ByteString
+singleString = undefined
+
+singleInteger :: Single Integer
+singleInteger = undefined
+
+collectionInteger :: Collection Integer
+collectionInteger = undefined
+
+collectionString :: Collection String
+collectionString = undefined
 
 ----------------------
 -- Exceptions

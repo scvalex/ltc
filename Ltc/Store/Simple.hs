@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, TupleSections, DeriveDataTypeable #-}
+{-# LANGUAGE TypeFamilies, TupleSections, DeriveDataTypeable, FlexibleContexts #-}
 
 -- | Imagine desiging a key-value store on top of the file system.
 -- The 'Simple' store is basically that, with a few added
@@ -54,7 +54,7 @@ import Data.Foldable ( find, foldlM )
 import Data.Set ( Set )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
-import Language.Sexp ( toSexp, fromSexp, parse, parseMaybe, printHum )
+import Language.Sexp ( toSexp, fromSexp, parse, printHum )
 import Ltc.Store.Class
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents )
@@ -137,7 +137,8 @@ doClose _handle = do
     debugM tag "close"
     return ()
 
-doGet :: Simple -> Key -> Version -> IO (Maybe (Value a))
+doGet :: (ValueString (Value a))
+      => Simple -> Key -> Version -> IO (Maybe (Value a))
 doGet ref key version = do
     debugM tag (printf "get %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
@@ -149,34 +150,10 @@ doGet ref key version = do
                     let valueFile = locationValueHash ref (getValueHash kvsn)
                     s <- (if getUseCompression ref then Z.decompress else id)
                          <$> BL.readFile valueFile
-                    case getValueType kr of
-                        SingleString ->
-                            return (Just (VaString s))
-                        SingleInteger ->
-                            return (Just (VaInt (read (BL.unpack s))))
-                        CollectionString -> do
-                            mss <- parseSet valueFile s
-                            let mss' = S.map VaString mss
-                            return (maybe Nothing (Just . VaSet) mss')
-                        CollectionInteger -> do
-                            mis <- parseSet valueFile s
-                            let mis' = S.map VaInt mis
-                            return (maybe Nothing (Just . VaSet) mis')
-  where
-    parseSet valueFile s = do
-        let err reason = CorruptValueFileError { valueFilePath = valueFile
-                                               , cvfReason     = reason }
-        case parseMaybe s of
-            Nothing ->
-                CE.throw (err "no sexp")
-            Just [sexp] -> do
-                case fromSexp sexp of
-                    Nothing -> CE.throw (err "corrupt set in value file")
-                    Just ss -> return (Just (S.fromList ss))
-            Just _ ->
-                CE.throw (err "corrupt set in value file")
+                    return $ (unValueString s)
 
-doGetLatest :: Simple -> Key -> IO (Maybe (Value a, Version))
+doGetLatest :: (ValueString (Value a))
+            => Simple -> Key -> IO (Maybe (Value a, Version))
 doGetLatest ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
         let latestVersion = getVersion (getTip kr)
@@ -188,7 +165,8 @@ doKeyVersions ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
         return . Just . map getVersion $ getTip kr : getHistory kr
 
-doSet :: Simple -> Key -> Value a -> IO Version
+doSet :: (ValueString (Value a), ValueType (Value a))
+      => Simple -> Key -> Value a -> IO Version
 doSet ref key value = do
     debugM tag (printf "set %s" (BL.unpack key))
     let vhash = valueHash value
@@ -298,7 +276,7 @@ keyHash = BL.pack . showDigest . sha1
 
 -- | The hash of a value.  This hash is used as the filename under
 -- which the value is stored in the @values/@ folder.
-valueHash :: Value a -> ValueHash
+valueHash :: (ValueString (Value a)) => Value a -> ValueHash
 valueHash = BL.pack . showDigest . sha1 . valueString
 
 -- | Find the 'KeyVersion' with the given 'Version'.
