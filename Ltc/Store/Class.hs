@@ -14,10 +14,7 @@ module Ltc.Store.Class (
         CorruptKeyFileError(..), CorruptValueFileError(..),
 
         -- * Value types
-        Value(..), Single, Collection, Type(..), ValueString(..), ValueType(..),
-
-        -- * Type proxies
-        singleString, singleInteger, collectionInteger, collectionString
+        Value(..), Single, Collection, Type(..), ValueString(..), ValueType(..)
     ) where
 
 import Control.Applicative ( (<$>) )
@@ -134,11 +131,6 @@ instance ValueString (Value (Single ByteString)) where
 
     unValueString = Just . VaString
 
--- instance ValueString (Value (Single a)) where
---     valueString _ = error "non-exhaustive particular instances for ValueString (Value (Single a))"
-
---     unValueString _ = error "non-exhaustive particular instances for ValueString (Value (Single a))"
-
 instance ValueString (Value (Single a)) => ValueString (Value (Collection a)) where
     valueString (VaSet ss) =
         let sl = S.toList ss in
@@ -158,23 +150,6 @@ instance ValueString (Value (Single a)) => ValueString (Value (Collection a)) wh
                         (mapM unValueString ss :: Maybe [Value (Single a)])
             Just _ ->
                 Nothing         -- more than one sexp
-
--- instance ValueString (Value a) where
---     valueString _ = error "non-exhaustive particular instances for ValueString (Value a)"
-
---     unValueString _ = error "non-exhaustive particular instances for ValueString (Value a)"
-
-singleString :: Single ByteString
-singleString = undefined
-
-singleInteger :: Single Integer
-singleInteger = undefined
-
-collectionInteger :: Collection Integer
-collectionInteger = undefined
-
-collectionString :: Collection String
-collectionString = undefined
 
 ----------------------
 -- Exceptions
