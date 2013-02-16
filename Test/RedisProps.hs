@@ -116,11 +116,10 @@ endToEndBinaryMessages =
 endToEndMessages :: [(String, [RedisMessage], [RedisMessage])]
 endToEndMessages =
     [ ("append",
-       [ MultiBulk ["EXISTS", "mykey"]
-       , MultiBulk ["APPEND", "mykey", "Hello"]
+       [ MultiBulk ["APPEND", "mykey", "Hello"]
        , MultiBulk ["APPEND", "mykey", " World"]
        , MultiBulk ["GET", "mykey"] ],
-       [ Integer 0, Integer 5, Integer 11, "Hello World" ])
+       [ Integer 5, Integer 11, "Hello World" ])
     , ("strlen",
        [ MultiBulk ["SET", "mykey", "Hello world"]
        , MultiBulk ["STRLEN", "mykey"]
