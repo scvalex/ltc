@@ -131,9 +131,7 @@ instance ValueString (Value (Single ByteString)) where
 instance (ValueString (Value (Single a)), Ord (Value (Single a)))
          => ValueString (Value (Collection a)) where
     valueString (VaSet ss) =
-        let sl = S.toList ss in
-        let sl' = map (\(VaInt n) -> n) sl in
-        printHum (toSexp (sl' :: [Integer]))
+        printHum (toSexp (map valueString (S.toList ss)))
 
     unValueString s =
         case parseMaybe s of
