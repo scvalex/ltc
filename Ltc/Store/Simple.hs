@@ -150,6 +150,8 @@ doGet ref key version = do
                     let valueFile = locationValueHash ref (getValueHash kvsn)
                     s <- (if getUseCompression ref then Z.decompress else id)
                          <$> BL.readFile valueFile
+                    -- FIXME It's not enough to parse the value; we should also check its
+                    -- recorded type.
                     return $ (unValueString s)
 
 doGetLatest :: (ValueString (Value a))
