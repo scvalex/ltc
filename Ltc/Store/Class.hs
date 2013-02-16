@@ -82,9 +82,6 @@ instance Ord (Value (Single Integer)) where
 instance Ord (Value (Single ByteString)) where
     (VaString s1) `compare` (VaString s2) = s1 `compare` s2
 
-instance Ord (Value (Single a)) where
-    _ `compare` _ = error "non-exhaustive particular instances for Ord (Value (Single a))"
-
 ----------------------
 -- Value Helpers
 ----------------------
@@ -131,7 +128,8 @@ instance ValueString (Value (Single ByteString)) where
 
     unValueString = Just . VaString
 
-instance ValueString (Value (Single a)) => ValueString (Value (Collection a)) where
+instance (ValueString (Value (Single a)), Ord (Value (Single a)))
+         => ValueString (Value (Collection a)) where
     valueString (VaSet ss) =
         let sl = S.toList ss in
         let sl' = map (\(VaInt n) -> n) sl in
