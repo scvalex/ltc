@@ -47,9 +47,6 @@ redisProxyD store () = runIdentityP loop
                 handleIncr key (-1)
             MultiBulk ["DECRBY", Bulk key, Integer delta] ->
                 handleIncr key (-delta)
-            -- MultiBulk ["EXISTS", Bulk key] -> do
-            --     mv <- getLatest store (lazy key)
-            --     resply (maybe (Integer 0) (const (Integer 1)) mv)
             MultiBulk ["APPEND", Bulk key, Bulk value] -> do
                 handleAppend key value
             MultiBulk ["STRLEN", Bulk key] -> do
