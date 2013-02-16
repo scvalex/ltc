@@ -115,7 +115,13 @@ endToEndBinaryMessages =
 
 endToEndMessages :: [(String, [RedisMessage], [RedisMessage])]
 endToEndMessages =
-    [ ("append",
+    [ ("get",
+       [ MultiBulk ["GET", "mykey"]
+       , MultiBulk ["INCR", "mykey"]
+       , MultiBulk ["GET", "mykey"] ],
+       -- FIXME GET on an int key should fail with WRONGTYPE
+       [ Nil, Integer 1, "1" ])
+    , ("append",
        [ MultiBulk ["APPEND", "mykey", "Hello"]
        , MultiBulk ["APPEND", "mykey", " World"]
        , MultiBulk ["GET", "mykey"] ],
