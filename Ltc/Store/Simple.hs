@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, TupleSections, DeriveDataTypeable, FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies, TupleSections, DeriveGeneric, FlexibleContexts #-}
 
 -- | Imagine desiging a key-value store on top of the file system.
 -- The 'Simple' store is basically that, with a few added
@@ -48,13 +48,13 @@ import qualified Control.Exception as CE
 import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
-import Data.Data ( Data, Typeable )
+import GHC.Generics ( Generic )
 import Data.Digest.Pure.SHA ( sha1, showDigest )
 import Data.Foldable ( find, foldlM )
 import Data.Set ( Set )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
-import Language.Sexp ( toSexp, fromSexp, parse, printHum )
+import Language.Sexp ( Sexpable(..), parse, printHum )
 import Ltc.Store.Class
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents )
@@ -82,7 +82,9 @@ data Simple = Simple { getBase           :: FilePath
 -- have three of these records.
 data KeyVersion = KeyVersion { getVersion   :: Version
                              , getValueHash :: ValueHash
-                             } deriving ( Data, Typeable )
+                             } deriving ( Generic )
+
+instance Sexpable KeyVersion
 
 -- | Represents a single 'Key' with at least one value ('getTip'), and
 -- possibly many older values ('getHistory').  History is ordered
@@ -93,7 +95,9 @@ data KeyRecord = KR { getKeyName   :: Key
                     , getValueType :: Type
                     , getTip       :: KeyVersion
                     , getHistory   :: [KeyVersion]
-                    } deriving ( Data, Typeable )
+                    } deriving ( Generic )
+
+instance Sexpable KeyRecord
 
 instance Store Simple where
     data OpenParameters Simple = OpenParameters

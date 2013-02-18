@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies, DeriveDataTypeable, GADTs, FlexibleInstances #-}
 {-# LANGUAGE EmptyDataDecls, StandaloneDeriving, FlexibleContexts #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances, DeriveGeneric #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Ltc.Store.Class (
         -- * Store interface
@@ -20,11 +21,12 @@ module Ltc.Store.Class (
 import Control.Applicative ( (<$>) )
 import Control.Exception ( Exception )
 import Data.ByteString.Lazy.Char8 ( ByteString, pack, unpack )
-import Data.Data ( Data(..), Typeable(..) )
+import GHC.Generics ( Generic )
+import Data.Typeable ( Typeable )
 import Data.Set ( Set )
 import qualified Data.Set as S
 import Data.VectorClock ( VectorClock )
-import Language.Sexp ( fromSexp, toSexp, printHum, parseMaybe )
+import Language.Sexp ( Sexpable(..), printHum, parseMaybe )
 
 ----------------------
 -- Classes
@@ -56,7 +58,10 @@ type Key       = ByteString
 type KeyHash   = ByteString
 type ValueHash = ByteString
 type NodeName  = ByteString
+
 type Version   = VectorClock NodeName Int
+
+instance (Sexpable a, Sexpable b) => Sexpable (VectorClock a b)
 
 data Single a
 
@@ -91,7 +96,9 @@ data Type = SingleString
           | SingleInteger
           | CollectionString
           | CollectionInteger
-          deriving ( Data, Eq, Show, Typeable )
+          deriving ( Eq, Generic, Show )
+
+instance Sexpable Type
 
 class ValueType a where
     valueType :: a -> Type
