@@ -23,11 +23,14 @@ data Diff a where
 class Diffable a where
     diffFromTo :: Value a -> Value a -> Diff a
     applyDiff :: Value a -> Diff a -> Value a
+    reverseDiff :: Diff a -> Diff a
 
 instance Diffable (Single Integer) where
     diffFromTo (VaInt n1) (VaInt n2) = DiffInt (n2 - n1)
 
     applyDiff (VaInt n) (DiffInt d) = VaInt (n + d)
+
+    reverseDiff (DiffInt d) = DiffInt (-d)
 
 instance (Ord (Value (Single b))) => Diffable (Collection b) where
     diffFromTo (VaSet s1) (VaSet s2) =
@@ -39,3 +42,6 @@ instance (Ord (Value (Single b))) => Diffable (Collection b) where
         VaSet (S.union s s')
     applyDiff (VaSet s) (DiffSet RemoveElements s') =
         VaSet (S.difference s s')
+
+    reverseDiff (DiffSet AddElements s)    = DiffSet RemoveElements s
+    reverseDiff (DiffSet RemoveElements s) = DiffSet AddElements s
