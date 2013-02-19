@@ -53,6 +53,18 @@ Test-suite store
   Build-Depends:        test-framework, test-framework-hunit, test-framework-quickcheck2,
                         HUnit, QuickCheck
 
+Test-suite diff
+  Hs-Source-Dirs:       Test, .
+  Main-Is:              DiffProps.hs
+  Type:                 exitcode-stdio-1.0
+  Build-depends:        attoparsec, base >= 4 && < 5, bytestring, containers, directory,
+                        filepath, hslogger, network, pipes >= 3.1, pipes-attoparsec,
+                        regex-tdfa, sexp >= 0.6, SHA, unix, vector-clock, zlib
+  Ghc-Options:          -Wall
+  Extensions:           ScopedTypeVariables, OverloadedStrings
+
+  Build-Depends:        test-framework, test-framework-quickcheck2, QuickCheck
+
 Test-suite redis
   Hs-Source-Dirs:       Test, .
   Main-Is:              RedisProps.hs
