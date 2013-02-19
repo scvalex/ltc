@@ -21,12 +21,13 @@ module Ltc.Store.Class (
 import Control.Applicative ( (<$>) )
 import Control.Exception ( Exception )
 import Data.ByteString.Lazy.Char8 ( ByteString, pack, unpack )
-import GHC.Generics ( Generic )
-import Data.Typeable ( Typeable )
 import Data.Set ( Set )
-import qualified Data.Set as S
+import Data.Typeable ( Typeable )
 import Data.VectorClock ( VectorClock )
+import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..), printHum, parseMaybe )
+import Text.Printf ( printf )
+import qualified Data.Set as S
 
 ----------------------
 -- Classes
@@ -76,10 +77,16 @@ instance (Show a) => Show (Value (Single a)) where
     show (VaInt n) = show n
     show (VaString s) = show s
 
+instance (Show a) => Show (Value (Collection a)) where
+    show (VaSet s) = printf "VaSet (%s)" (show s)
+
 instance Eq (Value (Single a)) where
     (VaInt n1) == (VaInt n2)       = n1 == n2
     (VaString s1) == (VaString s2) = s1 == s2
     _ == _                         = False
+
+instance Eq (Value (Collection a)) where
+    (VaSet s1) == (VaSet s2) = s1 == s2
 
 instance Ord (Value (Single Integer)) where
     (VaInt n1) `compare` (VaInt n2) = n1 `compare` n2
