@@ -138,7 +138,7 @@ instance ValueString (Value (Single ByteString)) where
 instance (ValueString (Value (Single a)), Ord (Value (Single a)))
          => ValueString (Value (Collection a)) where
     valueString (VaSet ss) =
-        printHum (toSexp (map valueString (S.toList ss)))
+        printHum (toSexp (S.map valueString ss))
 
     unValueString s =
         case parseMaybe s of
