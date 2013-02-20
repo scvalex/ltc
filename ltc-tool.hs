@@ -19,6 +19,7 @@ import Text.Printf ( printf )
 
 data Modes = Fsck { dir :: FilePath }
            | Info { dir :: FilePath }
+           | DiffPack { dir :: FilePath }
            | Redis { dir :: FilePath }
            deriving ( Show, Data, Typeable )
 
@@ -41,15 +42,11 @@ main = do
         Fsck d -> do
             _ <- printf "Checking %s...\n" d
             hostname <- getHostName
-            store <- open (OpenParameters { location       = d
-                                          , useCompression = False
-                                          , nodeName       = (BL.pack hostname) })
+            store <- open (openParameters d hostname)
             close store
         Info d -> do
             hostname <- getHostName
-            store <- open (OpenParameters { location       = d
-                                          , useCompression = False
-                                          , nodeName       = (BL.pack hostname) })
+            store <- open (openParameters d hostname)
             _ <- printf "LTc store: %s (format %s-%d)\n" d (storeFormat store) (storeVersion store)
             _ <- printf "  node     : %s\n" hostname
             ks <- keys store
@@ -57,14 +54,17 @@ main = do
             vn <- foldlM (\n k -> maybe n ((n+) . length) <$> keyVersions store k) 0 ks
             _ <- printf "  values   : %d\n" vn
             close store
+        DiffPack d -> do
+            hostname <- getHostName
+            store <- open (openParameters d hostname)
+            -- FIXME Dump values for keys here.
+            close store
         Redis d -> do
             -- when (null d) $ fail "Given directory cannot be empty"
             _ <- printf "Running Redis server with %s\n" d
             -- FIXME Implement clean termination for server.
             hostname <- getHostName
-            store <- open (OpenParameters { location       = d
-                                          , useCompression = False
-                                          , nodeName       = (BL.pack hostname) })
+            store <- open (openParameters d hostname)
             shutdown <- serve store
             done <- newEmptyMVar
             _ <- installHandler sigINT (Catch $ putMVar done ()) Nothing
@@ -74,3 +74,9 @@ main = do
                 close store
                 _ <- printf "done\n"
                 return ())
+  where
+    openParameters d hostname =
+        OpenParameters { location       = d
+                       , useCompression = False
+                       , nodeName       = (BL.pack hostname) }
+
