@@ -25,7 +25,7 @@ import Data.Set ( Set )
 import Data.Typeable ( Typeable )
 import Data.VectorClock ( VectorClock )
 import GHC.Generics ( Generic )
-import Language.Sexp ( Sexpable(..), printHum, parseMaybe )
+import Language.Sexp ( Sexp(..), Sexpable(..), printHum, parseMaybe )
 import Text.Printf ( printf )
 import qualified Data.Set as S
 
@@ -88,11 +88,20 @@ instance Eq (Value (Single a)) where
 instance Eq (Value (Collection a)) where
     (VaSet s1) == (VaSet s2) = s1 == s2
 
-instance Ord (Value (Single Integer)) where
+instance (Ord a) => Ord (Value (Single a)) where
     (VaInt n1) `compare` (VaInt n2) = n1 `compare` n2
-
-instance Ord (Value (Single ByteString)) where
     (VaString s1) `compare` (VaString s2) = s1 `compare` s2
+    _ `compare` _ = error "Impossible case in Ord (Value (Single a))"
+
+instance Sexpable (Value (Single Integer)) where
+    toSexp (VaInt n) = List ["VaInt", toSexp n]
+    fromSexp (List ["VaInt", s]) = VaInt <$> fromSexp s
+    fromSexp _                   = fail "fromSexp Value (Single Integer)"
+
+instance Sexpable (Value (Single ByteString)) where
+    toSexp (VaString s) = List ["VaString", toSexp s]
+    fromSexp (List ["VaString", s]) = VaString <$> fromSexp s
+    fromSexp _                      = fail "fromSexp Value (Single ByteString)"
 
 ----------------------
 -- Value Helpers
