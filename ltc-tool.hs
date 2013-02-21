@@ -1,21 +1,25 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, FlexibleContexts #-}
 
 module Main where
 
 import Control.Applicative ( (<$>) )
 import Control.Concurrent.MVar ( newEmptyMVar, putMVar, takeMVar )
-import qualified Control.Exception as CE
-import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Foldable ( foldlM )
-import qualified Data.Set as S
+import Data.Map ( Map )
 import Data.Version ( showVersion )
+import Language.Sexp ( Sexp(..), Sexpable(..), printHum )
 import Ltc.Store
+import Ltc.Store.Diff ( Diff )
 import Network.BSD ( getHostName )
 import Network.RedisServer ( serve )
+import Paths_ltc ( version )
 import System.Console.CmdArgs
 import System.Posix.Signals ( Handler(..), installHandler, sigINT )
-import Paths_ltc ( version )
 import Text.Printf ( printf )
+import qualified Control.Exception as CE
+import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.Map as M
+import qualified Data.Set as S
 
 data Modes = Fsck { dir :: FilePath }
            | Info { dir :: FilePath }
@@ -57,7 +61,9 @@ main = do
         DiffPack d -> do
             hostname <- getHostName
             store <- open (openParameters d hostname)
-            -- FIXME Dump values for keys here.
+            ks <- keys store
+            let dp = Diffs M.empty
+            BL.putStrLn (printHum (toSexp dp))
             close store
         Redis d -> do
             -- when (null d) $ fail "Given directory cannot be empty"
@@ -80,3 +86,8 @@ main = do
                        , useCompression = False
                        , nodeName       = (BL.pack hostname) }
 
+data DiffPack = forall a. (Sexpable (Diff a), Sexpable (Value a)) => Diffs (Map Key (Value a, [Diff a]))
+
+instance Sexpable DiffPack where
+    toSexp (Diffs ds) = List ["DiffPack", toSexp ds]
+    fromSexp (List ["DiffPack", _]) = fail "fromSexp DiffPack not implemented"
