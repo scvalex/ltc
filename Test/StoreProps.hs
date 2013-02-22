@@ -6,17 +6,12 @@ module Main where
 import Ltc.Store
 
 import Control.Applicative
-import qualified Control.Exception as CE
 import Control.Monad
 import Data.ByteString.Lazy.Char8 ( ByteString )
-import qualified Data.ByteString.Lazy.Char8 as BL
-import Data.List ( find )
 import Data.Foldable ( foldlM )
-import qualified Data.Map as M
+import Data.List ( find )
 import Data.Monoid
-import qualified Data.Set as S
-import qualified Data.VectorClock as VC
-
+import Network.BSD ( getHostName )
 import Test.Common ( cleanEnvironment, cleanEnvironmentP, testParameters )
 import Test.Framework
 import Test.Framework.Providers.HUnit
@@ -24,6 +19,11 @@ import Test.Framework.Providers.QuickCheck2
 import Test.HUnit
 import Test.QuickCheck
 import Test.QuickCheck.Monadic as QCM
+import qualified Control.Exception as CE
+import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.Map as M
+import qualified Data.Set as S
+import qualified Data.VectorClock as VC
 
 main :: IO ()
 main = defaultMainWithOpts
@@ -44,31 +44,33 @@ main = defaultMainWithOpts
 
 testOpen :: Assertion
 testOpen = cleanEnvironment ["test-store"] $ do
-    store <- open testParameters
+    hostname <- BL.pack <$> getHostName
+    store <- open testParameters { nodeName = hostname }
     close store
-    store' <- open testParameters
+    store' <- open testParameters { nodeName = hostname }
     close store'
     opened <- CE.handle (\(exn :: NodeNameMismatchError) ->
                           return (not (requestedName exn == "other"
-                                       && storeName exn == "test"))) $ do
+                                       && storeName exn == hostname))) $ do
         _ <- open (testParameters { nodeName = "other" })
         return True
     when opened $ assertFailure "re-opened store with different node name"
 
 testSimpleSetGet :: Assertion
 testSimpleSetGet = cleanEnvironment ["test-store"] $ do
-    store <- open testParameters
+    hostname <- BL.pack <$> getHostName
+    store <- open testParameters { nodeName = hostname }
     _ <- set store "foo" (vs "bar")
     res1 <- getLatest store "foo"
-    res1 @?= Just (vs "bar", VC.fromList [("test", 1)])
+    res1 @?= Just (vs "bar", VC.fromList [(hostname, 1)])
     res2 <- getLatest store "bar"
     res2 @?= (Nothing :: Maybe (Value (Single ByteString), Version))
     _ <- set store "bar" (vs "baz")
     res3 <- getLatest store "bar"
-    res3 @?= Just (vs "baz", VC.fromList [("test", 1)])
+    res3 @?= Just (vs "baz", VC.fromList [(hostname, 1)])
     _ <- set store "foo" (vs "boom")
     res4 <- getLatest store "foo"
-    res4 @?= Just (vs "boom", VC.fromList [("test", 2)])
+    res4 @?= Just (vs "boom", VC.fromList [(hostname, 2)])
     ks <- keys store
     ks @?= S.fromList ["foo", "bar"]
     close store
@@ -202,10 +204,11 @@ makeCommand ks = do
 
 propWithCommands :: (Simple -> [Command] -> PropertyM IO a) -> Commands -> Property
 propWithCommands prop cmds = monadicIO $ do
+    hostname <- BL.pack <$> run getHostName
     cleanEnvironmentP ["test-store"] $ do
         store <- run $ open (OpenParameters { location       = "test-store"
                                             , useCompression = False
-                                            , nodeName       = "test" })
+                                            , nodeName       = hostname })
         _ <- prop store (unCommands cmds)
         run $ close store
 
