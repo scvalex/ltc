@@ -45,6 +45,7 @@ class Store a where
     get :: (ValueString (Value b)) => a -> Key ->  Version -> IO (Maybe (Value b))
     getLatest :: (ValueString (Value b)) => a -> Key -> IO (Maybe (Value b, Version))
 
+    -- | Get all versions of the values for a key, most-recent-first.
     keyVersions :: a -> Key -> IO (Maybe [Version])
 
     set :: (ValueString (Value b), ValueType (Value b)) => a -> Key -> Value b -> IO Version

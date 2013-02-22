@@ -6,10 +6,11 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent.MVar ( newEmptyMVar, putMVar, takeMVar )
 import Data.Foldable ( foldlM )
 import Data.Map ( Map )
+import Data.Traversable ( forM )
 import Data.Version ( showVersion )
 import Language.Sexp ( Sexp(..), Sexpable(..), printHum )
 import Ltc.Store
-import Ltc.Store.Diff ( Diff )
+import Ltc.Store.Diff ( Diff, Diffable(..) )
 import Network.BSD ( getHostName )
 import Network.RedisServer ( serve )
 import Paths_ltc ( version )
@@ -33,6 +34,8 @@ ltcModes =
       &= help "check the integrity of a store"
     , Info { dir = def &= typDir &= argPos 1 }
       &= help "list information about a store"
+    , DiffPack { dir = def &= typDir &= argPos 1 }
+      &= help "dump a store to a single file"
     , Redis { dir = "redis-store" &= typDir }
       &= help "run a store with a Redis interface"
     ]
@@ -62,7 +65,7 @@ main = do
             hostname <- getHostName
             store <- open (openParameters d hostname)
             ks <- keys store
-            let dp = Diffs M.empty
+            dp <- foldlM (addKeyHistory store) (Diffs M.empty) ks
             BL.putStrLn (printHum (toSexp dp))
             close store
         Redis d -> do
@@ -85,6 +88,22 @@ main = do
         OpenParameters { location       = d
                        , useCompression = False
                        , nodeName       = (BL.pack hostname) }
+    addKeyHistory store (Diffs m) key = do
+        mv <- getLatest store key
+        case mv of
+            Nothing -> do
+                error "poopy cup"
+            Just (tip :: Value (Single Integer), _) -> do
+                vsns <- storeUnJust =<< keyVersions store key
+                -- @vsns@ contains at least the tip.
+                vs <- forM (tail vsns) (\vsn -> storeUnJust =<< get store key vsn)
+                let (_, diffs) = foldl (\(v, ds) v' -> (v', reverseDiff (diffFromTo v v') : ds))
+                                       (tip, [])
+                                       vs
+                let kh = KeyHistory (tip, diffs)
+                return (Diffs (M.insert key kh m))
+    storeUnJust (Just a) = return a
+    storeUnJust Nothing  = fail "could not find expected value in store"
 
 data KeyHistory = forall a. (Sexpable (Diff a), Sexpable (Value a))
                   => KeyHistory (Value a, [Diff a])
@@ -97,4 +116,4 @@ data Diffs = Diffs (Map Key KeyHistory)
 
 instance Sexpable Diffs where
     toSexp (Diffs ds) = List ["Diffs", toSexp ds]
-    fromSexp (List ["Diffs", _]) = fail "fromSexp Diffs not implemented"
+    fromSexp _ = fail "fromSexp Diffs not implemented"

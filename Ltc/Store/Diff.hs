@@ -2,7 +2,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Ltc.Store.Diff (
-        Diffable(..), Diff(..)
+        Diffable(..), Diff
     ) where
 
 import Control.Applicative ( (<$>), (<*>) )
