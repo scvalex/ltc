@@ -119,6 +119,9 @@ newtype Commands = Commands { unCommands :: [Command] }
 instance Arbitrary (Value (Single ByteString)) where
     arbitrary = VaString <$> arbitrary
 
+instance Arbitrary Key where
+    arbitrary = Key <$> arbitrary
+
 instance Arbitrary Commands where
     arbitrary = sized $ \n -> do
         let kn = ceiling (sqrt (fromIntegral n :: Double)) :: Int

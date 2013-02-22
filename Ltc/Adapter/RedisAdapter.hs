@@ -29,10 +29,10 @@ redisProxyD store () = runIdentityP loop
             MultiBulk ["QUIT"] ->
                 return (Status "OK", True)
             MultiBulk ["SET", Bulk key, Bulk value] -> do
-                _ <- set store (lazy key) (VaString (lazy value))
+                _ <- set store (mkKey key) (VaString (lazy value))
                 resply (Status "OK")
             MultiBulk ["GET", Bulk key] -> do
-                (mv :: Maybe (Value (Single BL.ByteString), Version)) <- getLatest store (lazy key)
+                (mv :: Maybe (Value (Single BL.ByteString), Version)) <- getLatest store (mkKey key)
                 case mv of
                     Nothing              -> resply Nil
                     Just (VaString s, _) -> resply (Bulk (strict s))
@@ -50,7 +50,7 @@ redisProxyD store () = runIdentityP loop
             MultiBulk ["APPEND", Bulk key, Bulk value] -> do
                 handleAppend key value
             MultiBulk ["STRLEN", Bulk key] -> do
-                mv <- getWithDefault (lazy key) (VaString "")
+                mv <- getWithDefault (mkKey key) (VaString "")
                 case mv of
                     VaString s -> resply (Integer (fromIntegral (BL.length s)))
                     -- _          -> notAStringReply key
@@ -68,21 +68,21 @@ redisProxyD store () = runIdentityP loop
             MultiBulk ["SMEMBERS", key] ->
                 messagesToKeys [key] handleSInter
             MultiBulk ["SISMEMBER", Bulk key, Bulk value] -> do
-                vs <- getWithDefault (lazy key) (VaSet S.empty :: Value (Collection BL.ByteString))
+                vs <- getWithDefault (mkKey key) (VaSet S.empty :: Value (Collection BL.ByteString))
                 case vs of
                     VaSet s ->
                         resply (toRedisBool (VaString (lazy value) `S.member` s))
                     -- _ ->
                     --     resply (toError (printf "WRONGTYPE key %s is not a string set" (show key)))
             -- MultiBulk ["SISMEMBER", Bulk key, Integer value] -> do
-            --     vs <- getWithDefault (lazy key) (VaIntSet S.empty)
+            --     vs <- getWithDefault (mkKey key) (VaIntSet S.empty)
             --     case vs of
             --         VaIntSet s ->
             --             resply (Integer (fromIntegral (fromEnum (value `S.member` s))))
             --         _ ->
             --             resply (toError (printf "WRONGTYPE key %s is not an int set" (show key)))
             MultiBulk ["SCARD", Bulk key] -> do
-                (vs :: Maybe (Value (Collection BL.ByteString), Version)) <- getLatest store (lazy key)
+                (vs :: Maybe (Value (Collection BL.ByteString), Version)) <- getLatest store (mkKey key)
                 case vs of
                     Nothing ->
                         resply (Integer 0)
@@ -106,30 +106,30 @@ redisProxyD store () = runIdentityP loop
                     Right reg' -> do
                         ks <- keys store
                         let ks' = filter (\k -> isRightJust (T.execute reg' k))
-                                  . map strict
+                                  . map (\(Key k) -> strict k)
                                   $ S.toList ks
                         resply (MultiBulk (map Bulk ks'))
 
     handleIncr key delta = do
-        mv <- getWithDefault (lazy key) (VaInt 0)
+        mv <- getWithDefault (mkKey key) (VaInt 0)
         case mv of
             VaInt n -> do
-                _ <- set store (lazy key) (VaInt (n + delta))
+                _ <- set store (mkKey key) (VaInt (n + delta))
                 resply (Integer (n + delta))
             -- _ -> do
             --     resply (toError (printf "WRONGTYPE key %s does not hold a number" (show key)))
 
     handleAppend key value = do
-        mv <- getWithDefault (lazy key) (VaString "")
+        mv <- getWithDefault (mkKey key) (VaString "")
         case mv of
             VaString s -> do
-                _ <- set store (lazy key) (VaString (BL.append s (lazy value)))
+                _ <- set store (mkKey key) (VaString (BL.append s (lazy value)))
                 resply (Integer (fromIntegral (BL.length s + fromIntegral (BS.length value))))
             -- _ -> do
             --     notAStringReply key
 
     handleGetRange key start end = do
-        mv <- getWithDefault (lazy key) (VaString "")
+        mv <- getWithDefault (mkKey key) (VaString "")
         case mv of
             VaString s -> do
                 let normalize n = if n < 0 then fromIntegral (BL.length s) + n else n
@@ -148,12 +148,12 @@ redisProxyD store () = runIdentityP loop
         resply (MultiBulk values)
 
     handleSAdd key s = do
-        mv <- getWithDefault (lazy key) (VaSet S.empty :: Value (Collection BL.ByteString))
+        mv <- getWithDefault (mkKey key) (VaSet S.empty :: Value (Collection BL.ByteString))
         case mv of
             VaSet ss -> do
                 let size = S.size ss
                     ss' = S.insert s ss
-                _ <- set store (lazy key) (VaSet ss')
+                _ <- set store (mkKey key) (VaSet ss')
                 let size' = S.size ss'
                 resply (Integer (fromIntegral (size' - size)))
             -- _ -> do
@@ -209,9 +209,9 @@ redisProxyD store () = runIdentityP loop
     messagesToKeys :: [RedisMessage] -> ([Key] -> IO (RedisMessage, Bool)) -> IO (RedisMessage, Bool)
     messagesToKeys ks act = go [] ks
       where
-        go acc [] = act (reverse acc)
-        go acc (Bulk k : kt) = go (lazy k : acc) kt
-        go _ _ = resply (toError "WRONGTYPE some arguments are not keys")
+        go acc []            = act (reverse acc)
+        go acc (Bulk k : kt) = go (mkKey k : acc) kt
+        go _ _               = resply (toError "WRONGTYPE some arguments are not keys")
 
     -- notAStringReply key =
     --     resply (toError (printf "WRONGTYPE key %s hoes not hold a string" (show key)))
@@ -234,6 +234,10 @@ redisProxyD store () = runIdentityP loop
 -- | Make a strict 'ByteString' lazy.
 lazy :: BS.ByteString -> BL.ByteString
 lazy s = BL.fromChunks [s]
+
+
+mkKey :: BS.ByteString -> Key
+mkKey = Key . lazy
 
 -- | Make a lazy 'ByteString' strict.
 strict :: BL.ByteString -> BS.ByteString

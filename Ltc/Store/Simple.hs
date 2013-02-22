@@ -144,11 +144,10 @@ doClose _handle = do
 doGet :: (ValueString (Value a))
       => Simple -> Key -> Version -> IO (Maybe (Value a))
 doGet ref key version = do
-    debugM tag (printf "get %s" (BL.unpack key))
     CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
         withKeyRecord (locationKey ref key) $ \kr -> do
             case findVersion version kr of
-                Nothing ->
+                Nothing -> do
                     return Nothing
                 Just kvsn -> do
                     let valueFile = locationValueHash ref (getValueHash kvsn)
@@ -175,7 +174,7 @@ doKeyVersions ref key = do
 doSet :: (ValueString (Value a), ValueType (Value a))
       => Simple -> Key -> Value a -> IO Version
 doSet ref key value = do
-    debugM tag (printf "set %s" (BL.unpack key))
+    debugM tag (printf "set %s" (show key))
     let vhash = valueHash value
     atomicWriteFile ref (locationValueHash ref vhash)
         ((if getUseCompression ref then Z.compress else id) (valueString value))
@@ -279,7 +278,7 @@ initStore params = do
 -- | The hash of a key.  This hash is used as the filename under which
 -- the key is stored in the @keys/@ folder.
 keyHash :: Key -> KeyHash
-keyHash = BL.pack . showDigest . sha1
+keyHash (Key k) = BL.pack (showDigest (sha1 k))
 
 -- | The hash of a value.  This hash is used as the filename under
 -- which the value is stored in the @values/@ folder.

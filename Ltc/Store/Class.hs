@@ -8,7 +8,7 @@ module Ltc.Store.Class (
         Store(..),
 
         -- * Common types
-        Key, KeyHash, ValueHash, Version, NodeName,
+        Key(..), KeyHash, ValueHash, Version, NodeName,
 
         -- * Errors
         TypeMismatchError(..), NodeNameMismatchError(..),
@@ -22,6 +22,7 @@ import Control.Applicative ( (<$>) )
 import Control.Exception ( Exception )
 import Data.ByteString.Lazy.Char8 ( ByteString, pack, unpack )
 import Data.Set ( Set )
+import Data.String ( IsString(..) )
 import Data.Typeable ( Typeable )
 import Data.VectorClock ( VectorClock )
 import GHC.Generics ( Generic )
@@ -56,7 +57,14 @@ class Store a where
 -- Types & instances
 ----------------------
 
-type Key       = ByteString
+newtype Key = Key ByteString
+            deriving ( Eq, Generic, Ord, Show )
+
+instance Sexpable Key
+
+instance IsString Key where
+    fromString = Key . pack
+
 type KeyHash   = ByteString
 type ValueHash = ByteString
 type NodeName  = ByteString
