@@ -13,6 +13,7 @@ module Ltc.Store.Class (
         -- * Errors
         TypeMismatchError(..), NodeNameMismatchError(..),
         CorruptKeyFileError(..), CorruptValueFileError(..),
+        CorruptStoreError(..),
 
         -- * Value types
         Value(..), Single, Collection, Type(..), ValueString(..), ValueType(..)
@@ -216,3 +217,8 @@ data CorruptValueFileError = CorruptValueFileError { valueFilePath :: FilePath
                            deriving ( Show, Typeable )
 
 instance Exception CorruptValueFileError
+
+data CorruptStoreError = CorruptStoreError { csReason :: String }
+                       deriving ( Show, Typeable )
+
+instance Exception CorruptStoreError

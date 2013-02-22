@@ -89,19 +89,18 @@ main = do
                        , useCompression = False
                        , nodeName       = (BL.pack hostname) }
     addKeyHistory store (Diffs m) key = do
-        mv <- getLatest store key
-        case mv of
-            Nothing -> do
-                error "poopy cup"
-            Just (tip :: Value (Single Integer), _) -> do
-                vsns <- storeUnJust =<< keyVersions store key
-                -- @vsns@ contains at least the tip.
-                vs <- forM (tail vsns) (\vsn -> storeUnJust =<< get store key vsn)
-                let (_, diffs) = foldl (\(v, ds) v' -> (v', reverseDiff (diffFromTo v v') : ds))
-                                       (tip, [])
-                                       vs
-                let kh = KeyHistory (tip, diffs)
-                return (Diffs (M.insert key kh m))
+        CE.handle (\(_ :: CE.SomeException) -> do
+                    -- FIXME Try a different data type.
+                    return (Diffs m)) $ do
+            Just (tip :: Value (Single Integer), _) <- getLatest store key
+            vsns <- storeUnJust =<< keyVersions store key
+            -- @vsns@ contains at least the tip.
+            vs <- forM (tail vsns) (\vsn -> storeUnJust =<< get store key vsn)
+            let (_, diffs) = foldl (\(v, ds) v' -> (v', reverseDiff (diffFromTo v v') : ds))
+                                   (tip, [])
+                                   vs
+            let kh = KeyHistory (tip, diffs)
+            return (Diffs (M.insert key kh m))
     storeUnJust (Just a) = return a
     storeUnJust Nothing  = fail "could not find expected value in store"
 

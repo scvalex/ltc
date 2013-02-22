@@ -144,7 +144,10 @@ doClose _handle = do
 doGet :: (ValueString (Value a))
       => Simple -> Key -> Version -> IO (Maybe (Value a))
 doGet ref key version = do
-    CE.handle (\(_ :: CE.IOException) -> return Nothing) $ do
+    debugM tag (printf "get %s" (show key))
+    CE.handle (\(exn :: CE.IOException) -> do
+                CE.throw (CorruptKeyFileError { keyFilePath = locationKey ref key
+                                              , ckfReason   = show exn })) $ do
         withKeyRecord (locationKey ref key) $ \kr -> do
             case findVersion version kr of
                 Nothing -> do
@@ -155,7 +158,11 @@ doGet ref key version = do
                          <$> BL.readFile valueFile
                     -- FIXME It's not enough to parse the value; we should also check its
                     -- recorded type.
-                    return (unValueString s)
+                    case unValueString s of
+                        Nothing -> CE.throw (CorruptValueFileError {
+                                                  valueFilePath = valueFile,
+                                                  cvfReason     = "unparsable" })
+                        Just v -> return (Just v)
 
 doGetLatest :: (ValueString (Value a))
             => Simple -> Key -> IO (Maybe (Value a, Version))
@@ -163,8 +170,12 @@ doGetLatest ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
         let latestVersion = getVersion (getTip kr)
         -- Every key has at least one value.
-        Just value <- doGet ref key latestVersion
-        return (Just (value, latestVersion))
+        mvalue <- doGet ref key latestVersion
+        case mvalue of
+            Just value -> return (Just (value, latestVersion))
+            Nothing -> CE.throw (CorruptStoreError (printf "%s's tip (%s) does not exist"
+                                                           (show (locationKey ref key))
+                                                           (show latestVersion)))
 
 doKeyVersions :: Simple -> Key -> IO (Maybe [Version])
 doKeyVersions ref key = do
