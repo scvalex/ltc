@@ -86,8 +86,15 @@ main = do
                        , useCompression = False
                        , nodeName       = (BL.pack hostname) }
 
-data DiffPack = forall a. (Sexpable (Diff a), Sexpable (Value a)) => Diffs (Map Key (Value a, [Diff a]))
+data KeyHistory = forall a. (Sexpable (Diff a), Sexpable (Value a))
+                  => KeyHistory (Value a, [Diff a])
 
-instance Sexpable DiffPack where
-    toSexp (Diffs ds) = List ["DiffPack", toSexp ds]
-    fromSexp (List ["DiffPack", _]) = fail "fromSexp DiffPack not implemented"
+instance Sexpable KeyHistory where
+    toSexp (KeyHistory (tip, history)) = List ["KeyHistory", toSexp tip, toSexp history]
+    fromSexp _ = undefined
+
+data Diffs = Diffs (Map Key KeyHistory)
+
+instance Sexpable Diffs where
+    toSexp (Diffs ds) = List ["Diffs", toSexp ds]
+    fromSexp (List ["Diffs", _]) = fail "fromSexp Diffs not implemented"

@@ -93,21 +93,21 @@ instance (Ord a) => Ord (Value (Single a)) where
     (VaString s1) `compare` (VaString s2) = s1 `compare` s2
     _ `compare` _ = error "Impossible case in Ord (Value (Single a))"
 
-instance (Sexpable a) => Sexpable (Value a) where
+instance Sexpable (Value (Single Integer)) where
     toSexp (VaInt n) = List ["VaInt", toSexp n]
+    fromSexp (List ["VaInt", s]) = VaInt <$> fromSexp s
+    fromSexp _                   = fail "fromSexp Value (Single Integer)"
+
+instance Sexpable (Value (Single ByteString)) where
     toSexp (VaString s) = List ["VaString", toSexp s]
+    fromSexp (List ["VaString", s]) = VaString <$> fromSexp s
+    fromSexp _                      = fail "fromSexp Value (Single ByteString)"
 
-    fromSexp _ = fail "Boom"
-
--- instance Sexpable (Value (Single Integer)) where
---     toSexp (VaInt n) = List ["VaInt", toSexp n]
---     fromSexp (List ["VaInt", s]) = VaInt <$> fromSexp s
---     fromSexp _                   = fail "fromSexp Value (Single Integer)"
-
--- instance Sexpable (Value (Single ByteString)) where
---     toSexp (VaString s) = List ["VaString", toSexp s]
---     fromSexp (List ["VaString", s]) = VaString <$> fromSexp s
---     fromSexp _                      = fail "fromSexp Value (Single ByteString)"
+instance (Sexpable (Value (Single a)), Ord (Value (Single a)))
+         => Sexpable (Value (Collection a)) where
+    toSexp (VaSet s) = List ["VaSet", toSexp s]
+    fromSexp (List ["VaSet", s]) = VaSet <$> fromSexp s
+    fromSexp _                   = fail "fromSexp Value (Collection a)"
 
 ----------------------
 -- Value Helpers
