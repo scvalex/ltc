@@ -156,13 +156,14 @@ doGet ref key version = do
                          <$> BL.readFile valueFile
                     -- FIXME It's not enough to parse the value; we should also check its
                     -- recorded type.
-                    return $ (unValueString s)
+                    return (unValueString s)
 
 doGetLatest :: (ValueString (Value a))
             => Simple -> Key -> IO (Maybe (Value a, Version))
 doGetLatest ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
         let latestVersion = getVersion (getTip kr)
+        -- Every key has at least one value.
         Just value <- doGet ref key latestVersion
         return (Just (value, latestVersion))
 
@@ -239,17 +240,17 @@ readKeyRecord path = do
     if keyExists
           then do
               text <- BL.readFile path
-              let mkErr reason = show $ CorruptKeyFileError { keyFilePath = path
-                                                            , ckfReason  = reason }
+              let mkErr reason = CorruptKeyFileError { keyFilePath = path
+                                                     , ckfReason  = reason }
               case parse text of
                   Left err ->
-                      fail (mkErr (show err))
+                      CE.throw (mkErr (show err))
                   Right [s] ->
                       case fromSexp s of
-                          Nothing -> fail (mkErr "invalid sexp")
+                          Nothing -> CE.throw (mkErr "invalid sexp")
                           Just kr -> return (Just kr)
                   Right _ ->
-                      fail (mkErr "multiple sexps")
+                      CE.throw (mkErr "multiple sexps")
           else return Nothing
 
 -- | Write the given 'ByteString' to the file atomically.  Overwrite
