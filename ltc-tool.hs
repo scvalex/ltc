@@ -89,18 +89,37 @@ main = do
                        , useCompression = False
                        , nodeName       = (BL.pack hostname) }
     addKeyHistory store (Diffs m) key = do
-        CE.handle (\(_ :: CE.SomeException) -> do
-                    -- FIXME Try a different data type.
-                    return (Diffs m)) $ do
-            Just (tip :: Value (Single Integer), _) <- getLatest store key
+        mkh <- do
+            mkhInt <- getKeyHistory store key
+            case mkhInt of
+                 Just (tip :: Value (Single Integer), diffs) ->
+                     return (Just (KeyHistory (tip, diffs)))
+                 Nothing -> do
+                     mkhIntSet <- getKeyHistory store key
+                     case mkhIntSet of
+                         Just (tip :: Value (Collection Integer), diffs) ->
+                             return (Just (KeyHistory (tip, diffs)))
+                         Nothing ->
+                             return Nothing
+        case mkh of
+            Nothing -> do
+                fail (printf "unknown type for key %s" (show key))
+            Just kh ->
+                return (Diffs (M.insert key kh m))
+
+    getKeyHistory :: forall a s. (Store s, ValueString (Value a), Diffable a)
+                  => s -> Key -> IO (Maybe (Value a, [Diff a]))
+    getKeyHistory store key = do
+        CE.handle (\(_ :: CE.SomeException) -> return Nothing) $ do
+            Just (tip :: Value a, _) <- getLatest store key
             vsns <- storeUnJust =<< keyVersions store key
             -- @vsns@ contains at least the tip.
             vs <- forM (tail vsns) (\vsn -> storeUnJust =<< get store key vsn)
             let (_, diffs) = foldl (\(v, ds) v' -> (v', reverseDiff (diffFromTo v v') : ds))
                                    (tip, [])
                                    vs
-            let kh = KeyHistory (tip, diffs)
-            return (Diffs (M.insert key kh m))
+            return (Just (tip, diffs))
+
     storeUnJust (Just a) = return a
     storeUnJust Nothing  = fail "could not find expected value in store"
 
