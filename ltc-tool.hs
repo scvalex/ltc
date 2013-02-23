@@ -71,7 +71,6 @@ main = do
         Redis d -> do
             -- when (null d) $ fail "Given directory cannot be empty"
             _ <- printf "Running Redis server with %s\n" d
-            -- FIXME Implement clean termination for server.
             hostname <- getHostName
             store <- open (openParameters d hostname)
             shutdown <- serve store
