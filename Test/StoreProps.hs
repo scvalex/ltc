@@ -45,9 +45,9 @@ main = defaultMainWithOpts
 testOpen :: Assertion
 testOpen = cleanEnvironment ["test-store"] $ do
     hostname <- BL.pack <$> getHostName
-    store <- open testParameters { nodeName = hostname }
+    store <- open testParameters
     close store
-    store' <- open testParameters { nodeName = hostname }
+    store' <- open testParameters
     close store'
     opened <- CE.handle (\(exn :: NodeNameMismatchError) ->
                           return (not (requestedName exn == "other"
@@ -59,7 +59,7 @@ testOpen = cleanEnvironment ["test-store"] $ do
 testSimpleSetGet :: Assertion
 testSimpleSetGet = cleanEnvironment ["test-store"] $ do
     hostname <- BL.pack <$> getHostName
-    store <- open testParameters { nodeName = hostname }
+    store <- open testParameters
     _ <- set store "foo" (vs "bar")
     res1 <- getLatest store "foo"
     res1 @?= Just (vs "bar", VC.fromList [(hostname, 1)])
@@ -207,11 +207,8 @@ makeCommand ks = do
 
 propWithCommands :: (Simple -> [Command] -> PropertyM IO a) -> Commands -> Property
 propWithCommands prop cmds = monadicIO $ do
-    hostname <- BL.pack <$> run getHostName
     cleanEnvironmentP ["test-store"] $ do
-        store <- run $ open (OpenParameters { location       = "test-store"
-                                            , useCompression = False
-                                            , nodeName       = hostname })
+        store <- run $ open testParameters
         _ <- prop store (unCommands cmds)
         run $ close store
 

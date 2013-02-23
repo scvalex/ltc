@@ -69,8 +69,8 @@ endToEndTests =
     prepare = BS.concat . map R.redisEncode
 
 endToEndBinaryTest :: ByteString -> ByteString -> Assertion
-endToEndBinaryTest request reply = cleanEnvironment ["test-store"] $ do
-    store <- open testParameters
+endToEndBinaryTest request reply = cleanEnvironment ["redis-store"] $ do
+    store <- open testParameters { location = "redis-store" }
     let port = 26279
     shutdown <- serveWithPort port store
     sock <- getSocket "localhost" port
@@ -220,8 +220,8 @@ propEncodeParse :: RedisMessage -> Bool
 propEncodeParse msg = msg == R.parseExn (R.redisEncode msg)
 
 propNumericDance :: NumericRedisMessages -> Property
-propNumericDance (NRMs msgs) = monadicIO $ cleanEnvironmentP ["test-store"] $ do
-    store <- run $ open testParameters
+propNumericDance (NRMs msgs) = monadicIO $ cleanEnvironmentP ["redis-store"] $ do
+    store <- run $ open testParameters { location = "redis-store" }
     let port = 26279
     shutdown <- run $ serveWithPort port store
     sock <- run $ getSocket "localhost" port

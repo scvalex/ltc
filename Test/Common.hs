@@ -2,11 +2,13 @@ module Test.Common (
         cleanEnvironment, cleanEnvironmentP, testParameters
     ) where
 
-import Ltc.Store
-
 import Control.Monad ( when )
+import Data.ByteString.Lazy.Char8 ( pack )
+import Ltc.Store
+import Network.BSD ( getHostName )
 import System.Directory ( doesDirectoryExist, removeDirectoryRecursive
                         , doesFileExist, removeFile )
+import System.IO.Unsafe ( unsafePerformIO )
 import Test.HUnit
 import Test.QuickCheck.Monadic as QCM
 
@@ -44,4 +46,6 @@ rmrf fp = do
 testParameters :: OpenParameters Simple
 testParameters = OpenParameters { location       = "test-store"
                                 , useCompression = False
-                                , nodeName       = "test" }
+                                , nodeName       = pack hostname }
+  where
+    hostname = unsafePerformIO getHostName
