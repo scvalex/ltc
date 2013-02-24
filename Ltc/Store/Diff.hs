@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs, DeriveDataTypeable, FlexibleInstances, FlexibleContexts #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances, DeriveGeneric #-}
 
 module Ltc.Store.Diff (
         Diffable(..), Diff, diffByteString
@@ -7,9 +7,11 @@ module Ltc.Store.Diff (
 
 import Control.Applicative ( (<$>), (<*>) )
 import Data.ByteString.Lazy.Char8 ( ByteString )
+import Data.Int ( Int64 )
 import Data.List ( groupBy )
 import Data.Set ( Set )
 import Data.Sexp ( Sexpable(..), Sexp(..) )
+import GHC.Generics ( Generic )
 import Ltc.Store.Class ( Value(..), Single, Collection )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
@@ -52,13 +54,55 @@ instance (Ord (Value (Single b))) => Diffable (Collection b) where
     reverseDiff (DiffSet toRemove toAdd) = DiffSet toAdd toRemove
 
 --------------------------------
+-- Edit scripts
+--------------------------------
+
+-- | An 'EditScript' defines the actions that change one 'ByteString' into another.
+newtype EditScript = EditScript [EditAction]
+                   deriving ( Generic, Show )
+
+data EditAction = Skip Int64
+                | Insert ByteString
+                | Delete ByteString
+                deriving ( Generic, Show )
+
+-- | Compute the edits that turn one 'ByteString' into another.
+editsFromTo :: ByteString -> ByteString -> EditScript
+editsFromTo s1 s2 = EditScript (map convert (diffByteString s1 s2))
+  where
+    convert (First, s)  = Delete s
+    convert (Second, s) = Insert s
+    convert (Both, s)   = Skip (BL.length s)
+
+-- | Change a 'ByteString' according to the given 'EditScript'.
+applyEditScript :: ByteString -> EditScript -> ByteString
+applyEditScript text (EditScript as) = fst (foldl applyAction (BL.empty, text) as)
+  where
+    applyAction (sofar, rest) (Delete s) =
+        (sofar, BL.drop (BL.length s) rest)
+    applyAction (sofar, rest) (Insert s) =
+        (BL.append sofar s, rest)
+    applyAction (sofar, rest) (Skip n) =
+        let (common, rest') = BL.splitAt n rest in
+        (BL.append sofar common, rest')
+
+-- | Reverse an 'EditScript' such that it changes the destination 'ByteString' into the
+-- original one.
+reverseEditScript :: EditScript -> EditScript
+reverseEditScript (EditScript as) = EditScript (map reverseAction as)
+  where
+    reverseAction (Skip n)   = Skip n
+    reverseAction (Insert s) = Delete s
+    reverseAction (Delete s) = Insert s
+
+--------------------------------
 -- ByteString diffs
 --------------------------------
 
 -- Adapted from the Diff package.
 
--- | A difference indicator is a value from the First list, from the Second one, or
--- from Both.
+-- | A difference indicator is a value from the First list, from the Second one, or from
+-- Both.
 data DI = First | Second | Both
         deriving ( Show, Eq )
 
@@ -71,8 +115,8 @@ data DL = DL { poi  :: !Int
 instance Ord DL where
     x <= y = poi x <= poi y
 
--- | Takes two lists and returns a list indicating the differences
--- between them, grouped into chunks.
+-- | Compute a list of the sub-'ByteString's that appear in each of the two given
+-- 'ByteString's, or in both.
 diffByteString :: ByteString -> ByteString -> [(DI, ByteString)]
 diffByteString s1 s2 = map go (groupBy (\(x, _) (y, _) -> x == y) (getDiff s1 s2))
   where
