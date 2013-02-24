@@ -27,9 +27,8 @@ Library
                         regex-tdfa, sexp >= 0.6, SHA, unix, vector-clock, zlib
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
-  Exposed-modules:      Ltc.Store, Ltc.Store.Simple, Ltc.Store.Class
-  Other-modules:        Network.Redis, Network.RedisServer, Ltc.Adapter.RedisAdapter,
-                        Ltc.Store.Diff
+  Exposed-modules:      Ltc.Store, Ltc.Store.Simple, Ltc.Store.Class, Ltc.Store.Diff,
+                        Network.Redis, Network.RedisServer, Ltc.Adapter.RedisAdapter
 
 Executable ltc
   Build-depends:        array, attoparsec, base >= 4 && < 5, bytestring, containers, directory,
