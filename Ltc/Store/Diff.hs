@@ -2,7 +2,7 @@
 {-# LANGUAGE UndecidableInstances, DeriveGeneric #-}
 
 module Ltc.Store.Diff (
-        Diffable(..), Diff, diffByteString
+        Diffable(..), Diff
     ) where
 
 import Control.Applicative ( (<$>), (<*>) )
@@ -18,7 +18,7 @@ import qualified Data.Set as S
 
 data Diff a where
     DiffInt :: Integer -> Diff (Single Integer)
-    -- FIXME Diffs for strings
+    DiffString :: EditScript -> Diff (Single ByteString)
     DiffSet :: Set (Value (Single b)) -> Set (Value (Single b)) -> Diff (Collection b)
 
 instance Sexpable (Diff (Single Integer)) where
@@ -43,6 +43,13 @@ instance Diffable (Single Integer) where
     applyDiff (VaInt n) (DiffInt d) = VaInt (n + d)
 
     reverseDiff (DiffInt d) = DiffInt (-d)
+
+instance Diffable (Single ByteString) where
+    diffFromTo (VaString s1) (VaString s2) = DiffString (editsFromTo s1 s2)
+
+    applyDiff (VaString s) (DiffString d) = VaString (applyEdits s d)
+
+    reverseDiff (DiffString d) = DiffString (reverseEdits d)
 
 instance (Ord (Value (Single b))) => Diffable (Collection b) where
     diffFromTo (VaSet s1) (VaSet s2) =
@@ -75,8 +82,8 @@ editsFromTo s1 s2 = EditScript (map convert (diffByteString s1 s2))
     convert (Both, s)   = Skip (BL.length s)
 
 -- | Change a 'ByteString' according to the given 'EditScript'.
-applyEditScript :: ByteString -> EditScript -> ByteString
-applyEditScript text (EditScript as) = fst (foldl applyAction (BL.empty, text) as)
+applyEdits :: ByteString -> EditScript -> ByteString
+applyEdits text (EditScript as) = fst (foldl applyAction (BL.empty, text) as)
   where
     applyAction (sofar, rest) (Delete s) =
         (sofar, BL.drop (BL.length s) rest)
@@ -88,8 +95,8 @@ applyEditScript text (EditScript as) = fst (foldl applyAction (BL.empty, text) a
 
 -- | Reverse an 'EditScript' such that it changes the destination 'ByteString' into the
 -- original one.
-reverseEditScript :: EditScript -> EditScript
-reverseEditScript (EditScript as) = EditScript (map reverseAction as)
+reverseEdits :: EditScript -> EditScript
+reverseEdits (EditScript as) = EditScript (map reverseAction as)
   where
     reverseAction (Skip n)   = Skip n
     reverseAction (Insert s) = Delete s
