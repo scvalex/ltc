@@ -59,9 +59,9 @@ instance (Ord (Value (Single b))) => Diffable (Collection b) where
 
 -- Adapted from the Diff package.
 
--- | A difference indicator is a value from the /F/irst list, from the /S/econd one, or
--- from /B/oth.
-data DI = F | S | B
+-- | A difference indicator is a value from the First list, from the Second one, or
+-- from Both.
+data DI = First | Second | Both
         deriving ( Show, Eq )
 
 data DL = DL { poi  :: !Int
@@ -77,10 +77,10 @@ instance Ord DL where
 getDiff :: (Eq a) => [a] -> [a] -> [(DI, a)]
 getDiff a b = markup a b (reverse (lcs a b))
   where
-    markup (x:xs) ys     (F:ds) = (F, x) : markup xs ys ds
-    markup xs     (y:ys) (S:ds) = (S, y) : markup xs ys ds
-    markup (x:xs) (_:ys) (B:ds) = (B, x) : markup xs ys ds
-    markup _      _      _      = []
+    markup (x:xs) ys     (First:ds)  = (First, x) : markup xs ys ds
+    markup xs     (y:ys) (Second:ds) = (Second, y) : markup xs ys ds
+    markup (x:xs) (_:ys) (Both:ds)   = (Both, x) : markup xs ys ds
+    markup _      _      _           = []
 
 -- | Takes two lists and returns a list indicating the differences
 -- between them, grouped into chunks.
@@ -114,8 +114,8 @@ dstep cD dls = hd : pairMaxes rst
     nextDLs [] = []
     nextDLs (dl:rest) = dl' : dl'' : nextDLs rest
       where
-        dl'  = addSnake cD $ dl { poi = poi dl + 1, path = (F : pdl) }
-        dl'' = addSnake cD $ dl { poj = poj dl + 1, path = (S : pdl) }
+        dl'  = addSnake cD $ dl { poi = poi dl + 1, path = (First : pdl) }
+        dl'' = addSnake cD $ dl { poj = poj dl + 1, path = (Second : pdl) }
         pdl  = path dl
 
     -- Pick the maximum path in each pair of given paths.
@@ -128,7 +128,7 @@ dstep cD dls = hd : pairMaxes rst
 addSnake :: (Int -> Int -> Bool) -> DL -> DL
 addSnake cD dl
     | cD pi pj = addSnake cD $
-                 dl { poi = pi + 1, poj = pj + 1, path = (B : path dl) }
+                 dl { poi = pi + 1, poj = pj + 1, path = (Both : path dl) }
     | otherwise = dl
   where
     pi = poi dl
