@@ -64,9 +64,9 @@ instance (Ord (Value (Single b))) => Diffable (Collection b) where
 data DI = F | S | B
         deriving ( Show, Eq )
 
-data DL = DL { poi :: !Int
-             , poj :: !Int
-             , path::[DI]
+data DL = DL { poi  :: !Int
+             , poj  :: !Int
+             , path :: [DI]
              }
         deriving ( Show, Eq )
 
@@ -89,43 +89,55 @@ getGroupedDiff as bs = map go (groupBy (\x y -> fst x == fst y) (getDiff as bs))
   where
     go ((d, x) : xs) = (d, x : map snd xs)
 
+-- | Compute the longest common subsequence with the usual matrix method.
 lcs :: (Eq a) => [a] -> [a] -> [DI]
 lcs as bs =
-    path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) $
-    concat . iterate (dstep cd) . (:[]) . addsnake cd $
-    DL { poi = 0, poj = 0, path = []}
+    let initPath = addSnake cD (DL { poi = 0, poj = 0, path = []})
+        allPaths = concat (iterate (dstep cD) [initPath])
+        fullPaths = dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) allPaths
+    in path (head fullPaths)
   where
-    cd = canDiag as bs lena lenb
+    cD = canDiag as bs lena lenb
     lena = length as
     lenb = length bs
 
-canDiag :: (Eq a) => [a] -> [a] -> Int -> Int -> Int -> Int -> Bool
-canDiag as bs lena lenb i j =
-    i < lena && j < lenb && (arAs ! i) == (arBs ! j)
-  where
-    arAs = listArray (0,lena - 1) as
-    arBs = listArray (0,lenb - 1) bs
-
+-- FIXME Why does dstep pick out the first element?
+-- | Expand all paths one step (and then expand them across the diagonals).
 dstep :: (Int -> Int -> Bool) -> [DL] -> [DL]
-dstep cd dls = hd:pairMaxes rst
+dstep cD dls = hd : pairMaxes rst
   where
     (hd:rst) = nextDLs dls
-    nextDLs [] = []
-    nextDLs (dl:rest) = dl':dl'':nextDLs rest
-      where
-        dl'  = addsnake cd $ dl { poi = poi dl + 1, path =(F : pdl) }
-        dl'' = addsnake cd $ dl { poj = poj dl + 1, path =(S : pdl) }
-        pdl = path dl
 
+    -- Replace each path, by the path starting one beneath and one to the right (expanded
+    -- down the diagonal).
+    nextDLs :: [DL] -> [DL]
+    nextDLs [] = []
+    nextDLs (dl:rest) = dl' : dl'' : nextDLs rest
+      where
+        dl'  = addSnake cD $ dl { poi = poi dl + 1, path = (F : pdl) }
+        dl'' = addSnake cD $ dl { poj = poj dl + 1, path = (S : pdl) }
+        pdl  = path dl
+
+    -- Pick the maximum path in each pair of given paths.
+    pairMaxes :: [DL] -> [DL]
     pairMaxes []         = []
     pairMaxes [x]        = [x]
-    pairMaxes (x:y:rest) = max x y:pairMaxes rest
+    pairMaxes (x:y:rest) = max x y : pairMaxes rest
 
-addsnake :: (Int -> Int -> Bool) -> DL -> DL
-addsnake cd dl
-    | cd pi pj = addsnake cd $
+-- | Advance the given path along the diagonal as much as possible.
+addSnake :: (Int -> Int -> Bool) -> DL -> DL
+addSnake cD dl
+    | cD pi pj = addSnake cD $
                  dl { poi = pi + 1, poj = pj + 1, path = (B : path dl) }
     | otherwise = dl
   where
     pi = poi dl
     pj = poj dl
+
+-- | Can we move one step along the diagonal?
+canDiag :: (Eq a) => [a] -> [a] -> Int -> Int -> Int -> Int -> Bool
+canDiag as bs lena lenb i j =
+    i < lena && j < lenb && (arAs ! i) == (arBs ! j)
+  where
+    arAs = listArray (0, lena - 1) as
+    arBs = listArray (0, lenb - 1) bs
