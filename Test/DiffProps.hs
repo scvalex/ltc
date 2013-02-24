@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving, FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main where
@@ -18,12 +18,12 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 
 main :: IO ()
 main = defaultMainWithOpts
-       [ testProperty "intDiffWind" propIntDiffWind
-       , testProperty "stringDiffWind" propStringDiffWind
-       , testProperty "intSetDiffWind" propIntSetDiffWind
-       , testProperty "intDiffReverseId" propIntDiffReverseId
-       , testProperty "stringDiffReverseId" propStringDiffReverseId
-       , testProperty "intSetDiffReverseId" propIntSetDiffReverseId
+       [ testProperty "intDiffWind" (propDiffWind :: DiffWindTest (Single Integer))
+       , testProperty "stringDiffWind" (propDiffWind :: DiffWindTest (Single ByteString))
+       , testProperty "intSetDiffWind" (propDiffWind :: DiffWindTest (Collection Integer))
+       , testProperty "intDiffReverseId" (propDiffReverseId :: DiffReverseIdTest (Single Integer))
+       , testProperty "stringDiffReverseId" (propDiffReverseId :: DiffReverseIdTest (Single ByteString))
+       , testProperty "intSetDiffReverseId" (propDiffReverseId :: DiffReverseIdTest (Collection Integer))
        ] options
   where
     options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 10000000) }) }
@@ -48,20 +48,12 @@ instance Arbitrary SmallInt where
 instance Arbitrary (Value (Collection Integer)) where
     arbitrary = VaSet . S.fromList . map (VaInt . unSmallInt) <$> arbitrary
 
-propIntDiffWind :: Value (Single Integer) -> Value (Single Integer) -> Bool
-propIntDiffWind x y = y == applyDiff x (diffFromTo x y)
+type DiffWindTest a = Value a -> Value a -> Bool
 
-propStringDiffWind :: Value (Single ByteString) -> Value (Single ByteString) -> Bool
-propStringDiffWind x y = y == applyDiff x (diffFromTo x y)
+propDiffWind :: (Eq (Value a), Diffable a) => DiffWindTest a
+propDiffWind x y = y == applyDiff x (diffFromTo x y)
 
-propIntSetDiffWind :: Value (Collection Integer) -> Value (Collection Integer) -> Bool
-propIntSetDiffWind xs ys = ys == applyDiff xs (diffFromTo xs ys)
+type DiffReverseIdTest a = Value a -> Value a -> Bool
 
-propIntDiffReverseId :: Value (Single Integer) -> Value (Single Integer) -> Bool
-propIntDiffReverseId x y = x == applyDiff y (reverseDiff (diffFromTo x y))
-
-propStringDiffReverseId :: Value (Single ByteString) -> Value (Single ByteString) -> Bool
-propStringDiffReverseId x y = x == applyDiff y (reverseDiff (diffFromTo x y))
-
-propIntSetDiffReverseId :: Value (Collection Integer) -> Value (Collection Integer) -> Bool
-propIntSetDiffReverseId xs ys = xs == applyDiff ys (reverseDiff (diffFromTo xs ys))
+propDiffReverseId :: (Eq (Value a), Diffable a) => DiffReverseIdTest a
+propDiffReverseId x y = x == applyDiff y (reverseDiff (diffFromTo x y))
