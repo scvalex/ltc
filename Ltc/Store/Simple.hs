@@ -138,6 +138,7 @@ doOpen params = do
 
 doClose :: Simple -> IO ()
 doClose _handle = do
+    -- FIXME We should wait for other commands to finish before closing.
     debugM tag "close"
     return ()
 
