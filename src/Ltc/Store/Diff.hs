@@ -7,7 +7,6 @@ module Ltc.Store.Diff (
 
 import Control.Applicative ( (<$>), (<*>) )
 import Data.ByteString.Lazy.Char8 ( ByteString )
-import Data.Int ( Int64 )
 import Data.List ( groupBy )
 import Data.Set ( Set )
 import Data.Sexp ( Sexpable(..), Sexp(..) )
@@ -26,7 +25,13 @@ instance Sexpable (Diff (Single Integer)) where
     fromSexp (List ["DiffInt", s]) = DiffInt <$> fromSexp s
     fromSexp _                     = fail "fromSexp Diff (Single Integer)"
 
-instance Sexpable (Diff (Collection Integer)) where
+instance Sexpable (Diff (Single ByteString)) where
+    toSexp (DiffString es) = List ["DiffString", toSexp es]
+    fromSexp (List ["DiffString", s]) = DiffString <$> fromSexp s
+    fromSexp _                        = fail "fromSexp Diff (Single ByteString)"
+
+instance (Sexpable (Value (Single a)), Ord (Value (Single a)))
+         => Sexpable (Diff (Collection a)) where
     toSexp (DiffSet toRemove toAdd) = List ["DiffSet", toSexp toRemove, toSexp toAdd]
 
     fromSexp (List ["DiffSet", s1, s2]) = DiffSet <$> fromSexp s1 <*> fromSexp s2
@@ -68,10 +73,14 @@ instance (Ord (Value (Single b))) => Diffable (Collection b) where
 newtype EditScript = EditScript [EditAction]
                    deriving ( Generic, Show )
 
-data EditAction = Skip Int64
+instance Sexpable EditScript
+
+data EditAction = Skip Int
                 | Insert ByteString
                 | Delete ByteString
                 deriving ( Generic, Show )
+
+instance Sexpable EditAction
 
 -- | Compute the edits that turn one 'ByteString' into another.
 editsFromTo :: ByteString -> ByteString -> EditScript
@@ -79,7 +88,7 @@ editsFromTo s1 s2 = EditScript (map convert (diffByteString s1 s2))
   where
     convert (First, s)  = Delete s
     convert (Second, s) = Insert s
-    convert (Both, s)   = Skip (BL.length s)
+    convert (Both, s)   = Skip (fromIntegral (BL.length s))
 
 -- | Change a 'ByteString' according to the given 'EditScript'.
 applyEdits :: ByteString -> EditScript -> ByteString
@@ -90,7 +99,7 @@ applyEdits text (EditScript as) = fst (foldl applyAction (BL.empty, text) as)
     applyAction (sofar, rest) (Insert s) =
         (BL.append sofar s, rest)
     applyAction (sofar, rest) (Skip n) =
-        let (common, rest') = BL.splitAt n rest in
+        let (common, rest') = BL.splitAt (fromIntegral n) rest in
         (BL.append sofar common, rest')
 
 -- | Reverse an 'EditScript' such that it changes the destination 'ByteString' into the

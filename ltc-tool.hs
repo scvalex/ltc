@@ -98,8 +98,18 @@ main = do
                      case mkhIntSet of
                          Just (tip :: Value (Collection Integer), diffs) ->
                              return (Just (KeyHistory (tip, diffs)))
-                         Nothing ->
-                             return Nothing
+                         Nothing -> do
+                             mkhString <- getKeyHistory store key
+                             case mkhString of
+                                 Just (tip :: Value (Single BL.ByteString), diffs) ->
+                                     return (Just (KeyHistory (tip, diffs)))
+                                 Nothing -> do
+                                     mkhStringSet <- getKeyHistory store key
+                                     case mkhStringSet of
+                                         Just (tip :: Value (Collection BL.ByteString), diffs) ->
+                                             return (Just (KeyHistory (tip, diffs)))
+                                         Nothing ->
+                                             return Nothing
         case mkh of
             Nothing -> do
                 fail (printf "unknown type for key %s" (show key))
