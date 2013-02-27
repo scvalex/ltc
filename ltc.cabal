@@ -22,58 +22,97 @@ Source-repository head
   Location:             https://github.com/scvalex/ltc.git
 
 Library
-  Build-depends:        array, attoparsec, base >= 4 && < 5, bytestring, containers, directory,
-                        filepath, hslogger, network, pipes >= 3.1, pipes-attoparsec,
-                        regex-tdfa, sexp >= 0.6, SHA, unix, vector-clock, zlib
+  Hs-Source-Dirs:       src
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
-  Exposed-modules:      Ltc.Store, Ltc.Store.Simple, Ltc.Store.Class, Ltc.Store.Diff,
-                        Network.Redis, Network.RedisServer, Ltc.Adapter.RedisAdapter
+  Build-depends:        base >= 4 && < 5,
+                        array,
+                        attoparsec,
+                        bytestring,
+                        containers,
+                        directory,
+                        filepath,
+                        hslogger,
+                        network,
+                        pipes >= 3.1,
+                        pipes-attoparsec,
+                        regex-tdfa,
+                        sexp >= 0.6,
+                        SHA,
+                        unix,
+                        vector-clock,
+                        zlib
+  Exposed-modules:
+                        Ltc.Adapter.RedisAdapter,
+                        Ltc.Store,
+                        Ltc.Store.Class,
+                        Ltc.Store.Diff,
+                        Ltc.Store.Simple,
+                        Network.Redis,
+                        Network.RedisServer
 
 Executable ltc
-  Build-depends:        array, attoparsec, base >= 4 && < 5, bytestring, containers, directory,
-                        filepath, hslogger, network, pipes >= 3.1, pipes-attoparsec,
-                        regex-tdfa, sexp >= 0.6, SHA, unix, vector-clock, zlib
-  Build-depends:        cmdargs
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
   Main-is:              ltc-tool.hs
+  Build-depends:        base >= 4 && < 5,
+                        bytestring,
+                        cmdargs,
+                        containers,
+                        ltc,
+                        network,
+                        sexp >= 0.6,
+                        unix
 
 Test-suite store
-  Hs-Source-Dirs:       Test, .
+  Hs-Source-Dirs:       test
   Main-Is:              StoreProps.hs
   Type:                 exitcode-stdio-1.0
-  Build-depends:        array, attoparsec, base >= 4 && < 5, bytestring, containers, directory,
-                        filepath, hslogger, network, pipes >= 3.1, pipes-attoparsec,
-                        regex-tdfa, sexp >= 0.6, SHA, unix, vector-clock, zlib
   Ghc-Options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
-
-  Build-Depends:        test-framework, test-framework-hunit, test-framework-quickcheck2,
-                        HUnit, QuickCheck
+  Build-Depends:        base >= 4 && < 5,
+                        bytestring,
+                        containers,
+                        directory,
+                        HUnit,
+                        ltc,
+                        network,
+                        QuickCheck,
+                        test-framework,
+                        test-framework-hunit,
+                        test-framework-quickcheck2,
+                        vector-clock
 
 Test-suite diff
-  Hs-Source-Dirs:       Test, .
+  Hs-Source-Dirs:       test
   Main-Is:              DiffProps.hs
   Type:                 exitcode-stdio-1.0
-  Build-depends:        array, attoparsec, base >= 4 && < 5, bytestring, containers, directory,
-                        filepath, hslogger, network, pipes >= 3.1, pipes-attoparsec,
-                        regex-tdfa, sexp >= 0.6, SHA, unix, vector-clock, zlib
   Build-depends:        random
   Ghc-Options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
-
-  Build-Depends:        test-framework, test-framework-quickcheck2, QuickCheck
+  Build-Depends:        base >= 4 && < 5,
+                        bytestring,
+                        containers,
+                        ltc,
+                        QuickCheck,
+                        test-framework,
+                        test-framework-quickcheck2
 
 Test-suite redis
-  Hs-Source-Dirs:       Test, .
+  Hs-Source-Dirs:       test
   Main-Is:              RedisProps.hs
   Type:                 exitcode-stdio-1.0
-  Build-depends:        array, attoparsec, base >= 4 && < 5, bytestring, containers, directory,
-                        filepath, hslogger, network, pipes >= 3.1, pipes-attoparsec,
-                        regex-tdfa, sexp >= 0.6, SHA, unix, vector-clock, zlib
   Ghc-Options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
 
-  Build-Depends:        test-framework, test-framework-hunit, test-framework-quickcheck2,
-                        HUnit, QuickCheck
+  Build-Depends:        base >= 4 && < 5,
+                        bytestring,
+                        containers,
+                        directory,
+                        HUnit,
+                        ltc,
+                        network,
+                        QuickCheck,
+                        test-framework,
+                        test-framework-hunit,
+                        test-framework-quickcheck2

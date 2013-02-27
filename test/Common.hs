@@ -1,4 +1,4 @@
-module Test.Common (
+module Common (
         cleanEnvironment, cleanEnvironmentP, testParameters
     ) where
 

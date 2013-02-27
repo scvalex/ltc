@@ -5,6 +5,7 @@ module Main where
 
 import Ltc.Store
 
+import Common ( cleanEnvironment, cleanEnvironmentP, testParameters )
 import Control.Applicative
 import Control.Monad
 import Data.ByteString.Lazy.Char8 ( ByteString )
@@ -12,7 +13,6 @@ import Data.Foldable ( foldlM )
 import Data.List ( find )
 import Data.Monoid
 import Network.BSD ( getHostName )
-import Test.Common ( cleanEnvironment, cleanEnvironmentP, testParameters )
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2

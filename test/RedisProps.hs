@@ -2,6 +2,7 @@
 
 module Main where
 
+import Common ( cleanEnvironment, cleanEnvironmentP, testParameters )
 import Control.Applicative ( (<$>), (<*>) )
 import qualified Control.Exception as CE
 import Control.Monad ( replicateM, when )
@@ -18,7 +19,6 @@ import Network.Socket.ByteString ( sendAll, recv )
 import qualified Network.Redis as R
 import Network.Redis ( RedisMessage, RedisMessage(..) )
 import Network.RedisServer ( serveWithPort )
-import Test.Common ( cleanEnvironment, cleanEnvironmentP, testParameters )
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2

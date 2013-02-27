@@ -1,36 +1,37 @@
+CABAL := $(shell cabal-dev --version > /dev/null && echo cabal-dev || echo cabal)
+
 all: build test
 
 .PHONY: all build dist install clean doc site p ghci
 
 build: dist/setup-config
 	rm -rf _site _cache
-	cabal-dev build
+	$(CABAL) build
 
 dist:
-	cabal-dev sdist
+	$(CABAL) sdist
 
 install: build
 	cabal install
 
 clean:
-	cabal-dev clean
+	$(CABAL) clean
 	rm -rf cabal-dev/ test-store/
 
 dist/setup-config: ltc.cabal
 # If you don't have all the necessary packages installed on the first
 # run, run `cabal-dev install`.
-	cabal-dev configure --enable-tests || cabal-dev install --enable-tests
+	$(CABAL) configure --enable-tests || $(CABAL) install --enable-tests
 
 doc: build
-	cabal-dev haddock
+	$(CABAL) haddock
 
 test: build
-	cabal-dev test
+	$(CABAL) test
 
 p:
-	permamake.sh $(shell find Ltc/ -name '*.hs') \
-	             $(shell find Network/ -name '*.hs') \
-	             $(shell find Test/ -name '*.hs') \
+	permamake.sh $(shell find src/ -name '*.hs') \
+	             $(shell find test/ -name '*.hs') \
 	             ltc-tool.hs \
 	             *.cabal \
 	             Makefile
