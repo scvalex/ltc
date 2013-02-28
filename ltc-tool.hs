@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, FlexibleContexts #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, FlexibleContexts #-}
 
 module Main where
 
@@ -8,7 +8,8 @@ import Data.Foldable ( foldlM )
 import Data.Map ( Map )
 import Data.Traversable ( forM )
 import Data.Version ( showVersion )
-import Language.Sexp ( Sexp(..), Sexpable(..), printHum )
+import GHC.Generics ( Generic )
+import Language.Sexp ( Sexpable(..), printHum )
 import Ltc.Store
 import Ltc.Store.Diff ( Diff, Diffable(..) )
 import Network.BSD ( getHostName )
@@ -92,22 +93,22 @@ main = do
             mkhInt <- getKeyHistory store key
             case mkhInt of
                  Just (tip :: Value (Single Integer), diffs) ->
-                     return (Just (KeyHistory (tip, diffs)))
+                     return (Just (IntKeyHistory (tip, diffs)))
                  Nothing -> do
                      mkhIntSet <- getKeyHistory store key
                      case mkhIntSet of
                          Just (tip :: Value (Collection Integer), diffs) ->
-                             return (Just (KeyHistory (tip, diffs)))
+                             return (Just (IntSetKeyHistory (tip, diffs)))
                          Nothing -> do
                              mkhString <- getKeyHistory store key
                              case mkhString of
                                  Just (tip :: Value (Single BL.ByteString), diffs) ->
-                                     return (Just (KeyHistory (tip, diffs)))
+                                     return (Just (StringKeyHistory (tip, diffs)))
                                  Nothing -> do
                                      mkhStringSet <- getKeyHistory store key
                                      case mkhStringSet of
                                          Just (tip :: Value (Collection BL.ByteString), diffs) ->
-                                             return (Just (KeyHistory (tip, diffs)))
+                                             return (Just (StringSetKeyHistory (tip, diffs)))
                                          Nothing ->
                                              return Nothing
         case mkh of
@@ -132,15 +133,16 @@ main = do
     storeUnJust (Just a) = return a
     storeUnJust Nothing  = fail "could not find expected value in store"
 
-data KeyHistory = forall a. (Sexpable (Diff a), Sexpable (Value a))
-                  => KeyHistory (Value a, [Diff a])
+data KeyHistory = IntKeyHistory (Value (Single Integer), [Diff (Single Integer)])
+                | IntSetKeyHistory (Value (Collection Integer), [Diff (Collection Integer)])
+                | StringKeyHistory (Value (Single BL.ByteString), [Diff (Single BL.ByteString)])
+                | StringSetKeyHistory (Value (Collection BL.ByteString),
+                                       [Diff (Collection BL.ByteString)])
+                deriving ( Generic )
 
-instance Sexpable KeyHistory where
-    toSexp (KeyHistory (tip, history)) = List ["KeyHistory", toSexp tip, toSexp history]
-    fromSexp _ = fail "not implemented"
+instance Sexpable KeyHistory
 
 data Diffs = Diffs (Map Key KeyHistory)
+           deriving ( Generic )
 
-instance Sexpable Diffs where
-    toSexp (Diffs ds) = List ["Diffs", toSexp ds]
-    fromSexp _ = fail "fromSexp Diffs not implemented"
+instance Sexpable Diffs
