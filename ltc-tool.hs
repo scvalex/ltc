@@ -137,7 +137,7 @@ data KeyHistory = forall a. (Sexpable (Diff a), Sexpable (Value a))
 
 instance Sexpable KeyHistory where
     toSexp (KeyHistory (tip, history)) = List ["KeyHistory", toSexp tip, toSexp history]
-    fromSexp _ = undefined
+    fromSexp _ = fail "not implemented"
 
 data Diffs = Diffs (Map Key KeyHistory)
 
