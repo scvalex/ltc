@@ -50,6 +50,8 @@ class Store a where
     -- | Get all versions of the values for a key, most-recent-first.
     keyVersions :: a -> Key -> IO (Maybe [Version])
 
+    keyType :: a -> Key -> IO (Maybe Type)
+
     set :: (ValueString (Value b), ValueType (Value b)) => a -> Key -> Value b -> IO Version
 
     keys :: a -> IO (Set Key)

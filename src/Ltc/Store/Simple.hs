@@ -118,6 +118,8 @@ instance Store Simple where
 
     keyVersions ref key = doKeyVersions ref key
 
+    keyType ref key = doKeyType ref key
+
     set ref key value = doSet ref key value
 
     keys ref = doKeys ref
@@ -182,6 +184,11 @@ doKeyVersions :: Simple -> Key -> IO (Maybe [Version])
 doKeyVersions ref key = do
     withKeyRecord (locationKey ref key) $ \kr -> do
         return . Just . map getVersion $ getTip kr : getHistory kr
+
+doKeyType :: Simple -> Key -> IO (Maybe Type)
+doKeyType ref key = do
+    withKeyRecord (locationKey ref key) $ \kr -> do
+        return (Just (getValueType kr))
 
 doSet :: (ValueString (Value a), ValueType (Value a))
       => Simple -> Key -> Value a -> IO Version

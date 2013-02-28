@@ -88,56 +88,51 @@ main = do
         OpenParameters { location       = d
                        , useCompression = False
                        , nodeName       = (BL.pack hostname) }
-    addKeyHistory store (Diffs m) key = do
-        mkh <- do
-            mkhInt <- getKeyHistory store key
-            case mkhInt of
-                 Just (tip :: Value (Single Integer), diffs) ->
-                     return (Just (IntKeyHistory (tip, diffs)))
-                 Nothing -> do
-                     mkhIntSet <- getKeyHistory store key
-                     case mkhIntSet of
-                         Just (tip :: Value (Collection Integer), diffs) ->
-                             return (Just (IntSetKeyHistory (tip, diffs)))
-                         Nothing -> do
-                             mkhString <- getKeyHistory store key
-                             case mkhString of
-                                 Just (tip :: Value (Single BL.ByteString), diffs) ->
-                                     return (Just (StringKeyHistory (tip, diffs)))
-                                 Nothing -> do
-                                     mkhStringSet <- getKeyHistory store key
-                                     case mkhStringSet of
-                                         Just (tip :: Value (Collection BL.ByteString), diffs) ->
-                                             return (Just (StringSetKeyHistory (tip, diffs)))
-                                         Nothing ->
-                                             return Nothing
-        case mkh of
-            Nothing -> do
-                fail (printf "unknown type for key %s" (show key))
-            Just kh ->
-                return (Diffs (M.insert key kh m))
 
-    getKeyHistory :: forall a s. (Store s, ValueString (Value a), Diffable a)
-                  => s -> Key -> IO (Maybe (Value a, [Diff a]))
+    addKeyHistory store (Diffs m) key = do
+        kh <- getKeyHistory store key
+        return (Diffs (M.insert key kh m))
+
+    getKeyHistory :: (Store s) => s -> Key -> IO KeyHistory
     getKeyHistory store key = do
-        CE.handle (\(_ :: CE.SomeException) -> return Nothing) $ do
-            Just (tip :: Value a, _) <- getLatest store key
-            vsns <- storeUnJust =<< keyVersions store key
-            -- @vsns@ contains at least the tip.
-            vs <- forM (tail vsns) (\vsn -> storeUnJust =<< get store key vsn)
-            let (_, diffs) = foldl (\(v, ds) v' -> (v', reverseDiff (diffFromTo v v') : ds))
-                                   (tip, [])
-                                   vs
-            return (Just (tip, diffs))
+        ty <- storeUnJust =<< keyType store key
+        case ty of
+            SingleInteger -> do
+                (tip :: Value (Single Integer), _) <- storeUnJust =<< getLatest store key
+                diffs <- getDiffs store key tip
+                return (IntKeyHistory tip diffs)
+            CollectionInteger -> do
+                (tip :: Value (Collection Integer), _) <- storeUnJust =<< getLatest store key
+                diffs <- getDiffs store key tip
+                return (IntSetKeyHistory tip diffs)
+            SingleString -> do
+                (tip :: Value (Single BL.ByteString), _) <- storeUnJust =<< getLatest store key
+                diffs <- getDiffs store key tip
+                return (StringKeyHistory tip diffs)
+            CollectionString -> do
+                (tip :: Value (Collection BL.ByteString), _) <- storeUnJust =<< getLatest store key
+                diffs <- getDiffs store key tip
+                return (StringSetKeyHistory tip diffs)
+
+    getDiffs :: (Store s, ValueString (Value a), Diffable a)
+             => s -> Key -> Value a -> IO [Diff a]
+    getDiffs store key tip = do
+        vsns <- storeUnJust =<< keyVersions store key
+        -- @vsns@ contains at least the tip.
+        vs <- forM (tail vsns) (\vsn -> storeUnJust =<< get store key vsn)
+        let (_, diffs) = foldl (\(v, ds) v' -> (v', reverseDiff (diffFromTo v v') : ds))
+                               (tip, [])
+                               vs
+        return diffs
 
     storeUnJust (Just a) = return a
     storeUnJust Nothing  = fail "could not find expected value in store"
 
-data KeyHistory = IntKeyHistory (Value (Single Integer), [Diff (Single Integer)])
-                | IntSetKeyHistory (Value (Collection Integer), [Diff (Collection Integer)])
-                | StringKeyHistory (Value (Single BL.ByteString), [Diff (Single BL.ByteString)])
-                | StringSetKeyHistory (Value (Collection BL.ByteString),
-                                       [Diff (Collection BL.ByteString)])
+data KeyHistory = IntKeyHistory (Value (Single Integer)) [Diff (Single Integer)]
+                | IntSetKeyHistory (Value (Collection Integer)) [Diff (Collection Integer)]
+                | StringKeyHistory (Value (Single BL.ByteString)) [Diff (Single BL.ByteString)]
+                | StringSetKeyHistory (Value (Collection BL.ByteString))
+                                      [Diff (Collection BL.ByteString)]
                 deriving ( Generic )
 
 instance Sexpable KeyHistory
