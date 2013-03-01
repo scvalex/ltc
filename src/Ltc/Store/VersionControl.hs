@@ -71,16 +71,16 @@ merge _ _ _ _ = Nothing
 -- | Prepare the actions that insert the entire key history into the store.
 insertNewActions :: Key -> KeyHistory -> [StoreAction]
 insertNewActions key (IntKeyHistory tip diffs) =
-    map (StoreSet key) (diffsToValues tip diffs)
+    map (StoreSet key) (reverse (diffsToValues tip diffs))
 insertNewActions key (IntSetKeyHistory tip diffs) =
-    map (StoreSet key) (diffsToValues tip diffs)
+    map (StoreSet key) (reverse (diffsToValues tip diffs))
 insertNewActions key (StringKeyHistory tip diffs) =
-    map (StoreSet key) (diffsToValues tip diffs)
+    map (StoreSet key) (reverse (diffsToValues tip diffs))
 insertNewActions key (StringSetKeyHistory tip diffs) =
-    map (StoreSet key) (diffsToValues tip diffs)
+    map (StoreSet key) (reverse (diffsToValues tip diffs))
 
 -- | Convert a tip and some diffs from it to values.
 diffsToValues :: (Diffable a) => Value a -> [Diff a] -> [Value a]
-diffsToValues tip diffs = tip : snd (foldl diffToValue (tip, []) diffs)
+diffsToValues tip diffs = tip : reverse (snd (foldl diffToValue (tip, []) diffs))
   where
     diffToValue (v, vs) diff = let v' = applyDiff v diff in (v', v' : vs)

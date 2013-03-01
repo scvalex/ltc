@@ -137,6 +137,7 @@ main = do
                 _ <- printf "  keys     : %d\n" (S.size ks)
                 return ()
 
+    -- FIXME Support re-populating.
     doPopulate :: (Store s) => Int -> s -> IO ()
     doPopulate cnt store = do
         ks <- mapM (\_ -> Key <$> someWord) [1..cnt]

@@ -84,13 +84,13 @@ getKeyHistory store key = do
             diffs <- getDiffs tip
             return (Just (StringSetKeyHistory tip diffs))
   where
-    getDiffs :: (ValueString (Value a), Diffable a)
+    getDiffs :: (ValueString (Value a), Diffable a, Sexpable (Value a))
              => Value a -> IO [Diff a]
     getDiffs tip = do
         vsns <- keyVersionsExn store key
         -- @vsns@ contains at least the tip.
         vs <- forM (tail vsns) (\vsn -> getExn store key vsn)
-        let (_, diffs) = foldl (\(v, ds) v' -> (v', reverseDiff (diffFromTo v v') : ds))
+        let (_, diffs) = foldl (\(v, ds) v' -> (v', diffFromTo v v' : ds))
                                (tip, [])
                                vs
-        return diffs
+        return (reverse diffs)
