@@ -28,7 +28,7 @@ data Modes = Fsck { dir :: FilePath }
            | Info { dir :: FilePath, listKeys :: Bool }
            | Export { dir :: FilePath, file :: FilePath }
            | Import { dir :: FilePath, file :: FilePath }
-           | Populate { dir :: FilePath }
+           | Populate { dir :: FilePath, count :: Int }
            | Redis { dir :: FilePath }
            deriving ( Show, Data, Typeable )
 
@@ -45,7 +45,8 @@ ltcModes =
     , Import { dir = def &= typDir &= argPos 1
              , file = "changes.sexp" &= typFile }
       &= help "import changes from a file"
-    , Populate { dir = def &= typDir &= argPos 1 }
+    , Populate { dir = def &= typDir &= argPos 1
+               , count = 100 &= help "how many values to insert" }
       &= help "populate a store with random values"
     , Redis { dir = "redis-store" &= typDir }
       &= help "run a store with a Redis interface"
@@ -81,9 +82,10 @@ main = do
                 case conflicts of
                     [] -> return ()
                     _  -> printf "%d conflicts\n" (length conflicts)
-        Populate d -> do
+        Populate d cnt -> do
             _ <- printf "Populating %s\n" d
-            return ()
+            hostname <- getHostName
+            withStore (openParameters d hostname) (doPopulate cnt)
         Redis d -> do
             -- when (null d) $ fail "Given directory cannot be empty"
             _ <- printf "Running Redis server with %s\n" d
@@ -127,3 +129,7 @@ main = do
             else do
                 _ <- printf "  keys     : %d\n" (S.size ks)
                 return ()
+
+    doPopulate :: (Store s) => Int -> s -> IO ()
+    doPopulate cnt _ = do
+        return ()
