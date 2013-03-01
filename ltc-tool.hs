@@ -6,9 +6,9 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent.MVar ( newEmptyMVar, putMVar, takeMVar )
 import Data.Foldable ( foldlM )
 import Data.Version ( showVersion )
-import Language.Sexp ( Sexpable(..), printHum )
+import Language.Sexp ( Sexpable(..), printHum, parseExn )
 import Ltc.Store
-import Ltc.Store.Serialization ( getDiffPack )
+import Ltc.Store.Serialization ( DiffPack, getDiffPack )
 import Network.BSD ( getHostName )
 import Network.RedisServer ( serve )
 import Paths_ltc ( version )
@@ -21,7 +21,8 @@ import Text.Printf ( printf )
 
 data Modes = Fsck { dir :: FilePath }
            | Info { dir :: FilePath }
-           | Export { dir :: FilePath }
+           | Export { dir :: FilePath, file :: FilePath }
+           | Import { dir :: FilePath, file :: FilePath }
            | Redis { dir :: FilePath }
            deriving ( Show, Data, Typeable )
 
@@ -31,8 +32,12 @@ ltcModes =
       &= help "check the integrity of a store"
     , Info { dir = def &= typDir &= argPos 1 }
       &= help "list information about a store"
-    , Export { dir = def &= typDir &= argPos 1 }
-      &= help "dump a store to a single file"
+    , Export { dir = def &= typDir &= argPos 1
+             , file = "changes.sexp" &= typFile }
+      &= help "export all changes to a file"
+    , Import { dir = def &= typDir &= argPos 1
+             , file = "changes.sexp" &= typFile }
+      &= help "import changes from a file"
     , Redis { dir = "redis-store" &= typDir }
       &= help "run a store with a Redis interface"
     ]
@@ -58,10 +63,16 @@ main = do
             vn <- foldlM (\n k -> maybe n ((n+) . length) <$> keyVersions store k) 0 ks
             _ <- printf "  values   : %d\n" vn
             close store
-        Export d -> do
+        Export d fo -> do
             hostname <- getHostName
             store <- open (openParameters d hostname)
             dp <- getDiffPack store
+            BL.writeFile fo (printHum (toSexp dp))
+            close store
+        Import d fi -> do
+            hostname <- getHostName
+            store <- open (openParameters d hostname)
+            (Just dp :: Maybe DiffPack) <- fromSexp . head . parseExn <$> BL.readFile fi
             BL.putStrLn (printHum (toSexp dp))
             close store
         Redis d -> do
