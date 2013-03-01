@@ -48,6 +48,7 @@ Library
                         Ltc.Store.Class,
                         Ltc.Store.Diff,
                         Ltc.Store.Simple,
+                        Ltc.Store.Serialization,
                         Network.Redis,
                         Network.RedisServer
 
