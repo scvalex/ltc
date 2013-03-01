@@ -2,7 +2,7 @@ CABAL := $(shell cabal-dev --version > /dev/null && echo cabal-dev || echo cabal
 
 all: build test
 
-.PHONY: all build dist install clean doc site p ghci
+.PHONY: all build dist install clean doc site p ghci stores
 
 build: dist/setup-config
 	rm -rf _site _cache
@@ -38,3 +38,8 @@ p:
 
 ghci: build
 	cabal-dev ghci
+
+stores: build
+	rm -rf *-store
+	./ltc populate -c 10 some-store
+	./ltc info some-store

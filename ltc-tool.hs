@@ -6,6 +6,7 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent.MVar ( newEmptyMVar, putMVar, takeMVar )
 import Control.Monad ( forM_ )
 import Data.Char ( isAlphaNum )
+import Data.List ( nub )
 import Data.Version ( showVersion )
 import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn )
 import Ltc.Store
@@ -123,8 +124,12 @@ main = do
                     forM_ vsns $ \vsn -> do
                         _ <- printf "      %s\n" (BL.unpack (printMach (toSexp vsn)))
                         CE.handle (\(_ :: CE.SomeException) -> do
-                                        putStrLn "        non string value") $ do
-                            (v :: Value (Single BL.ByteString)) <- getExn store key vsn
+                                        CE.handle (\(_ :: CE.SomeException) -> do
+                                                        putStrLn "        non string value") (do
+                                            (v :: Value (Single BL.ByteString)) <- getExn store key vsn
+                                            _ <- printf "        %s\n" (BL.unpack (printMach (toSexp v)))
+                                            return ())) $ do
+                            (v :: Value (Single Integer)) <- getExn store key vsn
                             _ <- printf "        %s\n" (BL.unpack (printMach (toSexp v)))
                             return ()
                 return ()
@@ -134,13 +139,22 @@ main = do
 
     doPopulate :: (Store s) => Int -> s -> IO ()
     doPopulate cnt store = do
-        ks <- mapM (\_ -> Key . BL.pack . (dict !!) <$>
-                          randomRIO (0 :: Int, length dict - 1)) [1..cnt]
-        forM_ ks $ \key -> do
-            forM_ [1..5 :: Int] $ \_ -> do
-                v <- VaInt <$> randomRIO (0, 100)
-                _ <- set store key v
-                return ()
+        ks <- mapM (\_ -> Key <$> someWord) [1..cnt]
+        forM_ (nub ks) $ \key -> do
+            t <- randomRIO (1, 2 :: Int)
+            case t of
+                1 -> forM_ [1..5 :: Int] $ \_ -> do
+                    v <- VaInt <$> randomRIO (0, 100)
+                    _ <- set store key v
+                    return ()
+                2 -> forM_ [1..5 :: Int] $ \_ -> do
+                    v <- VaString <$> someWord
+                    _ <- set store key v
+                    return ()
+                _ -> do
+                    return ()
       where
+        someWord = BL.pack . (dict !!) <$> randomRIO (0 :: Int, length dict - 1)
+
         dict = words (filter (\c -> c == ' ' || isAlphaNum c) $
                "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
