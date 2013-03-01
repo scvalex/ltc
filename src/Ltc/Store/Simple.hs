@@ -101,9 +101,10 @@ instance Sexpable KeyRecord
 
 instance Store Simple where
     data OpenParameters Simple = OpenParameters
-        { location       :: FilePath
-        , useCompression :: Bool
-        , nodeName       :: ByteString
+        { location        :: FilePath
+        , useCompression  :: Bool
+        , nodeName        :: ByteString
+        , createIfMissing :: Bool
         }
 
     open params = doOpen params
@@ -128,7 +129,7 @@ doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
     debugM tag "open"
     storeExists <- doesDirectoryExist (location params)
-    when (not storeExists) (initStore params)
+    when (not storeExists && createIfMissing params) (initStore params)
     nn <- BL.readFile (locationNodeName (location params))
     when (nn /= nodeName params) $
         CE.throw (NodeNameMismatchError { requestedName = nodeName params

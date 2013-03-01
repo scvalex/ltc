@@ -44,8 +44,9 @@ rmrf fp = do
 ----------------------
 
 testParameters :: OpenParameters Simple
-testParameters = OpenParameters { location       = "test-store"
-                                , useCompression = False
-                                , nodeName       = pack hostname }
+testParameters = OpenParameters { location        = "test-store"
+                                , useCompression  = False
+                                , nodeName        = pack hostname
+                                , createIfMissing = True }
   where
     hostname = unsafePerformIO getHostName

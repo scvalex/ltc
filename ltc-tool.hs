@@ -52,7 +52,7 @@ main = do
         Fsck d -> do
             _ <- printf "Checking %s...\n" d
             hostname <- getHostName
-            store <- open (openParameters d hostname)
+            store <- open ((openParameters d hostname) { createIfMissing = False })
             close store
         Info d -> do
             hostname <- getHostName
@@ -95,6 +95,7 @@ main = do
                 return ())
   where
     openParameters d hostname =
-        OpenParameters { location       = d
-                       , useCompression = False
-                       , nodeName       = (BL.pack hostname) }
+        OpenParameters { location        = d
+                       , useCompression  = False
+                       , nodeName        = (BL.pack hostname)
+                       , createIfMissing = True }
