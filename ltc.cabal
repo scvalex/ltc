@@ -63,6 +63,7 @@ Executable ltc
                         containers,
                         ltc,
                         network,
+                        random,
                         sexp >= 0.6,
                         unix
 

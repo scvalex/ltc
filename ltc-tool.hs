@@ -5,6 +5,7 @@ module Main where
 import Control.Applicative ( (<$>) )
 import Control.Concurrent.MVar ( newEmptyMVar, putMVar, takeMVar )
 import Control.Monad ( forM_ )
+import Data.Char ( isAlphaNum )
 import Data.Version ( showVersion )
 import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn )
 import Ltc.Store
@@ -18,6 +19,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
 import System.Console.CmdArgs
 import System.Posix.Signals ( Handler(..), installHandler, sigINT )
+import System.Random ( randomRIO )
 import Text.Printf ( printf )
 
 ----------------------
@@ -46,7 +48,7 @@ ltcModes =
              , file = "changes.sexp" &= typFile }
       &= help "import changes from a file"
     , Populate { dir = def &= typDir &= argPos 1
-               , count = 100 &= help "how many values to insert" }
+               , count = 100 &= help "around how many keys to insert" }
       &= help "populate a store with random values"
     , Redis { dir = "redis-store" &= typDir }
       &= help "run a store with a Redis interface"
@@ -131,5 +133,14 @@ main = do
                 return ()
 
     doPopulate :: (Store s) => Int -> s -> IO ()
-    doPopulate cnt _ = do
-        return ()
+    doPopulate cnt store = do
+        ks <- mapM (\_ -> Key . BL.pack . (dict !!) <$>
+                          randomRIO (0 :: Int, length dict - 1)) [1..cnt]
+        forM_ ks $ \key -> do
+            forM_ [1..5 :: Int] $ \_ -> do
+                v <- VaInt <$> randomRIO (0, 100)
+                _ <- set store key v
+                return ()
+      where
+        dict = words (filter (\c -> c == ' ' || isAlphaNum c) $
+               "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
