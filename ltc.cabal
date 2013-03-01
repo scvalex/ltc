@@ -49,6 +49,7 @@ Library
                         Ltc.Store.Diff,
                         Ltc.Store.Simple,
                         Ltc.Store.Serialization,
+                        Ltc.Store.VersionControl,
                         Network.Redis,
                         Network.RedisServer
 

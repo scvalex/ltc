@@ -9,6 +9,7 @@ import Data.Version ( showVersion )
 import Language.Sexp ( Sexpable(..), printHum, parseExn )
 import Ltc.Store
 import Ltc.Store.Serialization ( DiffPack, getDiffPack )
+import Ltc.Store.VersionControl ( insertChangesInto )
 import Network.BSD ( getHostName )
 import Network.RedisServer ( serve )
 import Paths_ltc ( version )
@@ -73,7 +74,10 @@ main = do
             hostname <- getHostName
             store <- open (openParameters d hostname)
             (Just dp :: Maybe DiffPack) <- fromSexp . head . parseExn <$> BL.readFile fi
-            BL.putStrLn (printHum (toSexp dp))
+            conflicts <- insertChangesInto store dp
+            case conflicts of
+                [] -> return ()
+                _  -> printf "%d conflicts\n" (length conflicts)
             close store
         Redis d -> do
             -- when (null d) $ fail "Given directory cannot be empty"
