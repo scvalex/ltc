@@ -20,8 +20,8 @@ insertChangesInto store (DiffPack m) = foldlM insertKeyHistory [] (M.toList m)
   where
     insertKeyHistory :: [Key] -> (Key, KeyHistory) -> IO [Key]
     insertKeyHistory conflicts (key, theirHistory) = do
-        myHistory <- getKeyHistory store key
-        case tryMerge myHistory theirHistory of
+        mmyHistory <- getKeyHistory store key
+        case tryMerge mmyHistory theirHistory of
             Just acts  -> do
                 mapM_ (applyAction store) acts
                 return conflicts
@@ -46,14 +46,16 @@ applyAction _ _ = return ()
 -- | Attempt to merge to change histories together.  If the merge is successful, return a
 -- list of 'StoreAction's.  For instance, this can fail if the histories have different
 -- types.
-tryMerge :: KeyHistory -> KeyHistory -> Maybe [StoreAction]
-tryMerge (IntKeyHistory myTip myDiffs) (IntKeyHistory theirTip theirDiffs) =
+tryMerge :: Maybe KeyHistory -> KeyHistory -> Maybe [StoreAction]
+tryMerge Nothing theirHistory =
+    Just (insertNewActions theirHistory)
+tryMerge (Just (IntKeyHistory myTip myDiffs)) (IntKeyHistory theirTip theirDiffs) =
     merge myTip myDiffs theirTip theirDiffs
-tryMerge (IntSetKeyHistory myTip myDiffs) (IntSetKeyHistory theirTip theirDiffs) =
+tryMerge (Just (IntSetKeyHistory myTip myDiffs)) (IntSetKeyHistory theirTip theirDiffs) =
     merge myTip myDiffs theirTip theirDiffs
-tryMerge (StringKeyHistory myTip myDiffs) (StringKeyHistory theirTip theirDiffs) =
+tryMerge (Just (StringKeyHistory myTip myDiffs)) (StringKeyHistory theirTip theirDiffs) =
     merge myTip myDiffs theirTip theirDiffs
-tryMerge (StringSetKeyHistory myTip myDiffs) (StringSetKeyHistory theirTip theirDiffs) =
+tryMerge (Just (StringSetKeyHistory myTip myDiffs)) (StringSetKeyHistory theirTip theirDiffs) =
     merge myTip myDiffs theirTip theirDiffs
 tryMerge _ _ =
     Nothing
@@ -62,3 +64,7 @@ tryMerge _ _ =
 -- successful, return a list of 'StoreAction's.
 merge :: Value a -> [Diff a] -> Value a -> [Diff a] -> Maybe [StoreAction]
 merge _ _ _ _ = Just []
+
+-- | Prepare the actions that insert the entire key history into the store.
+insertNewActions :: KeyHistory -> [StoreAction]
+insertNewActions _ = []

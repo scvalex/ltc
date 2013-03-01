@@ -52,30 +52,33 @@ getDiffPack store = do
     DiffPack <$> foldlM addKeyHistory M.empty ks
   where
     addKeyHistory m key = do
-        kh <- getKeyHistory store key
+        -- We just got the keys from the database, so the following cannot fail.
+        Just kh <- getKeyHistory store key
         return (M.insert key kh m)
 
--- | Get the entire history of a key.
-getKeyHistory :: (Store s) => s -> Key -> IO KeyHistory
+-- | Get the entire history of a key.  If the key is missing, return 'Nothing'.
+getKeyHistory :: (Store s) => s -> Key -> IO (Maybe KeyHistory)
 getKeyHistory store key = do
-    ty <- storeUnJust =<< keyType store key
-    case ty of
-        SingleInteger -> do
+    mty <- keyType store key
+    case mty of
+        Nothing ->
+            return Nothing
+        Just SingleInteger -> do
             (tip :: Value (Single Integer), _) <- storeUnJust =<< getLatest store key
             diffs <- getDiffs tip
-            return (IntKeyHistory tip diffs)
-        CollectionInteger -> do
+            return (Just (IntKeyHistory tip diffs))
+        Just CollectionInteger -> do
             (tip :: Value (Collection Integer), _) <- storeUnJust =<< getLatest store key
             diffs <- getDiffs tip
-            return (IntSetKeyHistory tip diffs)
-        SingleString -> do
+            return (Just (IntSetKeyHistory tip diffs))
+        Just SingleString -> do
             (tip :: Value (Single ByteString), _) <- storeUnJust =<< getLatest store key
             diffs <- getDiffs tip
-            return (StringKeyHistory tip diffs)
-        CollectionString -> do
+            return (Just (StringKeyHistory tip diffs))
+        Just CollectionString -> do
             (tip :: Value (Collection ByteString), _) <- storeUnJust =<< getLatest store key
             diffs <- getDiffs tip
-            return (StringSetKeyHistory tip diffs)
+            return (Just (StringSetKeyHistory tip diffs))
   where
     getDiffs :: (ValueString (Value a), Diffable a)
              => Value a -> IO [Diff a]
