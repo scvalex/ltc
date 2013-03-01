@@ -20,10 +20,15 @@ import System.Console.CmdArgs
 import System.Posix.Signals ( Handler(..), installHandler, sigINT )
 import Text.Printf ( printf )
 
+----------------------
+-- cmdargs configuration
+----------------------
+
 data Modes = Fsck { dir :: FilePath }
            | Info { dir :: FilePath, listKeys :: Bool }
            | Export { dir :: FilePath, file :: FilePath }
            | Import { dir :: FilePath, file :: FilePath }
+           | Populate { dir :: FilePath }
            | Redis { dir :: FilePath }
            deriving ( Show, Data, Typeable )
 
@@ -40,11 +45,17 @@ ltcModes =
     , Import { dir = def &= typDir &= argPos 1
              , file = "changes.sexp" &= typFile }
       &= help "import changes from a file"
+    , Populate { dir = def &= typDir &= argPos 1 }
+      &= help "populate a store with random values"
     , Redis { dir = "redis-store" &= typDir }
       &= help "run a store with a Redis interface"
     ]
     &= program "ltc"
     &= summary (printf "ltc v%s - LTc utility" (showVersion version))
+
+----------------------
+-- Main
+----------------------
 
 main :: IO ()
 main = do
@@ -94,6 +105,9 @@ main = do
                 [] -> return ()
                 _  -> printf "%d conflicts\n" (length conflicts)
             close store
+        Populate d -> do
+            _ <- printf "Populating %s\n" d
+            return ()
         Redis d -> do
             -- when (null d) $ fail "Given directory cannot be empty"
             _ <- printf "Running Redis server with %s\n" d
