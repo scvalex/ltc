@@ -3,7 +3,7 @@
 module Ltc.Store.Serialization (
         DiffPack(..),
 
-        KeyHistory(..), getDiffPack
+        KeyHistory(..), getDiffPack, getKeyHistory
     ) where
 
 import Control.Applicative ( (<$>) )
