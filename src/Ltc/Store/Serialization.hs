@@ -26,6 +26,10 @@ import Text.Printf ( printf )
 -- | 'KeyHistory' achieves two goals.  First, it solidifies the type parameter of 'Value'
 -- by encoding the possibilities as a sum type.  Second, it encapsulates the current value
 -- associated with a key, and the history of changes leading up to that point.
+--
+-- The diffs are reversed such that they can be applied to the tip.  So, the most recent
+-- value is @tip@, the second most recent value is @applyDiff tip (head diffs)@, and so
+-- on.
 data KeyHistory = IntKeyHistory (Value (Single Integer)) [Diff (Single Integer)]
                 | IntSetKeyHistory (Value (Collection Integer)) [Diff (Collection Integer)]
                 | StringKeyHistory (Value (Single ByteString)) [Diff (Single ByteString)]
