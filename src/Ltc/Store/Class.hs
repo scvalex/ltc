@@ -5,7 +5,7 @@
 
 module Ltc.Store.Class (
         -- * Store interface
-        Store(..), keyVersionsExn, getExn, getLatestExn,
+        Store(..), withStore, keyVersionsExn, getExn, getLatestExn,
 
         -- * Common types
         Key(..), KeyHash, ValueHash, Version, NodeName,
@@ -56,6 +56,16 @@ class Store a where
     set :: (ValueString (Value b), ValueType (Value b)) => a -> Key -> Value b -> IO Version
 
     keys :: a -> IO (Set Key)
+
+-- | Open a store, run the given action, and close the store.  The store is cleanly closed
+-- even if the action throws an exception; the exception is rethrown afterwards.
+withStore :: (Store s) => OpenParameters s -> (s -> IO a) -> IO a
+withStore params act = do
+    store <- open params
+    CE.handle (\(e :: CE.SomeException) -> do
+                    close store
+                    CE.throw e)
+        (act store)
 
 keyVersionsExn :: (Store s) => s -> Key -> IO [Version]
 keyVersionsExn store key = do

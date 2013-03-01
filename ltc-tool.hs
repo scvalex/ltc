@@ -64,47 +64,23 @@ main = do
         Fsck d -> do
             _ <- printf "Checking %s...\n" d
             hostname <- getHostName
-            store <- open ((openParameters d hostname) { createIfMissing = False })
-            close store
+            withStore ((openParameters d hostname) { createIfMissing = False }) (\_ -> return ())
         Info d lk -> do
             hostname <- getHostName
-            store <- open (openParameters d hostname)
-            _ <- printf "LTc store: %s (format %s-%d)\n" d (storeFormat store) (storeVersion store)
-            _ <- printf "  node     : %s\n" hostname
-            ks <- keys store
-            if lk
-               then do
-                   _ <- printf "  keys     :\n"
-                   forM_ (S.toList ks) $ \key -> do
-                       vsns <- keyVersionsExn store key
-                       _ <- printf "    %s:\n" (show key)
-                       forM_ vsns $ \vsn -> do
-                           _ <- printf "      %s\n" (BL.unpack (printMach (toSexp vsn)))
-                           CE.handle (\(_ :: CE.SomeException) -> do
-                                           putStrLn "        non string value") $ do
-                               (v :: Value (Single BL.ByteString)) <- getExn store key vsn
-                               _ <- printf "        %s\n" (BL.unpack (printMach (toSexp v)))
-                               return ()
-                   return ()
-                else do
-                   _ <- printf "  keys     : %d\n" (S.size ks)
-                   return ()
-            close store
+            withStore (openParameters d hostname) (doInfo d lk hostname)
         Export d fo -> do
             hostname <- getHostName
-            store <- open (openParameters d hostname)
-            dp <- getDiffPack store
-            BL.writeFile fo (printHum (toSexp dp))
-            close store
+            withStore (openParameters d hostname) $ \store -> do
+                dp <- getDiffPack store
+                BL.writeFile fo (printHum (toSexp dp))
         Import d fi -> do
             hostname <- getHostName
-            store <- open (openParameters d hostname)
-            (Just dp :: Maybe DiffPack) <- fromSexp . head . parseExn <$> BL.readFile fi
-            conflicts <- insertChangesInto store dp
-            case conflicts of
-                [] -> return ()
-                _  -> printf "%d conflicts\n" (length conflicts)
-            close store
+            withStore (openParameters d hostname) $ \store -> do
+                (Just dp :: Maybe DiffPack) <- fromSexp . head . parseExn <$> BL.readFile fi
+                conflicts <- insertChangesInto store dp
+                case conflicts of
+                    [] -> return ()
+                    _  -> printf "%d conflicts\n" (length conflicts)
         Populate d -> do
             _ <- printf "Populating %s\n" d
             return ()
@@ -128,3 +104,26 @@ main = do
                        , useCompression  = False
                        , nodeName        = (BL.pack hostname)
                        , createIfMissing = True }
+
+    doInfo :: (Store s) => FilePath -> Bool -> String -> s -> IO ()
+    doInfo d lk hostname store = do
+        _ <- printf "LTc store: %s (format %s-%d)\n" d (storeFormat store) (storeVersion store)
+        _ <- printf "  node     : %s\n" hostname
+        ks <- keys store
+        if lk
+            then do
+                _ <- printf "  keys     :\n"
+                forM_ (S.toList ks) $ \key -> do
+                    vsns <- keyVersionsExn store key
+                    _ <- printf "    %s:\n" (show key)
+                    forM_ vsns $ \vsn -> do
+                        _ <- printf "      %s\n" (BL.unpack (printMach (toSexp vsn)))
+                        CE.handle (\(_ :: CE.SomeException) -> do
+                                        putStrLn "        non string value") $ do
+                            (v :: Value (Single BL.ByteString)) <- getExn store key vsn
+                            _ <- printf "        %s\n" (BL.unpack (printMach (toSexp v)))
+                            return ()
+                return ()
+            else do
+                _ <- printf "  keys     : %d\n" (S.size ks)
+                return ()
