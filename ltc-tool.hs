@@ -4,9 +4,10 @@ module Main where
 
 import Control.Applicative ( (<$>) )
 import Control.Concurrent.MVar ( newEmptyMVar, putMVar, takeMVar )
+import Control.Monad ( forM_ )
 import Data.Foldable ( foldlM )
 import Data.Version ( showVersion )
-import Language.Sexp ( Sexpable(..), printHum, parseExn )
+import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn )
 import Ltc.Store
 import Ltc.Store.Serialization ( DiffPack, getDiffPack )
 import Ltc.Store.VersionControl ( insertChangesInto )
@@ -21,7 +22,7 @@ import System.Posix.Signals ( Handler(..), installHandler, sigINT )
 import Text.Printf ( printf )
 
 data Modes = Fsck { dir :: FilePath }
-           | Info { dir :: FilePath }
+           | Info { dir :: FilePath, listKeys :: Bool }
            | Export { dir :: FilePath, file :: FilePath }
            | Import { dir :: FilePath, file :: FilePath }
            | Redis { dir :: FilePath }
@@ -31,7 +32,8 @@ ltcModes :: [Modes]
 ltcModes =
     [ Fsck { dir = def &= typDir &= argPos 1 }
       &= help "check the integrity of a store"
-    , Info { dir = def &= typDir &= argPos 1 }
+    , Info { dir = def &= typDir &= argPos 1
+           , listKeys = False &= help "list the keys in a store" }
       &= help "list information about a store"
     , Export { dir = def &= typDir &= argPos 1
              , file = "changes.sexp" &= typFile }
@@ -54,15 +56,29 @@ main = do
             hostname <- getHostName
             store <- open ((openParameters d hostname) { createIfMissing = False })
             close store
-        Info d -> do
+        Info d lk -> do
             hostname <- getHostName
             store <- open (openParameters d hostname)
             _ <- printf "LTc store: %s (format %s-%d)\n" d (storeFormat store) (storeVersion store)
             _ <- printf "  node     : %s\n" hostname
             ks <- keys store
-            _ <- printf "  keys     : %d\n" (S.size ks)
-            vn <- foldlM (\n k -> maybe n ((n+) . length) <$> keyVersions store k) 0 ks
-            _ <- printf "  values   : %d\n" vn
+            if lk
+               then do
+                   _ <- printf "  keys     :\n"
+                   forM_ (S.toList ks) $ \key -> do
+                       vsns <- keyVersionsExn store key
+                       _ <- printf "    %s:\n" (show key)
+                       forM_ vsns $ \vsn -> do
+                           _ <- printf "      %s\n" (BL.unpack (printMach (toSexp vsn)))
+                           CE.handle (\(_ :: CE.SomeException) -> do
+                                           putStrLn "        non string value") $ do
+                               (v :: Value (Single BL.ByteString)) <- getExn store key vsn
+                               _ <- printf "        %s\n" (BL.unpack (printMach (toSexp v)))
+                               return ()
+                   return ()
+                else do
+                   _ <- printf "  keys     : %d\n" (S.size ks)
+                   return ()
             close store
         Export d fo -> do
             hostname <- getHostName

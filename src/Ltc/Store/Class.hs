@@ -5,7 +5,7 @@
 
 module Ltc.Store.Class (
         -- * Store interface
-        Store(..),
+        Store(..), keyVersionsExn, getExn,
 
         -- * Common types
         Key(..), KeyHash, ValueHash, Version, NodeName,
@@ -28,8 +28,9 @@ import Data.Typeable ( Typeable )
 import Data.VectorClock ( VectorClock )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexp(..), Sexpable(..), printHum, parseMaybe )
-import Text.Printf ( printf )
+import qualified Control.Exception as CE
 import qualified Data.Set as S
+import Text.Printf ( printf )
 
 ----------------------
 -- Classes
@@ -55,6 +56,20 @@ class Store a where
     set :: (ValueString (Value b), ValueType (Value b)) => a -> Key -> Value b -> IO Version
 
     keys :: a -> IO (Set Key)
+
+keyVersionsExn :: (Store s) => s -> Key -> IO [Version]
+keyVersionsExn store key = do
+    mvsns <- keyVersions store key
+    case mvsns of
+        Nothing   -> CE.throw (NoVersionsFor key)
+        Just vsns -> return vsns
+
+getExn :: (Store s, ValueString (Value a)) => s -> Key -> Version -> IO (Value a)
+getExn store key vsn = do
+    mv <- get store key vsn
+    case mv of
+        Nothing -> CE.throw (NoValueFor key vsn)
+        Just v  -> return v
 
 ----------------------
 -- Types & instances
@@ -224,3 +239,13 @@ data CorruptStoreError = CorruptStoreError { csReason :: String }
                        deriving ( Show, Typeable )
 
 instance Exception CorruptStoreError
+
+data NoVersionsFor = NoVersionsFor Key
+                   deriving ( Show, Typeable )
+
+instance Exception NoVersionsFor
+
+data NoValueFor = NoValueFor Key Version
+                deriving ( Show, Typeable )
+
+instance Exception NoValueFor
