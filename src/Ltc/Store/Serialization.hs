@@ -14,10 +14,10 @@ import Data.Map ( Map )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..) )
 import Ltc.Store.Class ( Store(..), Key
+                       , keyVersionsExn, getExn, getLatestExn
                        , Value(..), ValueString(..), Type(..), Single, Collection )
 import Ltc.Store.Diff ( Diff, Diffable(..) )
 import qualified Data.Map as M
-import Text.Printf ( printf )
 
 ----------------------
 -- Wrappers around values and diffs
@@ -68,32 +68,29 @@ getKeyHistory store key = do
         Nothing ->
             return Nothing
         Just SingleInteger -> do
-            (tip :: Value (Single Integer), _) <- storeUnJust =<< getLatest store key
+            (tip :: Value (Single Integer), _) <- getLatestExn store key
             diffs <- getDiffs tip
             return (Just (IntKeyHistory tip diffs))
         Just CollectionInteger -> do
-            (tip :: Value (Collection Integer), _) <- storeUnJust =<< getLatest store key
+            (tip :: Value (Collection Integer), _) <- getLatestExn store key
             diffs <- getDiffs tip
             return (Just (IntSetKeyHistory tip diffs))
         Just SingleString -> do
-            (tip :: Value (Single ByteString), _) <- storeUnJust =<< getLatest store key
+            (tip :: Value (Single ByteString), _) <- getLatestExn store key
             diffs <- getDiffs tip
             return (Just (StringKeyHistory tip diffs))
         Just CollectionString -> do
-            (tip :: Value (Collection ByteString), _) <- storeUnJust =<< getLatest store key
+            (tip :: Value (Collection ByteString), _) <- getLatestExn store key
             diffs <- getDiffs tip
             return (Just (StringSetKeyHistory tip diffs))
   where
     getDiffs :: (ValueString (Value a), Diffable a)
              => Value a -> IO [Diff a]
     getDiffs tip = do
-        vsns <- storeUnJust =<< keyVersions store key
+        vsns <- keyVersionsExn store key
         -- @vsns@ contains at least the tip.
-        vs <- forM (tail vsns) (\vsn -> storeUnJust =<< get store key vsn)
+        vs <- forM (tail vsns) (\vsn -> getExn store key vsn)
         let (_, diffs) = foldl (\(v, ds) v' -> (v', reverseDiff (diffFromTo v v') : ds))
                                (tip, [])
                                vs
         return diffs
-
-    storeUnJust (Just a) = return a
-    storeUnJust Nothing  = fail (printf "could not find value for %s in store" (show key))

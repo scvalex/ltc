@@ -5,7 +5,6 @@ module Main where
 import Control.Applicative ( (<$>) )
 import Control.Concurrent.MVar ( newEmptyMVar, putMVar, takeMVar )
 import Control.Monad ( forM_ )
-import Data.Foldable ( foldlM )
 import Data.Version ( showVersion )
 import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn )
 import Ltc.Store

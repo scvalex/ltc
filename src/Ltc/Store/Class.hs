@@ -5,7 +5,7 @@
 
 module Ltc.Store.Class (
         -- * Store interface
-        Store(..), keyVersionsExn, getExn,
+        Store(..), keyVersionsExn, getExn, getLatestExn,
 
         -- * Common types
         Key(..), KeyHash, ValueHash, Version, NodeName,
@@ -70,6 +70,13 @@ getExn store key vsn = do
     case mv of
         Nothing -> CE.throw (NoValueFor key vsn)
         Just v  -> return v
+
+getLatestExn :: (Store s, ValueString (Value a)) => s -> Key -> IO (Value a, Version)
+getLatestExn store key = do
+    mvv <- getLatest store key
+    case mvv of
+        Nothing -> CE.throw (NoValueForLatest key)
+        Just vv -> return vv
 
 ----------------------
 -- Types & instances
@@ -249,3 +256,8 @@ data NoValueFor = NoValueFor Key Version
                 deriving ( Show, Typeable )
 
 instance Exception NoValueFor
+
+data NoValueForLatest = NoValueForLatest Key
+                      deriving ( Show, Typeable )
+
+instance Exception NoValueForLatest
