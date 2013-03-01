@@ -66,7 +66,7 @@ tryMerge _ _ _ =
 -- | Attempt to merge two histories of the same type together.  If the merge is
 -- successful, return a list of 'StoreAction's.
 merge :: Value a -> [Diff a] -> Value a -> [Diff a] -> Maybe [StoreAction]
-merge _ _ _ _ = Just []
+merge _ _ _ _ = Nothing
 
 -- | Prepare the actions that insert the entire key history into the store.
 insertNewActions :: Key -> KeyHistory -> [StoreAction]
