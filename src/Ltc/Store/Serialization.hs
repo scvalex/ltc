@@ -35,13 +35,13 @@ data KeyHistory = IntKeyHistory (Value (Single Integer)) [Diff (Single Integer)]
                 | StringKeyHistory (Value (Single ByteString)) [Diff (Single ByteString)]
                 | StringSetKeyHistory (Value (Collection ByteString))
                                       [Diff (Collection ByteString)]
-                deriving ( Generic )
+                deriving ( Eq, Generic, Show )
 
 instance Sexpable KeyHistory
 
 -- | 'DiffPack' is just a map of 'Key's to 'KeyHistory's.
 data DiffPack = DiffPack (Map Key KeyHistory)
-              deriving ( Generic )
+              deriving ( Eq, Generic, Show )
 
 instance Sexpable DiffPack
 

@@ -9,8 +9,8 @@ import Control.Applicative ( (<$>), (<*>) )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.List ( groupBy )
 import Data.Set ( Set )
-import Data.Sexp ( Sexpable(..), Sexp(..) )
 import GHC.Generics ( Generic )
+import Language.Sexp ( Sexpable(..), Sexp(..), printMach )
 import Ltc.Store.Class ( Value(..), Single, Collection )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
@@ -19,6 +19,18 @@ data Diff a where
     DiffInt :: Integer -> Diff (Single Integer)
     DiffString :: EditScript -> Diff (Single ByteString)
     DiffSet :: Set (Value (Single b)) -> Set (Value (Single b)) -> Diff (Collection b)
+
+instance Eq (Diff (Single Integer)) where
+    (DiffInt n1) == (DiffInt n2) = n1 == n2
+
+instance Eq (Diff (Single ByteString)) where
+    (DiffString es1) == (DiffString es2) = es1 == es2
+
+instance (Eq (Value (Single a))) => Eq (Diff (Collection a)) where
+    (DiffSet rem1 add1) == (DiffSet rem2 add2) = rem1 == rem2 && add1 == add2
+
+instance (Sexpable (Diff a)) => Show (Diff a) where
+    show d = BL.unpack (printMach (toSexp d))
 
 instance Sexpable (Diff (Single Integer)) where
     toSexp (DiffInt n) = List ["DiffInt", toSexp n]
@@ -71,14 +83,14 @@ instance (Ord (Value (Single b))) => Diffable (Collection b) where
 
 -- | An 'EditScript' defines the actions that change one 'ByteString' into another.
 newtype EditScript = EditScript [EditAction]
-                   deriving ( Generic, Show )
+                   deriving ( Eq, Generic, Show )
 
 instance Sexpable EditScript
 
 data EditAction = Skip Int
                 | Insert ByteString
                 | Delete ByteString
-                deriving ( Generic, Show )
+                deriving ( Eq, Generic, Show )
 
 instance Sexpable EditAction
 

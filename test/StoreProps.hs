@@ -12,18 +12,20 @@ import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Foldable ( foldlM )
 import Data.List ( find )
 import Data.Monoid
+import Ltc.Store.Serialization ( getDiffPack )
+import Ltc.Store.VersionControl ( insertChangesInto )
 import Network.BSD ( getHostName )
+import qualified Control.Exception as CE
+import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.Map as M
+import qualified Data.Set as S
+import qualified Data.VectorClock as VC
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
 import Test.HUnit
 import Test.QuickCheck
 import Test.QuickCheck.Monadic as QCM
-import qualified Control.Exception as CE
-import qualified Data.ByteString.Lazy.Char8 as BL
-import qualified Data.Map as M
-import qualified Data.Set as S
-import qualified Data.VectorClock as VC
 
 main :: IO ()
 main = defaultMainWithOpts
@@ -34,9 +36,10 @@ main = defaultMainWithOpts
        , testProperty "setGetLatest" propSetGetLatest
        , testProperty "keysPresent" propKeysPresent
        , testProperty "fullHistory" propFullHistory
+       , testProperty "exportImportId" propExportImportId
        ] options
   where
-    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 10000000) }) }
+    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 20000000) }) }
 
 --------------------------------
 -- Unit tests
@@ -189,6 +192,27 @@ propFullHistory = propWithCommands (\store cmds -> foldlM (runCmd store) (M.empt
                 Nothing   -> M.insert key [vsn] kvsns
                 Just vsns -> M.insert key (vsn:vsns) kvsns
         return (kvsns', (key, vsn, value):kvs)
+
+-- | Exporting all the changes from a store, importing them into another, exporting those,
+-- the two exported sets of changes should be the same.
+propExportImportId :: Commands -> Property
+propExportImportId cmds = monadicIO $ cleanEnvironmentP ["test-store", "test-store2"] $ do
+    store1 <- run $ open testParameters
+    forM_ (unCommands cmds) (runCmd store1)
+    dp1 <- run $ getDiffPack store1
+    run $ close store1
+    store2 <- run $ open testParameters { location = "test-store2" }
+    conflicts <- run $ insertChangesInto store2 dp1
+    QCM.assert (conflicts == [])
+    dp2 <- run $ getDiffPack store1
+    run $ close store2
+    QCM.assert (dp1 == dp2)
+  where
+    runCmd _ (GetLatest _) = do
+        return ()
+    runCmd store (Set key value) = do
+        _ <- run $ set store key value
+        return ()
 
 --------------------------------
 -- Helpers

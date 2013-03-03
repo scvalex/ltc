@@ -10,23 +10,25 @@ import Ltc.Store.Diff ( Diff, Diffable(..) )
 import Ltc.Store.Serialization ( DiffPack(..), KeyHistory(..), getKeyHistory )
 import qualified Data.Map as M
 
+type Reason = String
+
 ----------------------
 -- Exposed interface
 ----------------------
 
 -- | Insert the given changes into the store.  Returns a list of conflicting keys.
-insertChangesInto :: (Store s) => s -> DiffPack -> IO [Key]
+insertChangesInto :: (Store s) => s -> DiffPack -> IO [(Key, Reason)]
 insertChangesInto store (DiffPack m) = foldlM insertKeyHistory [] (M.toList m)
   where
-    insertKeyHistory :: [Key] -> (Key, KeyHistory) -> IO [Key]
+    insertKeyHistory :: [(Key, Reason)] -> (Key, KeyHistory) -> IO [(Key, Reason)]
     insertKeyHistory conflicts (key, theirHistory) = do
         mmyHistory <- getKeyHistory store key
         case tryMerge key mmyHistory theirHistory of
-            Just acts  -> do
+            Right acts  -> do
                 mapM_ (applyAction store) acts
                 return conflicts
-            Nothing -> do
-                return (key:conflicts)
+            Left reason -> do
+                return ((key, reason) : conflicts)
 
 ----------------------
 -- Store actions
@@ -49,9 +51,9 @@ applyAction store (StoreSet key val) = do
 -- | Attempt to merge to change histories together.  If the merge is successful, return a
 -- list of 'StoreAction's.  For instance, this can fail if the histories have different
 -- types.
-tryMerge :: Key -> Maybe KeyHistory -> KeyHistory -> Maybe [StoreAction]
+tryMerge :: Key -> Maybe KeyHistory -> KeyHistory -> Either Reason [StoreAction]
 tryMerge key Nothing theirHistory =
-    Just (insertNewActions key theirHistory)
+    Right (insertNewActions key theirHistory)
 tryMerge _ (Just (IntKeyHistory myTip myDiffs)) (IntKeyHistory theirTip theirDiffs) =
     merge myTip myDiffs theirTip theirDiffs
 tryMerge _ (Just (IntSetKeyHistory myTip myDiffs)) (IntSetKeyHistory theirTip theirDiffs) =
@@ -61,12 +63,12 @@ tryMerge _ (Just (StringKeyHistory myTip myDiffs)) (StringKeyHistory theirTip th
 tryMerge _ (Just (StringSetKeyHistory myTip myDiffs)) (StringSetKeyHistory theirTip theirDiffs) =
     merge myTip myDiffs theirTip theirDiffs
 tryMerge _ _ _ =
-    Nothing
+    Left "different types"
 
 -- | Attempt to merge two histories of the same type together.  If the merge is
 -- successful, return a list of 'StoreAction's.
-merge :: Value a -> [Diff a] -> Value a -> [Diff a] -> Maybe [StoreAction]
-merge _ _ _ _ = Nothing
+merge :: Value a -> [Diff a] -> Value a -> [Diff a] -> Either Reason [StoreAction]
+merge _ _ _ _ = Left "key already exists"
 
 -- | Prepare the actions that insert the entire key history into the store.
 insertNewActions :: Key -> KeyHistory -> [StoreAction]
