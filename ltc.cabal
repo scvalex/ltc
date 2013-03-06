@@ -44,6 +44,7 @@ Library
                         zlib
   Exposed-modules:
                         Ltc.Adapter.RedisAdapter,
+                        Ltc.Node,
                         Ltc.Store,
                         Ltc.Store.Class,
                         Ltc.Store.Diff,

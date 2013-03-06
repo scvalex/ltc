@@ -1,44 +1,38 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Network.RedisServer (
+module Ltc.Node (
         serve, serveWithPort
     ) where
 
-import Ltc.Store ( Store )
-import Network.Redis
-import Ltc.Adapter.RedisAdapter ( redisProxyD )
-
 import Control.Concurrent ( forkIO )
-import qualified Control.Exception as CE
 import Control.Exception ( Exception )
 import Control.Monad ( unless )
-import qualified Data.ByteString.Char8 as BS
-import Data.ByteString.Char8 ( ByteString )
-import Data.Data ( Data, Typeable )
 import Control.Proxy
-import Control.Proxy.Attoparsec ( parserInputD, parserD )
-import Network.Socket ( Socket, socket, accept, sClose, bindSocket
-                      , listen, maxListenQueue, iNADDR_ANY
-                      , Family(..), SocketType(..), SockAddr(..)
+import Data.Typeable ( Typeable )
+import Data.ByteString ( ByteString )
+import Ltc.Store ( Store )
+import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
+                      , Family(..), SocketType(..), SockAddr(..), accept
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, recv )
+import qualified Control.Exception as CE
+import qualified Data.ByteString as BS
+
+ltcPort :: Port
+ltcPort = 6379
+
+data Shutdown = Shutdown
+              deriving ( Show, Typeable )
+
+instance Exception Shutdown
 
 type Handler p = (() -> Producer p ByteString IO ())
                  -> (() -> Consumer p ByteString IO ())
                  -> IO ()
 
-data Shutdown = Shutdown
-              deriving ( Data, Show, Typeable )
-
-instance Exception Shutdown
-
--- | Start the Redis interface on the standard Redis port (6379).
 serve :: (Store s) => s -> IO (IO ())
-serve = serveWithPort redisPort
+serve = serveWithPort ltcPort
 
--- | Start the Redis interface on the given port, backed by the given
--- store.  "Ltc.Adapter.RedisAdapter" is used to translate between
--- Redis and LTc commands.
 serveWithPort :: (Store s) => Int -> s -> IO (IO ())
 serveWithPort port store = do
     tid <- forkIO $
@@ -46,21 +40,11 @@ serveWithPort port store = do
                (bindPort port)
                (\lsocket -> sClose lsocket)
                (\lsocket -> CE.handle (\(_ :: Shutdown) -> return ())
-                                      (runSocketServer lsocket (redisHandler store)))
+                                      (runSocketServer lsocket (ltcHandler store)))
     return (CE.throwTo tid Shutdown)
 
-redisHandler :: (Store s) => s -> Handler ProxyFast
-redisHandler store p c =
-    runProxy $ p >-> parserInputD
-                 >-> parserD redisParser
-                 >-> (redisProxyD store)
-                 >-> redisEncoderD
-                 >-> c
-
-redisEncoderD :: (Proxy p, Monad m) => () -> Pipe p RedisMessage ByteString m ()
-redisEncoderD () = runIdentityP $ forever $ do
-    reply <- request ()
-    respond (redisEncode reply)
+ltcHandler :: (Store s) => s -> Handler ProxyFast
+ltcHandler = undefined
 
 ----------------------
 -- Sockets
@@ -68,20 +52,16 @@ redisEncoderD () = runIdentityP $ forever $ do
 
 type Port = Int
 
-redisPort :: Port
-redisPort = 6379
-
--- | Create a TCP socket and bind it to the given port.
+-- | Create a UDP socket and bind it to the given port.
 bindPort :: Port -> IO Socket
 bindPort port = do
     CE.bracketOnError
-        (socket AF_INET Stream defaultProtocol)
+        (socket AF_INET Datagram defaultProtocol)
         sClose
         (\s -> do
             -- FIXME See the examples at the end of Network.Socket.ByteString
             setSocketOption s ReuseAddr 1
             bindSocket s (SockAddrInet (fromIntegral port) iNADDR_ANY)
-            listen s maxListenQueue
             return s)
 
 runSocketServer :: (Proxy p) => Socket -> Handler p -> IO ()
