@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Ltc.Node (
-        serve, serveWithPort
+        ltcPort, serve, serveWithPort
     ) where
 
 import Control.Concurrent ( forkIO )
@@ -19,8 +19,13 @@ import Network.Socket.ByteString ( sendAll, recv )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 
+----------------------
+-- Node interface
+----------------------
+
+-- | The standard LTc port.
 ltcPort :: Port
-ltcPort = 6379
+ltcPort = 3582
 
 data Shutdown = Shutdown
               deriving ( Show, Typeable )
@@ -31,9 +36,12 @@ type Handler p = (() -> Producer p ByteString IO ())
                  -> (() -> Consumer p ByteString IO ())
                  -> IO ()
 
+-- | Start the LTc interface on the standard LTc port (3582)).
 serve :: (Store s) => s -> IO (IO ())
 serve = serveWithPort ltcPort
 
+-- | Start the Ltc interface on the given port, backed by the given
+-- store.
 serveWithPort :: (Store s) => Int -> s -> IO (IO ())
 serveWithPort port store = do
     tid <- forkIO $
