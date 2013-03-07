@@ -12,6 +12,7 @@ import Data.Typeable ( Typeable )
 import Data.ByteString ( ByteString )
 import Ltc.Store ( Store )
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
+                      , AddrInfo(..), getAddrInfo, defaultHints, connect
                       , Family(..), SocketType(..), SockAddr(..), accept
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, recv )
@@ -52,6 +53,8 @@ ltcHandler = undefined
 
 type Port = Int
 
+type Hostname = String
+
 -- | Create a UDP socket and bind it to the given port.
 bindPort :: Port -> IO Socket
 bindPort port = do
@@ -87,3 +90,17 @@ socketWriter :: (Proxy p) => Socket -> () -> Consumer p ByteString IO ()
 socketWriter sock () = runIdentityP $ forever $ do
     bin <- request ()
     lift $ sendAll sock bin
+
+
+-- | Create a socket connected to the given network address.
+getSocket :: Hostname -> Int -> IO Socket
+getSocket hostname port = do
+    addrInfos <- getAddrInfo (Just (defaultHints { addrFamily = AF_INET }))
+                             (Just hostname)
+                             (Just $ show port)
+    CE.bracketOnError
+        (socket AF_INET Datagram defaultProtocol)
+        sClose
+        (\s -> do
+             connect s (addrAddress $ head addrInfos)
+             return s)
