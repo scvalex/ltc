@@ -12,7 +12,7 @@ import Data.Foldable ( foldlM )
 import qualified Data.Map as M
 import Data.Monoid ( mempty )
 import Ltc.Store
-import Network.Socket ( Socket, Family(..), SocketType(..), HostName
+import Network.Socket ( Socket, Family(..), SocketType(..)
                       , socket, sClose, connect, defaultProtocol
                       , AddrInfo(..), getAddrInfo, addrAddress, defaultHints )
 import Network.Socket.ByteString ( sendAll, recv )
@@ -257,7 +257,7 @@ propNumericDance (NRMs msgs) = monadicIO $ cleanEnvironmentP ["redis-store"] $ d
 --------------------------------
 
 -- | Create a socket connected to the given network address.
-getSocket :: HostName -> Int -> IO Socket
+getSocket :: String -> Int -> IO Socket
 getSocket hostname port = do
     addrInfos <- getAddrInfo (Just (defaultHints { addrFamily = AF_INET }))
                              (Just hostname)
