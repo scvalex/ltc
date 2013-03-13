@@ -13,7 +13,7 @@ import Data.ByteString ( ByteString )
 import Ltc.Store ( Store )
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
                       , AddrInfo(..), getAddrInfo, defaultHints, connect
-                      , Family(..), SocketType(..), SockAddr(..), accept
+                      , Family(..), SocketType(..), SockAddr(..)
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, recv )
 import qualified Control.Exception as CE
@@ -47,9 +47,9 @@ serveWithPort port store = do
     tid <- forkIO $
            CE.bracket
                (bindPort port)
-               (\lsocket -> sClose lsocket)
-               (\lsocket -> CE.handle (\(_ :: Shutdown) -> return ())
-                                      (runSocketServer lsocket (ltcHandler store)))
+               (\sock -> sClose sock)
+               (\sock -> CE.handle (\(_ :: Shutdown) -> return ())
+                                   (ltcHandler store (socketReader sock) (socketWriter sock)))
     return (CE.throwTo tid Shutdown)
 
 ltcHandler :: (Store s) => s -> Handler ProxyFast
@@ -69,19 +69,11 @@ bindPort port = do
     CE.bracketOnError
         (socket AF_INET Datagram defaultProtocol)
         sClose
-        (\s -> do
+        (\sock -> do
             -- FIXME See the examples at the end of Network.Socket.ByteString
-            setSocketOption s ReuseAddr 1
-            bindSocket s (SockAddrInet (fromIntegral port) iNADDR_ANY)
-            return s)
-
-runSocketServer :: (Proxy p) => Socket -> Handler p -> IO ()
-runSocketServer lsocket handler = forever $ do
-    (sock, _addr) <- accept lsocket
-    _ <- forkIO $ CE.finally
-                      (handler (socketReader sock) (socketWriter sock))
-                      (sClose sock)
-    return ()
+            setSocketOption sock ReuseAddr 1
+            bindSocket sock (SockAddrInet (fromIntegral port) iNADDR_ANY)
+            return sock)
 
 -- | Stream data from the socket.
 socketReader :: (Proxy p) => Socket -> () -> Producer p ByteString IO ()

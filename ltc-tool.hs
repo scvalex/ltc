@@ -13,11 +13,12 @@ import Ltc.Store
 import Ltc.Store.Serialization ( DiffPack, getDiffPack )
 import Ltc.Store.VersionControl ( insertChangesInto )
 import Network.BSD ( getHostName )
-import Network.RedisServer ( serve )
 import Paths_ltc ( version )
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
+import qualified Ltc.Node as N
+import qualified Network.RedisServer as R
 import System.Console.CmdArgs
 import System.Posix.Signals ( Handler(..), installHandler, sigINT )
 import System.Random ( randomRIO )
@@ -33,6 +34,7 @@ data Modes = Fsck { dir :: FilePath }
            | Import { dir :: FilePath, file :: FilePath }
            | Populate { dir :: FilePath, count :: Int }
            | Redis { dir :: FilePath }
+           | Node { dir :: FilePath }
            deriving ( Show, Data, Typeable )
 
 ltcModes :: [Modes]
@@ -51,8 +53,10 @@ ltcModes =
     , Populate { dir = def &= typDir &= argPos 1
                , count = 100 &= help "around how many keys to insert" }
       &= help "populate a store with random values"
-    , Redis { dir = "redis-store" &= typDir }
+    , Redis { dir = "store" &= typDir }
       &= help "run a store with a Redis interface"
+    , Node { dir = "store" &= typDir }
+      &= help "run a store with an LTc Node interface"
     ]
     &= program "ltc"
     &= summary (printf "ltc v%s - LTc utility" (showVersion version))
@@ -94,21 +98,31 @@ main = do
             _ <- printf "Running Redis server with %s\n" d
             hostname <- getHostName
             store <- open (openParameters d hostname)
-            shutdown <- serve store
-            done <- newEmptyMVar
-            _ <- installHandler sigINT (Catch $ putMVar done ()) Nothing
-            takeMVar done `CE.finally` (do
-                _ <- printf "Shutting down... "
-                shutdown
-                close store
-                _ <- printf "done\n"
-                return ())
+            shutdown <- R.serve store
+            shutdownOnInt store shutdown
+        Node d -> do
+            _ <- printf "Running Node with %s\n" d
+            hostname <- getHostName
+            store <- open (openParameters d hostname)
+            shutdown <- N.serve store
+            shutdownOnInt store shutdown
   where
     openParameters d hostname =
         OpenParameters { location        = d
                        , useCompression  = False
                        , nodeName        = (BL.pack hostname)
                        , createIfMissing = True }
+
+    shutdownOnInt :: (Store s) => s -> IO () -> IO ()
+    shutdownOnInt store shutdown = do
+        done <- newEmptyMVar
+        _ <- installHandler sigINT (Catch $ putMVar done ()) Nothing
+        takeMVar done `CE.finally` (do
+            _ <- printf "Shutting down... "
+            shutdown
+            close store
+            _ <- printf "done\n"
+            return ())
 
     doInfo :: (Store s) => FilePath -> Bool -> String -> s -> IO ()
     doInfo d lk hostname store = do
