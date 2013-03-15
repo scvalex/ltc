@@ -1,0 +1,5 @@
+* TODO UDP Connections
+* TODO UDP Maximum Sync
+* TODO Better merging
+* TODO Configuration file
+* TODO Status plugin
