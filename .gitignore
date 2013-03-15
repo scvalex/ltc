@@ -1,5 +1,4 @@
 .cr
 cabal-dev/
 dist/
-test-store/
-redis-store/
+*store*/
