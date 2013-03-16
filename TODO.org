@@ -3,3 +3,7 @@
 * TODO Better merging
 * TODO Configuration file
 * TODO Status plugin
+* TODO Temporal logic formalization
+  Figure out what properties the whole thing should have, and what
+  properties the individual components should have to be able to prove
+  the bigger thing.
