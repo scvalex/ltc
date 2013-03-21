@@ -29,6 +29,7 @@ Library
                         array,
                         attoparsec,
                         bytestring,
+                        cereal,
                         containers,
                         directory,
                         filepath,
@@ -50,6 +51,7 @@ Library
                         Ltc.Store.Simple,
                         Ltc.Store.Serialization,
                         Ltc.Store.VersionControl,
+                        Network.NodeProtocol,
                         Network.NodeServer,
                         Network.Redis,
                         Network.RedisServer
