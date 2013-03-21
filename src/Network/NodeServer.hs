@@ -11,6 +11,7 @@ import Control.Proxy
 import Data.Typeable ( Typeable )
 import Data.ByteString ( ByteString )
 import Ltc.Store ( Store )
+import Network.NodeProtocol ( NodeMessage, encode, decode )
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
                       , AddrInfo(..), getAddrInfo, defaultHints, connect
                       , Family(..), SocketType(..), SockAddr(..)
@@ -53,8 +54,20 @@ serveWithPort port store = do
     return (CE.throwTo tid Shutdown)
 
 ltcHandler :: (Store s) => s -> Handler ProxyFast
-ltcHandler store p c =
-    runProxy $ p >-> c
+ltcHandler _ p c =
+    runProxy $ p >-> ltcEchoD
+                 >-> ltcEncoderD
+                 >-> c
+
+ltcEchoD :: (Proxy p, Monad m) => () -> Pipe p ByteString NodeMessage m ()
+ltcEchoD () = runIdentityP $ forever $ do
+    s <- request ()
+    case decode s of
+        Nothing  -> return ()
+        Just msg -> respond msg
+
+ltcEncoderD :: (Proxy p, Monad m) => () -> Pipe p NodeMessage ByteString m ()
+ltcEncoderD () = runIdentityP $ forever $ respond . encode =<< request ()
 
 ----------------------
 -- Sockets

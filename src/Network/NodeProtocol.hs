@@ -4,7 +4,7 @@ module Network.NodeProtocol (
         NodeMessage, encode, decode
     ) where
 
-import Data.ByteString.Char8 ( ByteString )
+import Data.ByteString ( ByteString )
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import qualified Data.Serialize as S
