@@ -101,7 +101,7 @@ main = do
             shutdown <- R.serve store
             shutdownOnInt store shutdown
         Node d -> do
-            _ <- printf "Running Node with %s\n" d
+            _ <- printf "Running Node on %d with %s\n" N.ltcPort d
             hostname <- getHostName
             store <- open (openParameters d hostname)
             shutdown <- N.serve store

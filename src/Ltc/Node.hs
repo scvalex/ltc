@@ -53,7 +53,8 @@ serveWithPort port store = do
     return (CE.throwTo tid Shutdown)
 
 ltcHandler :: (Store s) => s -> Handler ProxyFast
-ltcHandler = undefined
+ltcHandler store p c =
+    runProxy $ p >-> c
 
 ----------------------
 -- Sockets
@@ -90,7 +91,6 @@ socketWriter :: (Proxy p) => Socket -> () -> Consumer p ByteString IO ()
 socketWriter sock () = runIdentityP $ forever $ do
     bin <- request ()
     lift $ sendAll sock bin
-
 
 -- | Create a socket connected to the given network address.
 getSocket :: Hostname -> Int -> IO Socket
