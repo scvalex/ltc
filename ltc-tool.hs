@@ -17,7 +17,7 @@ import Paths_ltc ( version )
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
-import qualified Ltc.Node as N
+import qualified Network.NodeServer as N
 import qualified Network.RedisServer as R
 import System.Console.CmdArgs
 import System.Posix.Signals ( Handler(..), installHandler, sigINT )

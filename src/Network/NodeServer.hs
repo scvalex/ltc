@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Ltc.Node (
+module Network.NodeServer (
         ltcPort, serve, serveWithPort
     ) where
 
