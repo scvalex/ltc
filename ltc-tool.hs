@@ -35,6 +35,7 @@ data Modes = Fsck { dir :: FilePath }
            | Populate { dir :: FilePath, count :: Int }
            | Redis { dir :: FilePath }
            | Node { dir :: FilePath }
+           | WireClient { host :: String, port :: Int }
            deriving ( Show, Data, Typeable )
 
 ltcModes :: [Modes]
@@ -56,7 +57,10 @@ ltcModes =
     , Redis { dir = "store" &= typDir }
       &= help "run a store with a Redis interface"
     , Node { dir = "store" &= typDir }
-      &= help "run a store with an LTc Node interface"
+      &= help "run a store with an LTc node interface"
+    , WireClient { host = "localhost" &= typ "HOST"
+                 , port = N.ltcPort &= typ "PORT" }
+      &= help "connect a low-level client to an LTc node"
     ]
     &= program "ltc"
     &= summary (printf "ltc v%s - LTc utility" (showVersion version))
@@ -106,6 +110,9 @@ main = do
             store <- open (openParameters d hostname)
             shutdown <- N.serve store
             shutdownOnInt store shutdown
+        WireClient h p -> do
+            _ <- printf "Connecting NodeCat to %s:%d\n" h p
+            return ()
   where
     openParameters d hostname =
         OpenParameters { location        = d

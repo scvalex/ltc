@@ -7,6 +7,7 @@ module Network.NodeProtocol (
 import Data.ByteString ( ByteString )
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
+import Language.Sexp ( Sexpable )
 import qualified Data.Serialize as S
 
 ----------------------
@@ -17,6 +18,8 @@ data NodeMessage = Ping String
                  deriving ( Generic )
 
 instance Serialize NodeMessage
+
+instance Sexpable NodeMessage
 
 ----------------------
 -- (De)Serialization
