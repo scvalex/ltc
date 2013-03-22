@@ -112,6 +112,7 @@ main = do
             shutdownOnInt store shutdown
         WireClient h p -> do
             _ <- printf "Connecting NodeCat to %s:%d\n" h p
+            _ <- N.connect h p
             return ()
   where
     openParameters d hostname =

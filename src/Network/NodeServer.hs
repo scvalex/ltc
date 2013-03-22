@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Network.NodeServer (
-        ltcPort, serve, serveWithPort
+        ltcPort,
+        serve, serveWithPort,
+        Connection, connect
     ) where
 
 import Control.Concurrent ( forkIO )
@@ -13,12 +15,13 @@ import Data.ByteString ( ByteString )
 import Ltc.Store ( Store )
 import Network.NodeProtocol ( NodeMessage, encode, decode )
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
-                      , AddrInfo(..), getAddrInfo, defaultHints, connect
+                      , AddrInfo(..), getAddrInfo, defaultHints
                       , Family(..), SocketType(..), SockAddr(..)
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, recv )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
+import qualified Network.Socket as NS
 
 ----------------------
 -- Node interface
@@ -40,6 +43,12 @@ type Handler p = (() -> Producer p ByteString IO ())
 -- | Start the LTc interface on the standard LTc port (3582)).
 serve :: (Store s) => s -> IO (IO ())
 serve = serveWithPort ltcPort
+
+newtype Connection = Connection ()
+
+-- | Connect to a remote node.
+connect :: Hostname -> Port -> IO Connection
+connect = undefined
 
 -- | Start the Ltc interface on the given port, backed by the given
 -- store.
@@ -115,5 +124,5 @@ getSocket hostname port = do
         (socket AF_INET Datagram defaultProtocol)
         sClose
         (\s -> do
-             connect s (addrAddress $ head addrInfos)
+             NS.connect s (addrAddress $ head addrInfos)
              return s)
