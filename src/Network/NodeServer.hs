@@ -2,6 +2,7 @@
 
 module Network.NodeServer (
         ltcPort,
+        Node, shutdown,
         serve, serveWithPort,
         Connection, connect
     ) where
@@ -40,19 +41,22 @@ type Handler p = (() -> Producer p ByteString IO ())
                  -> (() -> Consumer p ByteString IO ())
                  -> IO ()
 
+data Node = Node { getShutdown :: IO ()
+                 }
+
 -- | Start the LTc interface on the standard LTc port (3582)).
-serve :: (Store s) => s -> IO (IO ())
+serve :: (Store s) => s -> IO Node
 serve = serveWithPort ltcPort
 
 newtype Connection = Connection ()
 
--- | Connect to a remote node.
-connect :: Hostname -> Port -> IO Connection
+-- | Use a local 'Node' to connect to a remote 'Node'.
+connect :: Node -> Hostname -> Port -> IO Connection
 connect = undefined
 
 -- | Start the Ltc interface on the given port, backed by the given
 -- store.
-serveWithPort :: (Store s) => Int -> s -> IO (IO ())
+serveWithPort :: (Store s) => Int -> s -> IO Node
 serveWithPort port store = do
     tid <- forkIO $
            CE.bracket
@@ -60,7 +64,13 @@ serveWithPort port store = do
                (\sock -> sClose sock)
                (\sock -> CE.handle (\(_ :: Shutdown) -> return ())
                                    (ltcHandler store (socketReader sock) (socketWriter sock)))
-    return (CE.throwTo tid Shutdown)
+    let node = Node { getShutdown = CE.throwTo tid Shutdown
+                    }
+    return node
+
+-- | Shutdown a running 'Node'.  Idempotent.
+shutdown :: Node -> IO ()
+shutdown = getShutdown
 
 ltcHandler :: (Store s) => s -> Handler ProxyFast
 ltcHandler _ p c =

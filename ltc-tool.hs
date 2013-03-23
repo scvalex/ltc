@@ -108,12 +108,15 @@ main = do
             _ <- printf "Running Node on %d with %s\n" N.ltcPort d
             hostname <- getHostName
             store <- open (openParameters d hostname)
-            shutdown <- N.serve store
-            shutdownOnInt store shutdown
+            node <- N.serve store
+            shutdownOnInt store (N.shutdown node)
         WireClient h p -> do
             _ <- printf "Connecting NodeCat to %s:%d\n" h p
-            _ <- N.connect h p
-            return ()
+            hostname <- getHostName
+            store <- open (openParameters "wire-client-store" hostname)
+            node <- N.serveWithPort (N.ltcPort + 1) store
+            _ <- N.connect node h p
+            shutdownOnInt store (N.shutdown node)
   where
     openParameters d hostname =
         OpenParameters { location        = d
