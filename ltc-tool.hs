@@ -40,18 +40,18 @@ data Modes = Fsck { dir :: FilePath }
 
 ltcModes :: [Modes]
 ltcModes =
-    [ Fsck { dir = def &= typDir &= argPos 1 }
+    [ Fsck { dir = def &= typDir &= argPos 0 }
       &= help "check the integrity of a store"
-    , Info { dir = def &= typDir &= argPos 1
+    , Info { dir = def &= typDir &= argPos 0
            , listKeys = False &= help "list the keys in a store" }
       &= help "list information about a store"
-    , Export { dir = def &= typDir &= argPos 1
+    , Export { dir = def &= typDir &= argPos 0
              , file = "changes.sexp" &= typFile }
       &= help "export all changes to a file"
-    , Import { dir = def &= typDir &= argPos 1
+    , Import { dir = def &= typDir &= argPos 0
              , file = "changes.sexp" &= typFile }
       &= help "import changes from a file"
-    , Populate { dir = def &= typDir &= argPos 1
+    , Populate { dir = def &= typDir &= argPos 0
                , count = 100 &= help "around how many keys to insert" }
       &= help "populate a store with random values"
     , Redis { dir = "store" &= typDir }
