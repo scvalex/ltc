@@ -1,6 +1,6 @@
 CABAL := $(shell cabal-dev --version > /dev/null && echo cabal-dev || echo cabal)
 
-all: build test
+all: build fasttest
 
 .PHONY: all build dist install clean doc site p ghci stores
 
@@ -8,7 +8,7 @@ build: dist/setup-config
 	rm -rf _site _cache
 	$(CABAL) build
 
-dist:
+dist: build test
 	$(CABAL) sdist
 
 install: build
@@ -43,3 +43,6 @@ stores: build
 	rm -rf *-store
 	./ltc populate -c 10 some-store
 	./ltc info some-store
+
+fasttest: build
+	$(cabal) test diff
