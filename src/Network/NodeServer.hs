@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Network.NodeServer (
+        module Network.Types,
+
         ltcPort,
         Node, shutdown,
         serve, serveWithPort,

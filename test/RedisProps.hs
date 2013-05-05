@@ -18,7 +18,7 @@ import Network.Socket ( Socket, Family(..), SocketType(..)
 import Network.Socket.ByteString ( sendAll, recv )
 import qualified Network.Redis as R
 import Network.Redis ( RedisMessage, RedisMessage(..) )
-import Network.RedisServer ( serveWithPort )
+import Network.RedisServer ( Hostname, Port, serveWithPort )
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
@@ -257,7 +257,7 @@ propNumericDance (NRMs msgs) = monadicIO $ cleanEnvironmentP ["redis-store"] $ d
 --------------------------------
 
 -- | Create a socket connected to the given network address.
-getSocket :: String -> Int -> IO Socket
+getSocket :: Hostname -> Port -> IO Socket
 getSocket hostname port = do
     addrInfos <- getAddrInfo (Just (defaultHints { addrFamily = AF_INET }))
                              (Just hostname)

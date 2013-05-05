@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Network.RedisServer (
+        module Network.Types,
+
         serve, serveWithPort
     ) where
 
