@@ -22,6 +22,11 @@ import Network.Socket ( Socket, socket, accept, sClose, bindSocket
                       , Family(..), SocketType(..), SockAddr(..)
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, recv )
+import Network.Types
+
+----------------------
+-- Redis interface
+----------------------
 
 type Handler p = (() -> Producer p ByteString IO ())
                  -> (() -> Consumer p ByteString IO ())
@@ -65,8 +70,6 @@ redisEncoderD () = runIdentityP $ forever $ do
 ----------------------
 -- Sockets
 ----------------------
-
-type Port = Int
 
 redisPort :: Port
 redisPort = 6379

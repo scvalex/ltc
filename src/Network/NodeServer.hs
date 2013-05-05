@@ -4,7 +4,7 @@ module Network.NodeServer (
         ltcPort,
         Node, shutdown,
         serve, serveWithPort,
-        Connection, connect, closeConnection
+        Connection, ConnectionId, connect, closeConnection
     ) where
 
 import Control.Concurrent ( forkIO )
@@ -21,6 +21,7 @@ import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
                       , Family(..), SocketType(..), SockAddr(..)
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, recv )
+import Network.Types
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 import qualified Data.Map as M
@@ -119,10 +120,6 @@ ltcEncoderD () = runIdentityP $ forever $ respond . encode =<< request ()
 ----------------------
 -- Sockets
 ----------------------
-
-type Port = Int
-
-type Hostname = String
 
 -- | Create a UDP socket and bind it to the given port.
 bindPort :: Port -> IO Socket
