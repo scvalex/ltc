@@ -4,7 +4,7 @@ module Network.NodeServer (
         ltcPort,
         Node, shutdown,
         serve, serveWithPort,
-        Connection, connect
+        Connection, connect, closeConnection
     ) where
 
 import Control.Concurrent ( forkIO )
@@ -13,6 +13,7 @@ import Control.Monad ( unless )
 import Control.Proxy
 import Data.Typeable ( Typeable )
 import Data.ByteString ( ByteString )
+import Data.Map ( Map )
 import Ltc.Store ( Store )
 import Network.NodeProtocol ( NodeMessage, encode, decode )
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
@@ -22,6 +23,7 @@ import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
 import Network.Socket.ByteString ( sendAll, recv )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
+import qualified Data.Map as M
 import qualified Network.Socket as NS
 
 ----------------------
@@ -41,18 +43,42 @@ type Handler p = (() -> Producer p ByteString IO ())
                  -> (() -> Consumer p ByteString IO ())
                  -> IO ()
 
-data Node = Node { getShutdown :: IO ()
-                 }
+newtype ConnectionId = ConnectionId Int
+                       deriving ( Eq, Ord, Show )
+
+data Node = Node
+    { getShutdown         :: IO ()
+    , getNextConnectionId :: ConnectionId
+    , getConnections      :: Map ConnectionId Connection
+    }
 
 -- | Start the LTc interface on the standard LTc port (3582)).
 serve :: (Store s) => s -> IO Node
 serve = serveWithPort ltcPort
 
-newtype Connection = Connection ()
+data Connection = Connection
+    { getConnectionSocket   :: Socket
+    , getConnectionHostname :: Hostname
+    , getConnectionPort     :: Port
+    }
 
 -- | Use a local 'Node' to connect to a remote 'Node'.
-connect :: Node -> Hostname -> Port -> IO Connection
-connect = undefined
+connect :: Node -> Hostname -> Port -> IO (Node, Connection)
+connect node hostname port = do
+    sock <- getSocket hostname port
+    let conn = Connection { getConnectionSocket   = sock
+                          , getConnectionHostname = hostname
+                          , getConnectionPort     = port }
+        connId = getNextConnectionId node
+        node' = node { getNextConnectionId = nextConnectionId connId
+                     , getConnections      = M.insert connId conn (getConnections node)
+                     }
+    return (node', conn)
+
+-- | Close a `Connection` to a remote `Node`.
+closeConnection :: Connection -> IO ()
+closeConnection conn = do
+    sClose (getConnectionSocket conn)
 
 -- | Start the Ltc interface on the given port, backed by the given
 -- store.
@@ -64,7 +90,9 @@ serveWithPort port store = do
                (\sock -> sClose sock)
                (\sock -> CE.handle (\(_ :: Shutdown) -> return ())
                                    (ltcHandler store (socketReader sock) (socketWriter sock)))
-    let node = Node { getShutdown = CE.throwTo tid Shutdown
+    let node = Node { getShutdown         = CE.throwTo tid Shutdown
+                    , getNextConnectionId = ConnectionId 1
+                    , getConnections      = M.empty
                     }
     return node
 
@@ -125,7 +153,7 @@ socketWriter sock () = runIdentityP $ forever $ do
     lift $ sendAll sock bin
 
 -- | Create a socket connected to the given network address.
-getSocket :: Hostname -> Int -> IO Socket
+getSocket :: Hostname -> Port -> IO Socket
 getSocket hostname port = do
     addrInfos <- getAddrInfo (Just (defaultHints { addrFamily = AF_INET }))
                              (Just hostname)
@@ -136,3 +164,10 @@ getSocket hostname port = do
         (\s -> do
              NS.connect s (addrAddress $ head addrInfos)
              return s)
+
+----------------------
+-- Helpers
+----------------------
+
+nextConnectionId :: ConnectionId -> ConnectionId
+nextConnectionId (ConnectionId n) = ConnectionId (n + 1)
