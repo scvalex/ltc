@@ -9,7 +9,9 @@ module Network.NodeServer (
         Connection, ConnectionId, connect, closeConnection
     ) where
 
-import Control.Concurrent ( forkIO )
+import Control.Applicative ( (<$>) )
+import Control.Concurrent ( forkIO
+                          , MVar, newMVar, withMVar, takeMVar, putMVar )
 import Control.Exception ( Exception )
 import Control.Monad ( unless )
 import Control.Proxy
@@ -49,7 +51,9 @@ type Handler p = (() -> Producer p ByteString IO ())
 newtype ConnectionId = ConnectionId Int
                        deriving ( Eq, Ord, Show )
 
-data Node = Node
+newtype Node = Node { getNodeData :: MVar NodeData }
+
+data NodeData = NodeData
     { getShutdown         :: IO ()
     , getNextConnectionId :: ConnectionId
     , getConnections      :: Map ConnectionId Connection
@@ -66,17 +70,19 @@ data Connection = Connection
     }
 
 -- | Use a local 'Node' to connect to a remote 'Node'.
-connect :: Node -> Hostname -> Port -> IO (Node, Connection)
+connect :: Node -> Hostname -> Port -> IO Connection
 connect node hostname port = do
     sock <- getSocket hostname port
+    nodeData <- takeMVar (getNodeData node)
     let conn = Connection { getConnectionSocket   = sock
                           , getConnectionHostname = hostname
                           , getConnectionPort     = port }
-        connId = getNextConnectionId node
-        node' = node { getNextConnectionId = nextConnectionId connId
-                     , getConnections      = M.insert connId conn (getConnections node)
-                     }
-    return (node', conn)
+        connId = getNextConnectionId nodeData
+        nodeData' = nodeData { getNextConnectionId = nextConnectionId connId
+                             , getConnections      = M.insert connId conn (getConnections nodeData)
+                             }
+    putMVar (getNodeData node) nodeData'
+    return conn
 
 -- | Close a `Connection` to a remote `Node`.
 closeConnection :: Connection -> IO ()
@@ -93,15 +99,15 @@ serveWithPort port store = do
                (\sock -> sClose sock)
                (\sock -> CE.handle (\(_ :: Shutdown) -> return ())
                                    (ltcHandler store (socketReader sock) (socketWriter sock)))
-    let node = Node { getShutdown         = CE.throwTo tid Shutdown
-                    , getNextConnectionId = ConnectionId 1
-                    , getConnections      = M.empty
-                    }
-    return node
+    let nodeData = NodeData { getShutdown         = CE.throwTo tid Shutdown
+                            , getNextConnectionId = ConnectionId 1
+                            , getConnections      = M.empty
+                            }
+    Node <$> newMVar nodeData
 
 -- | Shutdown a running 'Node'.  Idempotent.
 shutdown :: Node -> IO ()
-shutdown = getShutdown
+shutdown = flip withMVar getShutdown . getNodeData
 
 ltcHandler :: (Store s) => s -> Handler ProxyFast
 ltcHandler _ p c =
