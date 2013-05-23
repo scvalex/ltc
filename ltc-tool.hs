@@ -20,6 +20,8 @@ import qualified Data.Set as S
 import qualified Network.NodeServer as N
 import qualified Network.RedisServer as R
 import System.Console.CmdArgs
+import System.Console.Haskeline ( InputT, runInputT, defaultSettings
+                                , getInputLine, outputStrLn )
 import System.Posix.Signals ( Handler(..), installHandler, sigINT )
 import System.Random ( randomRIO )
 import Text.Printf ( printf )
@@ -115,10 +117,9 @@ main = do
             hostname <- getHostName
             store <- open (openParameters "wire-client-store" hostname)
             node <- N.serveWithPort (N.ltcPort + 1) store
-            _ <- N.connect node h p
-            -- FIXME Use haskline to implement a REPL that takes S-Expression NodeProtocol
-            -- messages, encodes them, and sens them to the remote node.
-            shutdownOnInt store (N.shutdown node)
+            conn <- N.connect node h p
+            runInputT defaultSettings (repl conn)
+            shutdownNow [N.shutdown node, close store]
   where
     openParameters d hostname =
         OpenParameters { location        = d
@@ -126,16 +127,19 @@ main = do
                        , nodeName        = (BL.pack hostname)
                        , createIfMissing = True }
 
+    -- | Run all shutdown actions in sequence.
+    shutdownNow :: [IO ()] -> IO ()
+    shutdownNow shutdowns = do
+        _ <- printf "Shutting down... "
+        sequence_ shutdowns
+        _ <- printf "done\n"
+        return ()
+
     shutdownOnInt :: (Store s) => s -> IO () -> IO ()
     shutdownOnInt store shutdown = do
         done <- newEmptyMVar
         _ <- installHandler sigINT (Catch $ putMVar done ()) Nothing
-        takeMVar done `CE.finally` (do
-            _ <- printf "Shutting down... "
-            shutdown
-            close store
-            _ <- printf "done\n"
-            return ())
+        takeMVar done `CE.finally` shutdownNow [shutdown, close store]
 
     doInfo :: (Store s) => FilePath -> Bool -> String -> s -> IO ()
     doInfo d lk hostname store = do
@@ -186,3 +190,15 @@ main = do
 
         dict = words (filter (\c -> c == ' ' || isAlphaNum c) $
                "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+
+    -- | Read a 'NodeMessage' from an S-Expression, encode it with cereal, and send it to
+    -- the remote node.
+    repl :: N.Connection -> InputT IO ()
+    repl conn = do
+        minput <- getInputLine "> "
+        case minput of
+            Nothing -> do
+                return ()
+            Just input -> do
+                outputStrLn input
+                repl conn

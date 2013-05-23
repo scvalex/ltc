@@ -64,6 +64,7 @@ Executable ltc
                         bytestring,
                         cmdargs,
                         containers,
+                        haskeline,
                         ltc,
                         network,
                         random,
