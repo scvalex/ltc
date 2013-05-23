@@ -2,14 +2,14 @@
 
 module Main where
 
-import Control.Applicative ( (<$>) )
+import Control.Applicative ( Applicative, (<$>) )
 import Control.Concurrent.MVar ( newEmptyMVar, putMVar, takeMVar )
 import Control.Monad ( forM_ )
 import Control.Monad.Trans.Class ( lift )
 import Data.Char ( isAlphaNum )
 import Data.List ( nub )
 import Data.Version ( showVersion )
-import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn )
+import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn, parse )
 import Ltc.Store
 import Ltc.Store.Serialization ( DiffPack, getDiffPack )
 import Ltc.Store.VersionControl ( insertChangesInto )
@@ -207,11 +207,23 @@ main = do
             Nothing -> do
                 return ()
             Just input -> do
-                case fromSexp (head (parseExn (BL.pack input))) :: Maybe P.NodeMessage of
+                case readSexpString input :: Maybe P.NodeMessage of
                     Nothing -> do
-                        outputStrLn "Unknown NodeMessage"
+                        outputStrLn "Borked input"
                         repl conn
                     Just msg -> do
                         lift $ N.sendMessage conn msg
                         outputStrLn (show msg)
                         repl conn
+
+    -- FIXME Move this (and a BS version) to sexp
+    -- | Read a single value from an S-Expression in a 'String'.
+    readSexpString :: (Applicative m, Monad m, Sexpable a) => String -> m a
+    readSexpString str = do
+        case parse (BL.pack str) of
+            Left (err, _) -> do
+                fail err
+            Right [s] -> do
+                fromSexp s
+            Right _ -> do
+                fail "expecting just one S-Expression"
