@@ -122,11 +122,11 @@ main = do
             _ <- printf "Connecting NodeCat to %s:%d\n" h p
             hostname <- getHostName
             store <- open (openParameters "wire-client-store" hostname)
-            node <- N.serveWithPort (N.ltcPort + 1) store
+            node <- N.serveWithPort "localhost" (N.ltcPort + 1) store
             conn <- N.connect node h p
             homeDir <- getHomeDirectory
             CE.handle (\Interrupt -> return ())
-                      (flip runInputT (withInterrupt (repl conn)) $
+                      (flip runInputT (withInterrupt (repl node conn)) $
                                       defaultSettings {
                                           historyFile = Just (homeDir </> ".ltc_history") })
             shutdownNow [N.closeConnection conn, N.shutdown node, close store]
@@ -203,8 +203,8 @@ main = do
 
     -- | Read a 'NodeMessage' from an S-Expression, encode it with cereal, and send it to
     -- the remote node.
-    repl :: N.Connection -> InputT IO ()
-    repl conn = do
+    repl :: N.Node -> N.Connection -> InputT IO ()
+    repl node conn = do
         minput <- getInputLine "> "
         case minput of
             Nothing -> do
@@ -213,11 +213,11 @@ main = do
                 case readSexpString input :: Maybe P.NodeMessage of
                     Nothing -> do
                         outputStrLn "Borked input"
-                        repl conn
+                        repl node conn
                     Just msg -> do
-                        lift $ N.sendMessage conn msg
+                        lift $ N.sendMessage node conn msg
                         outputStrLn (show msg)
-                        repl conn
+                        repl node conn
 
     -- FIXME Move this (and a BS version) to sexp
     -- | Read a single value from an S-Expression in a 'String'.

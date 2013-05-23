@@ -12,7 +12,7 @@ module Network.NodeServer (
 
 import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO
-                          , MVar, newMVar, withMVar, takeMVar, putMVar )
+                          , MVar, newMVar, withMVar, takeMVar, putMVar, readMVar )
 import Control.Exception ( Exception )
 import Control.Monad ( unless )
 import Control.Proxy
@@ -21,13 +21,14 @@ import Data.ByteString ( ByteString )
 import Data.Map ( Map )
 import Language.Sexp ( printMach, toSexp )
 import Ltc.Store ( Store )
-import Network.NodeProtocol ( NodeMessage, encode, decode )
+import Network.BSD ( getHostName )
+import Network.NodeProtocol ( NodeMessage, NodeEnvelope(..), encode, decode )
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
                       , AddrInfo(..), getAddrInfo, defaultHints
                       , Family(..), SocketType(..), SockAddr(..)
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, sendAllTo, recvFrom )
-import Network.Types
+import Network.Types ( Hostname, Port )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -47,7 +48,7 @@ data Shutdown = Shutdown
 
 instance Exception Shutdown
 
-type Handler p = (() -> Producer p (ByteString, SockAddr) IO ())
+type Handler p = (() -> Producer p ByteString IO ())
                  -> (() -> Consumer p (ByteString, SockAddr) IO ())
                  -> IO ()
 
@@ -60,11 +61,15 @@ data NodeData = NodeData
     { getShutdown         :: IO ()
     , getNextConnectionId :: ConnectionId
     , getConnections      :: Map ConnectionId Connection
+    , getPort             :: Port
+    , getHostname         :: Hostname
     }
 
 -- | Start the LTc interface on the standard LTc port (3582)).
 serve :: (Store s) => s -> IO Node
-serve = serveWithPort ltcPort
+serve store = do
+    hostname <- getHostName
+    serveWithPort hostname ltcPort store
 
 data Connection = Connection
     { getConnectionSocket   :: Socket
@@ -95,17 +100,19 @@ closeConnection conn = do
 
 -- | Start the Ltc interface on the given port, backed by the given
 -- store.
-serveWithPort :: (Store s) => Int -> s -> IO Node
-serveWithPort port store = do
+serveWithPort :: (Store s) => Hostname -> Int -> s -> IO Node
+serveWithPort hostname port store = do
     tid <- forkIO $
            CE.bracket
                (bindPort port)
                (\sock -> sClose sock)
                (\sock -> CE.handle (\(_ :: Shutdown) -> return ())
-                                   (ltcHandler store (socketReader sock) (socketWriter sock)))
+                                   (ltcHandler (hostname, port) store (socketReader sock) (socketWriter sock)))
     let nodeData = NodeData { getShutdown         = CE.throwTo tid Shutdown
                             , getNextConnectionId = ConnectionId 1
                             , getConnections      = M.empty
+                            , getPort             = port
+                            , getHostname         = hostname
                             }
     Node <$> newMVar nodeData
 
@@ -113,31 +120,43 @@ serveWithPort port store = do
 shutdown :: Node -> IO ()
 shutdown = flip withMVar getShutdown . getNodeData
 
-ltcHandler :: (Store s) => s -> Handler ProxyFast
-ltcHandler _ p c = do
+ltcHandler :: (Store s) => (Hostname, Port) -> s -> Handler ProxyFast
+ltcHandler hp _ p c = do
     runProxy $ p >-> ltcEchoD
-                 >-> ltcEncoderD
+                 >-> (ltcEncoderD hp)
                  >-> c
 
-ltcEchoD :: (Proxy p) => () -> Pipe p (ByteString, SockAddr) (NodeMessage, SockAddr) IO ()
+ltcEchoD :: (Proxy p) => () -> Pipe p ByteString (NodeMessage, SockAddr) IO ()
 ltcEchoD () = runIdentityP $ forever $ do
-    (bin, addr) <- request ()
+    bin <- request ()
     case decode bin of
-        Nothing  -> do
+        Nothing -> do
             return ()
-        Just msg -> do
-            lift $ putStrLn ("Handling: " ++ BL.unpack (printMach (toSexp msg)))
-            respond (msg, addr)
+        Just envelope -> do
+            lift $ putStrLn ("Handling: " ++ BL.unpack (printMach (toSexp envelope)))
+            let (senderHostName, senderPort) = getEnvelopeSender envelope
+            sockaddr <- lift $ addrAddress . head <$>
+                        getAddrInfo (Just (defaultHints { addrFamily = AF_INET }))
+                                    (Just senderHostName)
+                                    (Just $ show senderPort)
+            respond (getEnvelopeMessage envelope, sockaddr)
 
-ltcEncoderD :: (Proxy p) => () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) IO ()
-ltcEncoderD () = runIdentityP $ forever $ do
+ltcEncoderD :: (Proxy p) => (Hostname, Port) -> () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) IO ()
+ltcEncoderD (nodeHostname, nodePort) () = runIdentityP $ forever $ do
     (msg, addr) <- request ()
-    respond (encode msg, addr)
+    let envelope = NodeEnvelope { getEnvelopeSender  = (nodeHostname, nodePort)
+                                , getEnvelopeMessage = msg
+                                }
+    respond (encode envelope, addr)
 
--- | Send a single message on a connection to a remote node.
-sendMessage :: Connection -> NodeMessage -> IO ()
-sendMessage conn msg = do
-    sendAll (getConnectionSocket conn) (encode msg)
+-- | Send a single message from the local node on a connection to a remote node.
+sendMessage :: Node -> Connection -> NodeMessage -> IO ()
+sendMessage node conn msg = do
+    nodeData <- readMVar (getNodeData node)
+    let envelope = NodeEnvelope { getEnvelopeSender  = (getHostname nodeData, getPort nodeData)
+                                , getEnvelopeMessage = msg
+                                }
+    sendAll (getConnectionSocket conn) (encode envelope)
 
 ----------------------
 -- Sockets
@@ -155,13 +174,13 @@ bindPort port = do
             bindSocket sock (SockAddrInet (fromIntegral port) iNADDR_ANY)
             return sock)
 
--- | Stream data from the socket.
-socketReader :: (Proxy p) => Socket -> () -> Producer p (ByteString, SockAddr) IO ()
+-- | Stream data from the UDP socket.
+socketReader :: (Proxy p) => Socket -> () -> Producer p ByteString IO ()
 socketReader sock () = runIdentityP $ forever $ do
-    (bin, addr) <- lift $ recvFrom sock 4096
-    unless (BS.null bin) $ respond (bin, addr)
+    (bin, _) <- lift $ recvFrom sock 4096
+    unless (BS.null bin) $ respond bin
 
--- | Stream data to the socket.
+-- | Stream data to the UDP socket.
 socketWriter :: (Proxy p) => Socket -> () -> Consumer p (ByteString, SockAddr) IO ()
 socketWriter sock () = runIdentityP $ forever $ do
     (bin, addr) <- request ()
