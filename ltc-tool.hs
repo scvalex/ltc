@@ -116,6 +116,8 @@ main = do
             store <- open (openParameters "wire-client-store" hostname)
             node <- N.serveWithPort (N.ltcPort + 1) store
             _ <- N.connect node h p
+            -- FIXME Use haskline to implement a REPL that takes S-Expression NodeProtocol
+            -- messages, encodes them, and sens them to the remote node.
             shutdownOnInt store (N.shutdown node)
   where
     openParameters d hostname =

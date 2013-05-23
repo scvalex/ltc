@@ -69,7 +69,8 @@ data Connection = Connection
     , getConnectionPort     :: Port
     }
 
--- | Use a local 'Node' to connect to a remote 'Node'.
+-- | Use a local 'Node' to connect to a remote 'Node'.  Since this is a UDP connection, we
+-- don't actually /connect/ to anything; we just get a handle for the connection.
 connect :: Node -> Hostname -> Port -> IO Connection
 connect node hostname port = do
     sock <- getSocket hostname port
