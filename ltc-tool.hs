@@ -24,7 +24,8 @@ import qualified Network.RedisServer as R
 import System.Console.CmdArgs
 import System.Console.Haskeline ( InputT, runInputT
                                 , Settings(..), defaultSettings
-                                , getInputLine, outputStrLn )
+                                , getInputLine, outputStrLn
+                                , Interrupt(..), withInterrupt )
 import System.Directory ( getHomeDirectory )
 import System.FilePath ( (</>) )
 import System.Posix.Signals ( Handler(..), installHandler, sigINT )
@@ -124,8 +125,10 @@ main = do
             node <- N.serveWithPort (N.ltcPort + 1) store
             conn <- N.connect node h p
             homeDir <- getHomeDirectory
-            flip runInputT (repl conn) $ defaultSettings {
-                    historyFile = Just (homeDir </> ".ltc_history") }
+            CE.handle (\Interrupt -> return ())
+                      (flip runInputT (withInterrupt (repl conn)) $
+                                      defaultSettings {
+                                          historyFile = Just (homeDir </> ".ltc_history") })
             shutdownNow [N.closeConnection conn, N.shutdown node, close store]
   where
     openParameters d hostname =

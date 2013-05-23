@@ -14,6 +14,8 @@ import qualified Data.Serialize as S
 -- Message type
 ----------------------
 
+-- FIXME All messages should be put in an envelope which includes the sender address
+-- (because the sending UDP port is not the same as the receiving one)
 data NodeMessage = Ping String
                  | Patch String
                  deriving ( Generic, Show )
