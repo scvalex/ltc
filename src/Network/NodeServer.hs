@@ -19,6 +19,7 @@ import Control.Proxy
 import Data.Typeable ( Typeable )
 import Data.ByteString ( ByteString )
 import Data.Map ( Map )
+import Language.Sexp ( printMach, toSexp )
 import Ltc.Store ( Store )
 import Network.NodeProtocol ( NodeMessage, encode, decode )
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
@@ -29,6 +30,7 @@ import Network.Socket.ByteString ( sendAll, sendAllTo, recvFrom )
 import Network.Types
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map as M
 import qualified Network.Socket as NS
 
@@ -117,14 +119,17 @@ ltcHandler _ p c = do
                  >-> ltcEncoderD
                  >-> c
 
-ltcEchoD :: (Proxy p, Monad m) => () -> Pipe p (ByteString, SockAddr) (NodeMessage, SockAddr) m ()
+ltcEchoD :: (Proxy p) => () -> Pipe p (ByteString, SockAddr) (NodeMessage, SockAddr) IO ()
 ltcEchoD () = runIdentityP $ forever $ do
     (bin, addr) <- request ()
     case decode bin of
-        Nothing  -> return ()
-        Just msg -> respond (msg, addr)
+        Nothing  -> do
+            return ()
+        Just msg -> do
+            lift $ putStrLn ("Handling: " ++ BL.unpack (printMach (toSexp msg)))
+            respond (msg, addr)
 
-ltcEncoderD :: (Proxy p, Monad m) => () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) m ()
+ltcEncoderD :: (Proxy p) => () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) IO ()
 ltcEncoderD () = runIdentityP $ forever $ do
     (msg, addr) <- request ()
     respond (encode msg, addr)
