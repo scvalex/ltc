@@ -25,6 +25,7 @@ instance Serialize NodeEnvelope
 instance Sexpable NodeEnvelope
 
 data NodeMessage = Ping String
+                 | Pong String
                  | Patch String
                  deriving ( Generic, Show )
 

@@ -22,7 +22,7 @@ import Data.Map ( Map )
 import Language.Sexp ( printMach, toSexp )
 import Ltc.Store ( Store )
 import Network.BSD ( getHostName )
-import Network.NodeProtocol ( NodeMessage, NodeEnvelope(..), encode, decode )
+import Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
                       , AddrInfo(..), getAddrInfo, defaultHints
                       , Family(..), SocketType(..), SockAddr(..)
@@ -131,15 +131,20 @@ ltcEchoD () = runIdentityP $ forever $ do
     bin <- request ()
     case decode bin of
         Nothing -> do
+            -- FIXME Log decode failure
             return ()
-        Just envelope -> do
+        Just (envelope@NodeEnvelope {getEnvelopeMessage = Ping ping}) -> do
             lift $ putStrLn ("Handling: " ++ BL.unpack (printMach (toSexp envelope)))
             let (senderHostName, senderPort) = getEnvelopeSender envelope
             sockaddr <- lift $ addrAddress . head <$>
                         getAddrInfo (Just (defaultHints { addrFamily = AF_INET }))
                                     (Just senderHostName)
                                     (Just $ show senderPort)
-            respond (getEnvelopeMessage envelope, sockaddr)
+            respond (Pong ping, sockaddr)
+        Just envelope -> do
+            -- FIXME *Log* unknown message
+            lift $ putStrLn ("Unknown message: " ++ BL.unpack (printMach (toSexp envelope)))
+            return ()
 
 ltcEncoderD :: (Proxy p) => (Hostname, Port) -> () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) IO ()
 ltcEncoderD (nodeHostname, nodePort) () = runIdentityP $ forever $ do

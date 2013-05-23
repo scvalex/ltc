@@ -1,5 +1,6 @@
-* TODO Wire Client
+* DONE Wire Client
   :LOGBOOK:
+  CLOCK: [2013-05-23 Thu 17:20]--[2013-05-23 Thu 18:11] =>  0:51
   CLOCK: [2013-05-23 Thu 14:00]--[2013-05-23 Thu 15:56] =>  1:56
   :END:
 * TODO UDP Connections
