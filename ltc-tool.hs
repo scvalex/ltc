@@ -5,6 +5,7 @@ module Main where
 import Control.Applicative ( (<$>) )
 import Control.Concurrent.MVar ( newEmptyMVar, putMVar, takeMVar )
 import Control.Monad ( forM_ )
+import Control.Monad.Trans.Class ( lift )
 import Data.Char ( isAlphaNum )
 import Data.List ( nub )
 import Data.Version ( showVersion )
@@ -120,7 +121,7 @@ main = do
             node <- N.serveWithPort (N.ltcPort + 1) store
             conn <- N.connect node h p
             runInputT defaultSettings (repl conn)
-            shutdownNow [N.shutdown node, close store]
+            shutdownNow [N.closeConnection conn, N.shutdown node, close store]
   where
     openParameters d hostname =
         OpenParameters { location        = d
@@ -206,5 +207,6 @@ main = do
                         outputStrLn "Unknown NodeMessage"
                         repl conn
                     Just msg -> do
+                        lift $ N.sendMessage conn msg
                         outputStrLn (show msg)
                         repl conn

@@ -6,7 +6,8 @@ module Network.NodeServer (
         ltcPort,
         Node, shutdown,
         serve, serveWithPort,
-        Connection, ConnectionId, connect, closeConnection
+        Connection, ConnectionId, connect, closeConnection,
+        sendMessage
     ) where
 
 import Control.Applicative ( (<$>) )
@@ -125,6 +126,11 @@ ltcEchoD () = runIdentityP $ forever $ do
 
 ltcEncoderD :: (Proxy p, Monad m) => () -> Pipe p NodeMessage ByteString m ()
 ltcEncoderD () = runIdentityP $ forever $ respond . encode =<< request ()
+
+-- | Send a single message on a connection to a remote node.
+sendMessage :: Connection -> NodeMessage -> IO ()
+sendMessage conn msg = do
+    sendAll (getConnectionSocket conn) (encode msg)
 
 ----------------------
 -- Sockets

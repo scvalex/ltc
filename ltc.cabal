@@ -69,6 +69,7 @@ Executable ltc
                         network,
                         random,
                         sexp >= 0.6,
+                        transformers,
                         unix
 
 Test-suite store
