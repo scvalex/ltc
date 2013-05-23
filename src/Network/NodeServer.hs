@@ -25,7 +25,7 @@ import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
                       , AddrInfo(..), getAddrInfo, defaultHints
                       , Family(..), SocketType(..), SockAddr(..)
                       , SocketOption(..), setSocketOption, defaultProtocol )
-import Network.Socket.ByteString ( sendAll, recv )
+import Network.Socket.ByteString ( sendAll, sendAllTo, recvFrom )
 import Network.Types
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
@@ -45,8 +45,8 @@ data Shutdown = Shutdown
 
 instance Exception Shutdown
 
-type Handler p = (() -> Producer p ByteString IO ())
-                 -> (() -> Consumer p ByteString IO ())
+type Handler p = (() -> Producer p (ByteString, SockAddr) IO ())
+                 -> (() -> Consumer p (ByteString, SockAddr) IO ())
                  -> IO ()
 
 newtype ConnectionId = ConnectionId Int
@@ -112,20 +112,22 @@ shutdown :: Node -> IO ()
 shutdown = flip withMVar getShutdown . getNodeData
 
 ltcHandler :: (Store s) => s -> Handler ProxyFast
-ltcHandler _ p c =
+ltcHandler _ p c = do
     runProxy $ p >-> ltcEchoD
                  >-> ltcEncoderD
                  >-> c
 
-ltcEchoD :: (Proxy p, Monad m) => () -> Pipe p ByteString NodeMessage m ()
+ltcEchoD :: (Proxy p, Monad m) => () -> Pipe p (ByteString, SockAddr) (NodeMessage, SockAddr) m ()
 ltcEchoD () = runIdentityP $ forever $ do
-    s <- request ()
-    case decode s of
+    (bin, addr) <- request ()
+    case decode bin of
         Nothing  -> return ()
-        Just msg -> respond msg
+        Just msg -> respond (msg, addr)
 
-ltcEncoderD :: (Proxy p, Monad m) => () -> Pipe p NodeMessage ByteString m ()
-ltcEncoderD () = runIdentityP $ forever $ respond . encode =<< request ()
+ltcEncoderD :: (Proxy p, Monad m) => () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) m ()
+ltcEncoderD () = runIdentityP $ forever $ do
+    (msg, addr) <- request ()
+    respond (encode msg, addr)
 
 -- | Send a single message on a connection to a remote node.
 sendMessage :: Connection -> NodeMessage -> IO ()
@@ -149,20 +151,16 @@ bindPort port = do
             return sock)
 
 -- | Stream data from the socket.
-socketReader :: (Proxy p) => Socket -> () -> Producer p ByteString IO ()
-socketReader sock () = runIdentityP loop
-  where
-    loop = do
-        bin <- lift $ recv sock 4096
-        unless (BS.null bin) $ do
-            respond bin
-            loop
+socketReader :: (Proxy p) => Socket -> () -> Producer p (ByteString, SockAddr) IO ()
+socketReader sock () = runIdentityP $ forever $ do
+    (bin, addr) <- lift $ recvFrom sock 4096
+    unless (BS.null bin) $ respond (bin, addr)
 
 -- | Stream data to the socket.
-socketWriter :: (Proxy p) => Socket -> () -> Consumer p ByteString IO ()
+socketWriter :: (Proxy p) => Socket -> () -> Consumer p (ByteString, SockAddr) IO ()
 socketWriter sock () = runIdentityP $ forever $ do
-    bin <- request ()
-    lift $ sendAll sock bin
+    (bin, addr) <- request ()
+    lift $ sendAllTo sock bin addr
 
 -- | Create a socket connected to the given network address.
 getSocket :: Hostname -> Port -> IO Socket
