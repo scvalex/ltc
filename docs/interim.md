@@ -86,7 +86,7 @@ is a connection." \citep{Bur03} In other words, due to obstacles and
 the energy-efficient nature of the machines involved, there is
 significant packet-loss on any interplanetary communication channel.
 Furthermore, because of the distances involved, the round-trip times
-for messages are too large for packet retransmission to a viable
+for messages are too large for packet retransmission to be a viable
 solution to the problem.
 
 Take, for instance, an idealized case of communicating with NASA's
