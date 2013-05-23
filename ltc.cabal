@@ -64,6 +64,8 @@ Executable ltc
                         bytestring,
                         cmdargs,
                         containers,
+                        directory,
+                        filepath,
                         haskeline,
                         ltc,
                         network,

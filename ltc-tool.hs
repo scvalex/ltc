@@ -22,8 +22,11 @@ import qualified Network.NodeServer as N
 import qualified Network.NodeProtocol as P
 import qualified Network.RedisServer as R
 import System.Console.CmdArgs
-import System.Console.Haskeline ( InputT, runInputT, defaultSettings
+import System.Console.Haskeline ( InputT, runInputT
+                                , Settings(..), defaultSettings
                                 , getInputLine, outputStrLn )
+import System.Directory ( getHomeDirectory )
+import System.FilePath ( (</>) )
 import System.Posix.Signals ( Handler(..), installHandler, sigINT )
 import System.Random ( randomRIO )
 import Text.Printf ( printf )
@@ -120,7 +123,9 @@ main = do
             store <- open (openParameters "wire-client-store" hostname)
             node <- N.serveWithPort (N.ltcPort + 1) store
             conn <- N.connect node h p
-            runInputT defaultSettings (repl conn)
+            homeDir <- getHomeDirectory
+            flip runInputT (repl conn) $ defaultSettings {
+                    historyFile = Just (homeDir </> ".ltc_history") }
             shutdownNow [N.closeConnection conn, N.shutdown node, close store]
   where
     openParameters d hostname =
