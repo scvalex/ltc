@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Network.NodeProtocol (
-        NodeMessage, encode, decode
+        NodeMessage(..), encode, decode
     ) where
 
 import Data.ByteString ( ByteString )
@@ -15,7 +15,8 @@ import qualified Data.Serialize as S
 ----------------------
 
 data NodeMessage = Ping String
-                 deriving ( Generic )
+                 | Patch String
+                 deriving ( Generic, Show )
 
 instance Serialize NodeMessage
 

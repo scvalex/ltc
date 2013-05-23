@@ -18,6 +18,7 @@ import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
 import qualified Network.NodeServer as N
+import qualified Network.NodeProtocol as P
 import qualified Network.RedisServer as R
 import System.Console.CmdArgs
 import System.Console.Haskeline ( InputT, runInputT, defaultSettings
@@ -200,5 +201,10 @@ main = do
             Nothing -> do
                 return ()
             Just input -> do
-                outputStrLn input
-                repl conn
+                case fromSexp (head (parseExn (BL.pack input))) :: Maybe P.NodeMessage of
+                    Nothing -> do
+                        outputStrLn "Unknown NodeMessage"
+                        repl conn
+                    Just msg -> do
+                        outputStrLn (show msg)
+                        repl conn
