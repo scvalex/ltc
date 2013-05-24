@@ -2,7 +2,7 @@ Keybindings:
  - C-c C-t :: Cycle through TODO state
 
 * To Read
-** [10/19] Background Reading
+** [14/18] Background Reading
 *** DONE Subversion's Transfer Protocol
 *** DONE Git's Transfer Protocol
 *** TODO CouchDB's right-growing tree
@@ -15,12 +15,11 @@ Keybindings:
 *** DONE Rsync algorithm
 *** TODO Look at the theory behind transactions
 *** DONE Look at patch theory (Darcs)
-*** TODO Look at diff
-*** TODO Look at rdiff
-*** TODO Look at bdiff
+*** DONE Look at diff
+*** DONE Look at rdiff
+*** DONE Look at bdiff
 *** TODO Read about Logic Databases (in the DB book)
 *** DONE Read about process-calculus
-*** TODO Find out if there's some research on expiring data
-*** TODO Look at PODS? (the distributed computing conference) papers
+*** DONE Find out if there's some research on expiring data
 *** TODO Look at PODC (the distributed computing conference) papers
 *** DONE How does IMAP synchronization resolve conflicts
