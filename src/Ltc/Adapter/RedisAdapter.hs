@@ -14,15 +14,29 @@ import Control.Monad ( unless )
 import Control.Proxy
 import Ltc.Store
 import Network.Redis ( RedisMessage(..) )
+import System.Log.Logger ( debugM, warningM )
 import Text.Regex.TDFA
 import qualified Text.Regex.TDFA.ByteString as T
 import Text.Printf ( printf )
+
+----------------------
+-- Debugging
+----------------------
+
+-- | Debugging tag for this module
+tag :: String
+tag = "RedisAdapter"
+
+----------------------
+-- Redis proxy
+----------------------
 
 redisProxyD :: (Proxy p, Store s) => s -> () -> Pipe p RedisMessage RedisMessage IO ()
 redisProxyD store () = runIdentityP loop
   where
     loop = do
         cmd <- request ()
+        lift $ debugM tag "handling command"
         (reply, stop) <- lift $ case cmd of
             MultiBulk ["PING"] ->
                 resply (Status "PONG")
@@ -90,7 +104,8 @@ redisProxyD store () = runIdentityP loop
                         resply (Integer (fromIntegral (S.size s)))
                     -- Just _ ->
                     --     resply (toError (printf "WRONGTYPE key %s is not a set" (show key)))
-            _ ->
+            _ -> do
+                warningM tag "invalid command"
                 resply (Error "ERR invalid command")
         respond reply
         unless stop loop

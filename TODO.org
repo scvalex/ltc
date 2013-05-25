@@ -3,9 +3,15 @@
   CLOCK: [2013-05-23 Thu 17:20]--[2013-05-23 Thu 18:11] =>  0:51
   CLOCK: [2013-05-23 Thu 14:00]--[2013-05-23 Thu 15:56] =>  1:56
   :END:
-* TODO Better logging
+* DONE Better logging
+  :LOGBOOK:
+  CLOCK: [2013-05-25 Sat 19:35]--[2013-05-25 Sat 20:19] =>  0:44
+  :END:
   I think only the store is properly logged.  The network bits should
   be as well.
+* TODO Store event interface
+  Store should export some sort of event interface.  We need this both
+  for the status plugin and for the node adapter.
 * TODO UDP Connections
   :LOGBOOK:
   CLOCK: [2013-05-23 Thu 13:48]--[2013-05-23 Thu 13:56] =>  0:08

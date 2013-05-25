@@ -25,6 +25,16 @@ import Network.Socket ( Socket, socket, accept, sClose, bindSocket
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, recv )
 import Network.Types
+import System.Log.Logger ( debugM )
+import Text.Printf ( printf )
+
+----------------------
+-- Debugging
+----------------------
+
+-- | Debugging tag for this module
+tag :: String
+tag = "RedisServer"
 
 ----------------------
 -- Redis interface
@@ -48,13 +58,16 @@ serve = serveWithPort redisPort
 -- Redis and LTc commands.
 serveWithPort :: (Store s) => Int -> s -> IO (IO ())
 serveWithPort port store = do
+    debugM tag (printf "serveWithPort %d" port)
     tid <- forkIO $
            CE.bracket
                (bindPort port)
                (\lsocket -> sClose lsocket)
                (\lsocket -> CE.handle (\(_ :: Shutdown) -> return ())
                                       (runSocketServer lsocket (redisHandler store)))
-    return (CE.throwTo tid Shutdown)
+    return $ do
+        debugM tag (printf "shutdown %d" port)
+        CE.throwTo tid Shutdown
 
 redisHandler :: (Store s) => s -> Handler ProxyFast
 redisHandler store p c =
