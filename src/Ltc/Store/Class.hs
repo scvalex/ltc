@@ -28,6 +28,7 @@ import Data.Typeable ( Typeable )
 import Data.VectorClock ( VectorClock )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexp(..), Sexpable(..), printHum, parseMaybe )
+import Ltc.Store.EventHandler ( EventHandler )
 import qualified Control.Exception as CE
 import qualified Data.Set as S
 import Text.Printf ( printf )
@@ -56,6 +57,8 @@ class Store a where
     set :: (ValueString (Value b), ValueType (Value b)) => a -> Key -> Value b -> IO Version
 
     keys :: a -> IO (Set Key)
+
+    addEventHandler :: a -> EventHandler -> IO ()
 
 -- | Open a store, run the given action, and close the store.  The store is cleanly closed
 -- even if the action throws an exception; the exception is rethrown afterwards.

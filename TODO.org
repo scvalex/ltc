@@ -25,7 +25,6 @@
 * TODO UDP Maximum Sync
 * TODO Better merging
 * TODO Multi-entry changes
-* TODO Abstract logger
 * TODO Status plugin
   - [ ] Store statistics
   - [ ] Adapter statistics

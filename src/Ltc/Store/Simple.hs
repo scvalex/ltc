@@ -142,6 +142,8 @@ instance Store Simple where
 
     keys ref = doKeys ref
 
+    addEventHandler ref eventHandler = undefined
+
 doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
     debugM tag (printf "open store '%s'" (location params))
