@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies, TupleSections, DeriveGeneric, FlexibleContexts #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
 -- | Imagine desiging a key-value store on top of the file system.
 -- The 'Simple' store is basically that, with a few added
@@ -44,6 +45,7 @@ module Ltc.Store.Simple (
 
 import qualified Codec.Compression.GZip as Z
 import Control.Applicative
+import Control.Concurrent.MVar ( MVar, newMVar, modifyMVar_ )
 import qualified Control.Exception as CE
 import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -56,6 +58,7 @@ import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, printHum )
 import Ltc.Store.Class
+import Ltc.Store.EventHandler ( EventHandler(..) )
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents )
 import System.FilePath ( (</>) )
@@ -85,9 +88,12 @@ storeVsn = 4
 -- Types
 ----------------------
 
+data SomeEventHandler = forall h. (EventHandler h) => SomeEventHandler h
+
 data Simple = Simple { getBase           :: FilePath
                      , getUseCompression :: Bool
                      , getNodeName       :: NodeName
+                     , getEventHandlers  :: MVar [SomeEventHandler]
                      }
 
 -- | There is one 'KeyVersion' record for each *value* stored for a
@@ -142,7 +148,7 @@ instance Store Simple where
 
     keys store = doKeys store
 
-    addEventHandler store eventHandler = undefined
+    addEventHandler store eventHandler = doAddEventHandler store eventHandler
 
 doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
@@ -153,9 +159,11 @@ doOpen params = do
     when (nn /= nodeName params) $
         CE.throw (NodeNameMismatchError { requestedName = nodeName params
                                         , storeName     = nn })
+    eventHandlers <- newMVar []
     return (Simple { getBase           = location params
                    , getUseCompression = useCompression params
                    , getNodeName       = nodeName params
+                   , getEventHandlers  = eventHandlers
                    })
 
 doClose :: Simple -> IO ()
@@ -253,6 +261,11 @@ doKeys store = do
           return (maybe s (\k -> S.insert k s) mk))
         S.empty
         kfs
+
+doAddEventHandler :: (EventHandler h) => Simple -> h -> IO ()
+doAddEventHandler store handler = do
+    modifyMVar_ (getEventHandlers store) $ \eventHandlers ->
+        return (SomeEventHandler handler : eventHandlers)
 
 ----------------------
 -- Helpers
