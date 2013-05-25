@@ -312,8 +312,8 @@ readKeyRecord path = do
 -- find the temporary directory.
 atomicWriteFile :: Simple -> FilePath -> ByteString -> IO ()
 atomicWriteFile store path content = do
-    (tempFile, store) <- openBinaryTempFile (locationTemporary (getBase store)) "ltc"
-    BL.hPut store content `CE.finally` hClose store
+    (tempFile, handle) <- openBinaryTempFile (locationTemporary (getBase store)) "ltc"
+    BL.hPut handle content `CE.finally` hClose handle
     renameFile tempFile path
 
 -- | Create the initial layout for the store at the given directory
