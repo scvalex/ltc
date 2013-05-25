@@ -10,7 +10,7 @@ module Ltc.Store.Class (
         -- * Errors
         TypeMismatchError(..), NodeNameMismatchError(..),
         CorruptKeyFileError(..), CorruptValueFileError(..),
-        CorruptStoreError(..),
+        CorruptStoreError(..), StoreClosed(..),
 
         -- * Value helpers
         Type(..), ValueString(..), ValueType(..),
@@ -64,7 +64,8 @@ class Store a where
     -- with values of different types.
     keyType :: a -> Key -> IO (Maybe Type)
 
-    -- | Set the value associated with a key.
+    -- | Set the value associated with a key.  If 'close' was already called on this
+    -- store, throw 'StoreClosed'.
     set :: (ValueString (Value b), ValueType (Value b)) => a -> Key -> Value b -> IO Version
 
     -- | Get all the keys stored in the store.  Note that using this is probably racey
@@ -228,3 +229,8 @@ data NoValueForLatest = NoValueForLatest Key
                       deriving ( Show, Typeable )
 
 instance Exception NoValueForLatest
+
+data StoreClosed = StoreClosed
+                   deriving ( Show, Typeable )
+
+instance Exception StoreClosed

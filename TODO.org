@@ -16,8 +16,12 @@
   :END:
   Store should export some sort of event interface.  We need this both
   for the status plugin and for the node adapter.
-* TODO Atomic write lock for store
-* TODO Store status plugin
+* DONE Implement Simple.close
+  :LOGBOOK:
+  CLOCK: [2013-05-25 Sat 23:45]--[2013-05-25 Sat 23:53] =>  0:08
+  :END:
+* TODO Store statistics event-handler/adapter/server
+* TODO Store exerciser
 * TODO UDP Connections
   :LOGBOOK:
   CLOCK: [2013-05-23 Thu 13:48]--[2013-05-23 Thu 13:56] =>  0:08

@@ -96,6 +96,7 @@ data Simple = Simple
     , getUseCompression :: Bool
     , getNodeName       :: NodeName
     , getEventHandlers  :: MVar [SomeEventHandler]
+    , getIsOpen         :: MVar Bool
     }
 
 -- | There is one 'KeyVersion' record for each *value* stored for a
@@ -164,16 +165,18 @@ doOpen params = do
         CE.throw (NodeNameMismatchError { requestedName = nodeName params
                                         , storeName     = nn })
     eventHandlers <- newMVar []
+    isOpen <- newMVar True
     return (Simple { getBase           = location params
                    , getUseCompression = useCompression params
                    , getNodeName       = nodeName params
                    , getEventHandlers  = eventHandlers
+                   , getIsOpen         = isOpen
                    })
 
 doClose :: Simple -> IO ()
 doClose store = do
-    -- FIXME We should wait for other commands to finish before closing.
     debugM tag (printf "close store '%s'" (getBase store))
+    modifyMVar_ (getIsOpen store) (const (return False))
     notifyEventHandlers store CloseEvent
 
 doGet :: (ValueString (Value a))
@@ -229,6 +232,7 @@ doKeyType store key = do
 doSet :: (ValueString (Value a), ValueType (Value a))
       => Simple -> Key -> Value a -> IO Version
 doSet store key value = do
+    assertIsOpen store
     debugM tag (printf "set %s" (show key))
     notifyEventHandlers store (SetEvent key)
     let vhash = valueHash value
@@ -359,6 +363,12 @@ notifyEventHandlers store event = do
   where
     notifyEventHandler (SomeEventHandler handler) = do
         handleEvent handler event
+
+-- | If the store is not open, throw 'StoreClosed'.
+assertIsOpen :: Simple -> IO ()
+assertIsOpen store = do
+    isOpen <- readMVar (getIsOpen store)
+    unless isOpen $ CE.throw StoreClosed
 
 ----------------------
 -- Locations
