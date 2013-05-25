@@ -180,36 +180,37 @@ instance (ValueString (Value (Single a)), Ord (Value (Single a)))
 -- Exceptions
 ----------------------
 
-data TypeMismatchError = TypeMismatchError { expectedType :: Type
-                                           , foundType    :: Type
-                                           }
-                       deriving ( Show, Typeable )
+data TypeMismatchError = TypeMismatchError
+    { expectedType :: Type
+    , foundType    :: Type
+    } deriving ( Show, Typeable )
 
 instance Exception TypeMismatchError
 
-data NodeNameMismatchError = NodeNameMismatchError { storeName     :: ByteString
-                                                   , requestedName :: ByteString
-                                                   }
-                           deriving ( Show, Typeable )
+data NodeNameMismatchError = NodeNameMismatchError
+    { storeName     :: ByteString
+    , requestedName :: ByteString
+    } deriving ( Show, Typeable )
 
 instance Exception NodeNameMismatchError
 
-data CorruptKeyFileError = CorruptKeyFileError { keyFilePath :: FilePath
-                                               , ckfReason   :: String
-                                               }
-                         deriving ( Show, Typeable )
+data CorruptKeyFileError = CorruptKeyFileError
+    { keyFilePath :: FilePath
+    , ckfReason   :: String
+    } deriving ( Show, Typeable )
 
 instance Exception CorruptKeyFileError
 
-data CorruptValueFileError = CorruptValueFileError { valueFilePath :: FilePath
-                                                   , cvfReason     :: String
-                                                   }
-                           deriving ( Show, Typeable )
+data CorruptValueFileError = CorruptValueFileError
+    { valueFilePath :: FilePath
+    , cvfReason     :: String
+    } deriving ( Show, Typeable )
 
 instance Exception CorruptValueFileError
 
-data CorruptStoreError = CorruptStoreError { csReason :: String }
-                       deriving ( Show, Typeable )
+data CorruptStoreError = CorruptStoreError
+    { csReason :: String
+    } deriving ( Show, Typeable )
 
 instance Exception CorruptStoreError
 

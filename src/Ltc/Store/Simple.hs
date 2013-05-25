@@ -90,18 +90,20 @@ storeVsn = 4
 
 data SomeEventHandler = forall h. (EventHandler h) => SomeEventHandler h
 
-data Simple = Simple { getBase           :: FilePath
-                     , getUseCompression :: Bool
-                     , getNodeName       :: NodeName
-                     , getEventHandlers  :: MVar [SomeEventHandler]
-                     }
+data Simple = Simple
+    { getBase           :: FilePath
+    , getUseCompression :: Bool
+    , getNodeName       :: NodeName
+    , getEventHandlers  :: MVar [SomeEventHandler]
+    }
 
 -- | There is one 'KeyVersion' record for each *value* stored for a
 -- key.  So, a key whose value was set, and then changed twice, will
 -- have three of these records.
-data KeyVersion = KeyVersion { getVersion   :: Version
-                             , getValueHash :: ValueHash
-                             } deriving ( Generic )
+data KeyVersion = KeyVersion
+    { getVersion   :: Version
+    , getValueHash :: ValueHash
+    } deriving ( Generic )
 
 instance Sexpable KeyVersion
 
@@ -110,11 +112,12 @@ instance Sexpable KeyVersion
 -- most-recent-first.  The values of a key are of a particular type
 -- ('getValueType'); this is determined when the key is first created,
 -- and cannot be later changed.
-data KeyRecord = KR { getKeyName   :: Key
-                    , getValueType :: Type
-                    , getTip       :: KeyVersion
-                    , getHistory   :: [KeyVersion]
-                    } deriving ( Generic )
+data KeyRecord = KR
+    { getKeyName   :: Key
+    , getValueType :: Type
+    , getTip       :: KeyVersion
+    , getHistory   :: [KeyVersion]
+    } deriving ( Generic )
 
 instance Sexpable KeyRecord
 
