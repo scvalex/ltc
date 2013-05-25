@@ -5,6 +5,7 @@
   :END:
 * DONE Better logging
   :LOGBOOK:
+  CLOCK: [2013-05-25 Sat 20:19]--[2013-05-25 Sat 20:35] =>  0:16
   CLOCK: [2013-05-25 Sat 19:35]--[2013-05-25 Sat 20:19] =>  0:44
   :END:
   I think only the store is properly logged.  The network bits should

@@ -28,8 +28,10 @@ import System.Console.Haskeline ( InputT, runInputT
                                 , Interrupt(..), withInterrupt )
 import System.Directory ( getHomeDirectory )
 import System.FilePath ( (</>) )
+import System.IO ( stdout )
 import System.Log.Logger ( Priority(..), setLevel
-                         , updateGlobalLogger, rootLoggerName )
+                         , updateGlobalLogger, rootLoggerName, setHandlers )
+import System.Log.Handler.Simple ( verboseStreamHandler )
 import System.Posix.Signals ( Handler(..), installHandler, sigINT )
 import System.Random ( randomRIO )
 import Text.Printf ( printf )
@@ -81,7 +83,8 @@ ltcModes =
 
 main :: IO ()
 main = do
-    updateGlobalLogger rootLoggerName (setLevel DEBUG)
+    handler <- verboseStreamHandler stdout DEBUG
+    updateGlobalLogger rootLoggerName (setHandlers [handler] . setLevel DEBUG)
     opts <- cmdArgs $ modes ltcModes
     case opts of
         Fsck d -> do
