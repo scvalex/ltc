@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeFamilies, DeriveDataTypeable, GADTs, FlexibleInstances #-}
-{-# LANGUAGE EmptyDataDecls, StandaloneDeriving, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances, DeriveGeneric #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -7,31 +7,28 @@ module Ltc.Store.Class (
         -- * Store interface
         Store(..), withStore, keyVersionsExn, getExn, getLatestExn,
 
-        -- * Common types
-        Key(..), KeyHash, ValueHash, Version, NodeName,
-
         -- * Errors
         TypeMismatchError(..), NodeNameMismatchError(..),
         CorruptKeyFileError(..), CorruptValueFileError(..),
         CorruptStoreError(..),
 
-        -- * Value types
-        Value(..), Single, Collection, Type(..), ValueString(..), ValueType(..)
+        -- * Value helpers
+        Type(..), ValueString(..), ValueType(..),
+
+        module Ltc.Store.Types
     ) where
 
 import Control.Applicative ( (<$>) )
 import Control.Exception ( Exception )
 import Data.ByteString.Lazy.Char8 ( ByteString, pack, unpack )
 import Data.Set ( Set )
-import Data.String ( IsString(..) )
 import Data.Typeable ( Typeable )
-import Data.VectorClock ( VectorClock )
 import GHC.Generics ( Generic )
-import Language.Sexp ( Sexp(..), Sexpable(..), printHum, parseMaybe )
+import Language.Sexp ( Sexpable(..), printHum, parseMaybe )
 import Ltc.Store.EventHandler ( EventHandler )
+import Ltc.Store.Types
 import qualified Control.Exception as CE
 import qualified Data.Set as S
-import Text.Printf ( printf )
 
 ----------------------
 -- Classes
@@ -75,7 +72,9 @@ class Store a where
     keys :: a -> IO (Set Key)
 
     -- | Add an event handler to a store.  Multiple event handlers may be associated with
-    -- a store at any one time.
+    -- a store at any one time.  Note that you can only add event handlers /after/ you
+    -- open a store, so you may mistakenly introduce a short window where events are not
+    -- seen by them; be careful.
     addEventHandler :: (EventHandler h) => a -> h -> IO ()
 
 -- | Open a store, run the given action, and close the store.  The store is cleanly closed
@@ -110,71 +109,6 @@ getLatestExn store key = do
         Just vv -> return vv
 
 ----------------------
--- Types & instances
-----------------------
-
-newtype Key = Key ByteString
-            deriving ( Eq, Generic, Ord, Show )
-
-instance Sexpable Key
-
-instance IsString Key where
-    fromString = Key . pack
-
-type KeyHash   = ByteString
-type ValueHash = ByteString
-type NodeName  = ByteString
-
-type Version   = VectorClock NodeName Int
-
-instance (Sexpable a, Sexpable b) => Sexpable (VectorClock a b)
-
-data Single a
-
-data Collection a
-
-data Value a where
-    VaInt :: Integer -> Value (Single Integer)
-    VaString :: ByteString -> Value (Single ByteString)
-    VaSet :: Set (Value (Single b)) -> Value (Collection b)
-
-instance (Show a) => Show (Value (Single a)) where
-    show (VaInt n) = show n
-    show (VaString s) = show s
-
-instance (Show a) => Show (Value (Collection a)) where
-    show (VaSet s) = printf "VaSet (%s)" (show s)
-
-instance Eq (Value (Single a)) where
-    (VaInt n1) == (VaInt n2)       = n1 == n2
-    (VaString s1) == (VaString s2) = s1 == s2
-    _ == _                         = False
-
-instance Eq (Value (Collection a)) where
-    (VaSet s1) == (VaSet s2) = s1 == s2
-
-instance (Ord a) => Ord (Value (Single a)) where
-    (VaInt n1) `compare` (VaInt n2) = n1 `compare` n2
-    (VaString s1) `compare` (VaString s2) = s1 `compare` s2
-    _ `compare` _ = error "Impossible case in Ord (Value (Single a))"
-
-instance Sexpable (Value (Single Integer)) where
-    toSexp (VaInt n) = List ["VaInt", toSexp n]
-    fromSexp (List ["VaInt", s]) = VaInt <$> fromSexp s
-    fromSexp _                   = fail "fromSexp Value (Single Integer)"
-
-instance Sexpable (Value (Single ByteString)) where
-    toSexp (VaString s) = List ["VaString", toSexp s]
-    fromSexp (List ["VaString", s]) = VaString <$> fromSexp s
-    fromSexp _                      = fail "fromSexp Value (Single ByteString)"
-
-instance (Sexpable (Value (Single a)), Ord (Value (Single a)))
-         => Sexpable (Value (Collection a)) where
-    toSexp (VaSet s) = List ["VaSet", toSexp s]
-    fromSexp (List ["VaSet", s]) = VaSet <$> fromSexp s
-    fromSexp _                   = fail "fromSexp Value (Collection a)"
-
-----------------------
 -- Value Helpers
 ----------------------
 
@@ -202,6 +136,7 @@ instance ValueType (Value (Collection Integer)) where
 instance ValueType (Value (Collection ByteString)) where
     valueType _ = CollectionString
 
+-- FIXME ValueString is really weird.
 class ValueString a where
     -- | Get the 'ByteString' representation of a value.
     valueString :: a -> ByteString
