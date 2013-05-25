@@ -126,23 +126,23 @@ instance Store Simple where
 
     open params = doOpen params
 
-    close ref = doClose ref
+    close store = doClose store
 
     storeFormat _ = formatString
     storeVersion _ = storeVsn
 
-    get ref key version = doGet ref key version
-    getLatest ref key = doGetLatest ref key
+    get store key version = doGet store key version
+    getLatest store key = doGetLatest store key
 
-    keyVersions ref key = doKeyVersions ref key
+    keyVersions store key = doKeyVersions store key
 
-    keyType ref key = doKeyType ref key
+    keyType store key = doKeyType store key
 
-    set ref key value = doSet ref key value
+    set store key value = doSet store key value
 
-    keys ref = doKeys ref
+    keys store = doKeys store
 
-    addEventHandler ref eventHandler = undefined
+    addEventHandler store eventHandler = undefined
 
 doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
@@ -159,25 +159,25 @@ doOpen params = do
                    })
 
 doClose :: Simple -> IO ()
-doClose handle = do
+doClose store = do
     -- FIXME We should wait for other commands to finish before closing.
-    debugM tag (printf "close store '%s'" (getBase handle))
+    debugM tag (printf "close store '%s'" (getBase store))
     return ()
 
 doGet :: (ValueString (Value a))
       => Simple -> Key -> Version -> IO (Maybe (Value a))
-doGet ref key version = do
+doGet store key version = do
     debugM tag (printf "get %s" (show key))
     CE.handle (\(exn :: CE.IOException) -> do
-                CE.throw (CorruptKeyFileError { keyFilePath = locationKey ref key
+                CE.throw (CorruptKeyFileError { keyFilePath = locationKey store key
                                               , ckfReason   = show exn })) $ do
-        withKeyRecord (locationKey ref key) $ \kr -> do
+        withKeyRecord (locationKey store key) $ \kr -> do
             case findVersion version kr of
                 Nothing -> do
                     return Nothing
                 Just kvsn -> do
-                    let valueFile = locationValueHash ref (getValueHash kvsn)
-                    s <- (if getUseCompression ref then Z.decompress else id)
+                    let valueFile = locationValueHash store (getValueHash kvsn)
+                    s <- (if getUseCompression store then Z.decompress else id)
                          <$> BL.readFile valueFile
                     -- FIXME It's not enough to parse the value; we should also check its
                     -- recorded type.
@@ -189,39 +189,39 @@ doGet ref key version = do
 
 doGetLatest :: (ValueString (Value a))
             => Simple -> Key -> IO (Maybe (Value a, Version))
-doGetLatest ref key = do
+doGetLatest store key = do
     debugM tag (printf "getLatest %s" (show key))
-    withKeyRecord (locationKey ref key) $ \kr -> do
+    withKeyRecord (locationKey store key) $ \kr -> do
         let latestVersion = getVersion (getTip kr)
         -- Every key has at least one value.
-        mvalue <- doGet ref key latestVersion
+        mvalue <- doGet store key latestVersion
         case mvalue of
             Just value -> return (Just (value, latestVersion))
             Nothing -> CE.throw (CorruptStoreError (printf "%s's tip (%s) does not exist"
-                                                           (show (locationKey ref key))
+                                                           (show (locationKey store key))
                                                            (show latestVersion)))
 
 doKeyVersions :: Simple -> Key -> IO (Maybe [Version])
-doKeyVersions ref key = do
+doKeyVersions store key = do
     debugM tag (printf "keyVersions %s" (show key))
-    withKeyRecord (locationKey ref key) $ \kr -> do
+    withKeyRecord (locationKey store key) $ \kr -> do
         return . Just . map getVersion $ getTip kr : getHistory kr
 
 doKeyType :: Simple -> Key -> IO (Maybe Type)
-doKeyType ref key = do
+doKeyType store key = do
     debugM tag (printf "keyType %s" (show key))
-    withKeyRecord (locationKey ref key) $ \kr -> do
+    withKeyRecord (locationKey store key) $ \kr -> do
         return (Just (getValueType kr))
 
 doSet :: (ValueString (Value a), ValueType (Value a))
       => Simple -> Key -> Value a -> IO Version
-doSet ref key value = do
+doSet store key value = do
     debugM tag (printf "set %s" (show key))
     let vhash = valueHash value
-    atomicWriteFile ref (locationValueHash ref vhash)
-        ((if getUseCompression ref then Z.compress else id) (valueString value))
-    setKeyRecord ref (locationKey ref key) $ \mkrOld -> do
-        let nn = getNodeName ref
+    atomicWriteFile store (locationValueHash store vhash)
+        ((if getUseCompression store then Z.compress else id) (valueString value))
+    setKeyRecord store (locationKey store key) $ \mkrOld -> do
+        let nn = getNodeName store
         case mkrOld of
             Nothing -> return $
                 KR { getKeyName = key
@@ -243,9 +243,9 @@ doSet ref key value = do
                                }
 
 doKeys :: Simple -> IO (Set Key)
-doKeys ref = do
+doKeys store = do
     debugM tag "keys"
-    let keysDir = locationKeys (getBase ref)
+    let keysDir = locationKeys (getBase store)
     kfs <- getDirectoryContents keysDir
     foldlM
         (\s kf -> do
@@ -259,10 +259,10 @@ doKeys ref = do
 ----------------------
 
 setKeyRecord :: Simple -> FilePath -> (Maybe KeyRecord -> IO KeyRecord) -> IO Version
-setKeyRecord ref path update = do
+setKeyRecord store path update = do
     mkr <- readKeyRecord path
     kr' <- update mkr
-    atomicWriteFile ref path (printHum (toSexp kr'))
+    atomicWriteFile store path (printHum (toSexp kr'))
     return (getVersion (getTip kr'))
 
 -- | Wrapper around 'readKeyRecord'.
@@ -298,9 +298,9 @@ readKeyRecord path = do
 -- any previous content.  The 'Simple' reference is needed in order to
 -- find the temporary directory.
 atomicWriteFile :: Simple -> FilePath -> ByteString -> IO ()
-atomicWriteFile ref path content = do
-    (tempFile, handle) <- openBinaryTempFile (locationTemporary (getBase ref)) "ltc"
-    BL.hPut handle content `CE.finally` hClose handle
+atomicWriteFile store path content = do
+    (tempFile, store) <- openBinaryTempFile (locationTemporary (getBase store)) "ltc"
+    BL.hPut store content `CE.finally` hClose store
     renameFile tempFile path
 
 -- | Create the initial layout for the store at the given directory
@@ -337,11 +337,11 @@ findVersion vsn kr = find (\kv -> getVersion kv == vsn) (getTip kr : getHistory 
 
 -- | The location of a key's value.
 locationValueHash :: Simple -> ValueHash -> FilePath
-locationValueHash ref hash = locationValues (getBase ref) </> BL.unpack hash
+locationValueHash store hash = locationValues (getBase store) </> BL.unpack hash
 
 -- | The location of a key's record.
 locationKey :: Simple -> Key -> FilePath
-locationKey ref key = locationKeys (getBase ref) </> BL.unpack (keyHash key)
+locationKey store key = locationKeys (getBase store) </> BL.unpack (keyHash key)
 
 locationFormat :: FilePath -> FilePath
 locationFormat base = base </> "format"
