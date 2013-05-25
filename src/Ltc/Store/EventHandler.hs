@@ -1,6 +1,9 @@
 module Ltc.Store.EventHandler (
         -- * Types
-        EventHandler
+        EventHandler(..), Event(..)
     ) where
 
-data EventHandler = EventHandler
+data Event = GenericEvent String
+
+class EventHandler a where
+    handleEvent :: a -> Event -> IO ()

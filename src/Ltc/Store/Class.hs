@@ -76,7 +76,7 @@ class Store a where
 
     -- | Add an event handler to a store.  Multiple event handlers may be associated with
     -- a store at any one time.
-    addEventHandler :: a -> EventHandler -> IO ()
+    addEventHandler :: (EventHandler h) => a -> h -> IO ()
 
 -- | Open a store, run the given action, and close the store.  The store is cleanly closed
 -- even if the action throws an exception; the exception is rethrown afterwards.
