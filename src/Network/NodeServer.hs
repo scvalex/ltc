@@ -5,7 +5,7 @@ module Network.NodeServer (
 
         ltcPort,
         Node, shutdown,
-        serve, serveWithPort,
+        serve, serveWithHostAndPort,
         Connection, ConnectionId, connect, closeConnection,
         sendMessage
     ) where
@@ -34,10 +34,16 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map as M
 import qualified Network.Socket as NS
+import System.Log.Logger ( debugM, warningM )
+import Text.Printf ( printf )
 
 ----------------------
 -- Node interface
 ----------------------
+
+-- | Debugging tag for this module
+tag :: String
+tag = "Simple"
 
 -- | The standard LTc port.
 ltcPort :: Port
@@ -69,7 +75,7 @@ data NodeData = NodeData
 serve :: (Store s) => s -> IO Node
 serve store = do
     hostname <- getHostName
-    serveWithPort hostname ltcPort store
+    serveWithHostAndPort hostname ltcPort store
 
 data Connection = Connection
     { getConnectionSocket   :: Socket
@@ -81,6 +87,7 @@ data Connection = Connection
 -- don't actually /connect/ to anything; we just get a handle for the connection.
 connect :: Node -> Hostname -> Port -> IO Connection
 connect node hostname port = do
+    debugM tag (printf "connecting to %s:%d" hostname port)
     sock <- getSocket hostname port
     nodeData <- takeMVar (getNodeData node)
     let conn = Connection { getConnectionSocket   = sock
@@ -91,17 +98,23 @@ connect node hostname port = do
                              , getConnections      = M.insert connId conn (getConnections nodeData)
                              }
     putMVar (getNodeData node) nodeData'
+    debugM tag "connected"
     return conn
 
 -- | Close a `Connection` to a remote `Node`.
 closeConnection :: Connection -> IO ()
 closeConnection conn = do
+    debugM tag (printf "closing connection to %s:%d"
+                       (getConnectionHostname conn)
+                       (getConnectionPort conn))
     sClose (getConnectionSocket conn)
+    debugM tag "closed connection"
 
 -- | Start the Ltc interface on the given port, backed by the given
 -- store.
-serveWithPort :: (Store s) => Hostname -> Int -> s -> IO Node
-serveWithPort hostname port store = do
+serveWithHostAndPort :: (Store s) => Hostname -> Int -> s -> IO Node
+serveWithHostAndPort hostname port store = do
+    debugM tag (printf "serveWithHostAndPort %s:%d" hostname port)
     tid <- forkIO $
            CE.bracket
                (bindPort port)
@@ -118,7 +131,10 @@ serveWithPort hostname port store = do
 
 -- | Shutdown a running 'Node'.  Idempotent.
 shutdown :: Node -> IO ()
-shutdown = flip withMVar getShutdown . getNodeData
+shutdown node = do
+    withMVar (getNodeData node) $ \nodeData -> do
+        debugM tag (printf "shutdown %s:%d" (getHostname nodeData) (getPort nodeData))
+        getShutdown nodeData
 
 ltcHandler :: (Store s) => (Hostname, Port) -> s -> Handler ProxyFast
 ltcHandler hp _ p c = do
@@ -129,22 +145,21 @@ ltcHandler hp _ p c = do
 ltcEchoD :: (Proxy p) => () -> Pipe p ByteString (NodeMessage, SockAddr) IO ()
 ltcEchoD () = runIdentityP $ forever $ do
     bin <- request ()
+    lift $ debugM tag "handling message"
     case decode bin of
         Nothing -> do
-            -- FIXME Log decode failure
-            return ()
+            lift $ warningM tag "failed to decode message"
         Just (envelope@NodeEnvelope {getEnvelopeMessage = Ping ping}) -> do
-            lift $ putStrLn ("Handling: " ++ BL.unpack (printMach (toSexp envelope)))
+            lift $ debugM tag (printf "handling %s" (BL.unpack (printMach (toSexp envelope))))
             let (senderHostName, senderPort) = getEnvelopeSender envelope
             sockaddr <- lift $ addrAddress . head <$>
                         getAddrInfo (Just (defaultHints { addrFamily = AF_INET }))
                                     (Just senderHostName)
                                     (Just $ show senderPort)
             respond (Pong ping, sockaddr)
+            lift $ debugM tag "message handled"
         Just envelope -> do
-            -- FIXME *Log* unknown message
-            lift $ putStrLn ("Unknown message: " ++ BL.unpack (printMach (toSexp envelope)))
-            return ()
+            lift $ warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp envelope))))
 
 ltcEncoderD :: (Proxy p) => (Hostname, Port) -> () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) IO ()
 ltcEncoderD (nodeHostname, nodePort) () = runIdentityP $ forever $ do
@@ -157,11 +172,15 @@ ltcEncoderD (nodeHostname, nodePort) () = runIdentityP $ forever $ do
 -- | Send a single message from the local node on a connection to a remote node.
 sendMessage :: Node -> Connection -> NodeMessage -> IO ()
 sendMessage node conn msg = do
+    debugM tag (printf "sending message to %s:%d"
+                       (getConnectionHostname conn)
+                       (getConnectionPort conn))
     nodeData <- readMVar (getNodeData node)
     let envelope = NodeEnvelope { getEnvelopeSender  = (getHostname nodeData, getPort nodeData)
                                 , getEnvelopeMessage = msg
                                 }
     sendAll (getConnectionSocket conn) (encode envelope)
+    debugM tag "message sent"
 
 ----------------------
 -- Sockets

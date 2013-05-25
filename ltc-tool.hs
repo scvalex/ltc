@@ -28,6 +28,8 @@ import System.Console.Haskeline ( InputT, runInputT
                                 , Interrupt(..), withInterrupt )
 import System.Directory ( getHomeDirectory )
 import System.FilePath ( (</>) )
+import System.Log.Logger ( Priority(..), setLevel
+                         , updateGlobalLogger, rootLoggerName )
 import System.Posix.Signals ( Handler(..), installHandler, sigINT )
 import System.Random ( randomRIO )
 import Text.Printf ( printf )
@@ -79,6 +81,7 @@ ltcModes =
 
 main :: IO ()
 main = do
+    updateGlobalLogger rootLoggerName (setLevel DEBUG)
     opts <- cmdArgs $ modes ltcModes
     case opts of
         Fsck d -> do
@@ -122,7 +125,7 @@ main = do
             _ <- printf "Connecting NodeCat to %s:%d\n" h p
             hostname <- getHostName
             store <- open (openParameters "wire-client-store" hostname)
-            node <- N.serveWithPort "localhost" (N.ltcPort + 1) store
+            node <- N.serveWithHostAndPort hostname (N.ltcPort + 1) store
             conn <- N.connect node h p
             homeDir <- getHomeDirectory
             CE.handle (\Interrupt -> return ())

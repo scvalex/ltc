@@ -67,6 +67,7 @@ Executable ltc
                         directory,
                         filepath,
                         haskeline,
+                        hslogger,
                         ltc,
                         network,
                         random,

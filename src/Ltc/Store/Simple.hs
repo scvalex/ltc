@@ -69,6 +69,7 @@ formatString = "simple"
 storeVsn :: Int
 storeVsn = 4
 
+-- | Debugging tag for this module
 tag :: String
 tag = "Simple"
 
@@ -127,7 +128,7 @@ instance Store Simple where
 
 doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
-    debugM tag "open"
+    debugM tag (printf "open store '%s'" (location params))
     storeExists <- doesDirectoryExist (location params)
     when (not storeExists && createIfMissing params) (initStore params)
     nn <- BL.readFile (locationNodeName (location params))
@@ -140,9 +141,9 @@ doOpen params = do
                    })
 
 doClose :: Simple -> IO ()
-doClose _handle = do
+doClose handle = do
     -- FIXME We should wait for other commands to finish before closing.
-    debugM tag "close"
+    debugM tag (printf "close store '%s'" (getBase handle))
     return ()
 
 doGet :: (ValueString (Value a))
@@ -171,6 +172,7 @@ doGet ref key version = do
 doGetLatest :: (ValueString (Value a))
             => Simple -> Key -> IO (Maybe (Value a, Version))
 doGetLatest ref key = do
+    debugM tag (printf "getLatest %s" (show key))
     withKeyRecord (locationKey ref key) $ \kr -> do
         let latestVersion = getVersion (getTip kr)
         -- Every key has at least one value.
@@ -183,11 +185,13 @@ doGetLatest ref key = do
 
 doKeyVersions :: Simple -> Key -> IO (Maybe [Version])
 doKeyVersions ref key = do
+    debugM tag (printf "keyVersions %s" (show key))
     withKeyRecord (locationKey ref key) $ \kr -> do
         return . Just . map getVersion $ getTip kr : getHistory kr
 
 doKeyType :: Simple -> Key -> IO (Maybe Type)
 doKeyType ref key = do
+    debugM tag (printf "keyType %s" (show key))
     withKeyRecord (locationKey ref key) $ \kr -> do
         return (Just (getValueType kr))
 
