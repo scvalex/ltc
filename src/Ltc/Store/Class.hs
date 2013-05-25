@@ -40,24 +40,42 @@ import Text.Printf ( printf )
 class Store a where
     data OpenParameters a :: *
 
+    -- | Open a 'Store' with the given parameters.
     open :: OpenParameters a -> IO a
+
+    -- | Close a 'Store'.
     close :: a -> IO ()
 
+    -- | A string used to tag the format of the on-disk files.
     storeFormat :: a -> String
+
+    -- | The current version of the files in the format.
     storeVersion :: a -> Int
 
+    -- | Get the value associated with the given key at the given version.  Note that you
+    -- should know the type of the value before in order to use this function.
     get :: (ValueString (Value b)) => a -> Key ->  Version -> IO (Maybe (Value b))
+
+    -- | Get the latest value associated with the given key.  Note that you should know
+    -- the type of the value in order to use this function.
     getLatest :: (ValueString (Value b)) => a -> Key -> IO (Maybe (Value b, Version))
 
-    -- | Get all versions of the values for a key, most-recent-first.
+    -- | Get all versions of the values associated with the given key, most-recent-first.
     keyVersions :: a -> Key -> IO (Maybe [Version])
 
+    -- | Get the type of the values associated with a key.  A key cannot be associated
+    -- with values of different types.
     keyType :: a -> Key -> IO (Maybe Type)
 
+    -- | Set the value associated with a key.
     set :: (ValueString (Value b), ValueType (Value b)) => a -> Key -> Value b -> IO Version
 
+    -- | Get all the keys stored in the store.  Note that using this is probably racey
+    -- because the set of keys may change before it is used.
     keys :: a -> IO (Set Key)
 
+    -- | Add an event handler to a store.  Multiple event handlers may be associated with
+    -- a store at any one time.
     addEventHandler :: a -> EventHandler -> IO ()
 
 -- | Open a store, run the given action, and close the store.  The store is cleanly closed
