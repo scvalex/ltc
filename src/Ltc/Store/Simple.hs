@@ -45,7 +45,8 @@ module Ltc.Store.Simple (
 
 import qualified Codec.Compression.GZip as Z
 import Control.Applicative
-import Control.Concurrent.MVar ( MVar, newMVar, modifyMVar_ )
+import Control.Concurrent ( forkIO )
+import Control.Concurrent.MVar ( MVar, newMVar, modifyMVar_, readMVar )
 import qualified Control.Exception as CE
 import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -58,7 +59,7 @@ import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, printHum )
 import Ltc.Store.Class
-import Ltc.Store.EventHandler ( EventHandler(..) )
+import Ltc.Store.EventHandler ( EventHandler(..), Event(..) )
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents )
 import System.FilePath ( (</>) )
@@ -173,12 +174,13 @@ doClose :: Simple -> IO ()
 doClose store = do
     -- FIXME We should wait for other commands to finish before closing.
     debugM tag (printf "close store '%s'" (getBase store))
-    return ()
+    notifyEventHandlers store CloseEvent
 
 doGet :: (ValueString (Value a))
       => Simple -> Key -> Version -> IO (Maybe (Value a))
 doGet store key version = do
     debugM tag (printf "get %s" (show key))
+    notifyEventHandlers store (GetEvent key)
     CE.handle (\(exn :: CE.IOException) -> do
                 CE.throw (CorruptKeyFileError { keyFilePath = locationKey store key
                                               , ckfReason   = show exn })) $ do
@@ -228,6 +230,7 @@ doSet :: (ValueString (Value a), ValueType (Value a))
       => Simple -> Key -> Value a -> IO Version
 doSet store key value = do
     debugM tag (printf "set %s" (show key))
+    notifyEventHandlers store (SetEvent key)
     let vhash = valueHash value
     atomicWriteFile store (locationValueHash store vhash)
         ((if getUseCompression store then Z.compress else id) (valueString value))
@@ -346,6 +349,16 @@ valueHash = BL.pack . showDigest . sha1 . valueString
 -- | Find the 'KeyVersion' with the given 'Version'.
 findVersion :: Version -> KeyRecord -> Maybe KeyVersion
 findVersion vsn kr = find (\kv -> getVersion kv == vsn) (getTip kr : getHistory kr)
+
+-- | Notify all event handlers asynchronously.
+notifyEventHandlers :: Simple -> Event -> IO ()
+notifyEventHandlers store event = do
+    eventHandlers <- readMVar (getEventHandlers store)
+    _ <- forkIO $ mapM_ notifyEventHandler eventHandlers
+    return ()
+  where
+    notifyEventHandler (SomeEventHandler handler) = do
+        handleEvent handler event
 
 ----------------------
 -- Locations

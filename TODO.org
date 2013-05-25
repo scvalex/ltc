@@ -10,7 +10,10 @@
   :END:
   I think only the store is properly logged.  The network bits should
   be as well.
-* TODO Store event interface
+* DONE Store event interface
+  :LOGBOOK:
+  CLOCK: [2013-05-25 Sat 22:26]--[2013-05-25 Sat 23:41] =>  1:15
+  :END:
   Store should export some sort of event interface.  We need this both
   for the status plugin and for the node adapter.
 * TODO UDP Connections
