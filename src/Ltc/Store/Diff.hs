@@ -134,11 +134,11 @@ reverseEdits (EditScript as) = EditScript (map reverseAction as)
 data DI = First | Second | Both
         deriving ( Show, Eq )
 
-data DL = DL { poi  :: !Int
-             , poj  :: !Int
-             , path :: [DI]
-             }
-        deriving ( Show, Eq )
+data DL = DL
+    { poi  :: !Int
+    , poj  :: !Int
+    , path :: [DI]
+    } deriving ( Show, Eq )
 
 instance Ord DL where
     x <= y = poi x <= poi y
