@@ -63,15 +63,27 @@ import System.IO ( hClose, openBinaryTempFile )
 import System.Log.Logger ( debugM )
 import Text.Printf ( printf )
 
+----------------------
+-- Debugging
+----------------------
+
+-- | Debugging tag for this module
+tag :: String
+tag = "Simple"
+
+----------------------
+-- Simple store identifiers
+----------------------
+
 formatString :: String
 formatString = "simple"
 
 storeVsn :: Int
 storeVsn = 4
 
--- | Debugging tag for this module
-tag :: String
-tag = "Simple"
+----------------------
+-- Types
+----------------------
 
 data Simple = Simple { getBase           :: FilePath
                      , getUseCompression :: Bool
@@ -99,6 +111,10 @@ data KeyRecord = KR { getKeyName   :: Key
                     } deriving ( Generic )
 
 instance Sexpable KeyRecord
+
+----------------------
+-- Store interface
+----------------------
 
 instance Store Simple where
     data OpenParameters Simple = OpenParameters

@@ -38,12 +38,16 @@ import System.Log.Logger ( debugM, warningM )
 import Text.Printf ( printf )
 
 ----------------------
--- Node interface
+-- Debugging
 ----------------------
 
 -- | Debugging tag for this module
 tag :: String
-tag = "Simple"
+tag = "NodeServer"
+
+----------------------
+-- Node interface
+----------------------
 
 -- | The standard LTc port.
 ltcPort :: Port
