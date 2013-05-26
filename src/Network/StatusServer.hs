@@ -56,8 +56,8 @@ serve _store = do
                         }
     return status
   where
-    indexHandler = serveFile "index.html"
-    resourcesHandler = serveDirectory "r"
+    indexHandler = serveFile "www/index.html"
+    resourcesHandler = serveDirectory "www/r"
     statusHandler = runWebSocketsSnap $ \_req -> do
         undefined :: WebSockets Hybi00 ()
 
