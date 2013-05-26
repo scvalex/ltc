@@ -26,6 +26,7 @@ Library
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
   Build-depends:        base >= 4 && < 5,
+                        aeson,
                         array,
                         attoparsec,
                         bytestring,

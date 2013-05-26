@@ -17,6 +17,7 @@ module Ltc.Store.Types (
     ) where
 
 import Control.Applicative ( (<$>) )
+import Data.Aeson ( ToJSON )
 import Data.ByteString.Lazy.Char8 ( ByteString, pack )
 import Data.Set ( Set )
 import Data.String ( IsString(..) )
@@ -33,6 +34,8 @@ newtype Key = Key ByteString
             deriving ( Eq, Generic, Ord, Show )
 
 instance Sexpable Key
+
+instance ToJSON Key
 
 instance IsString Key where
     fromString = Key . pack

@@ -6,6 +6,7 @@ module Ltc.Store.Event (
     ) where
 
 import Control.Concurrent.STM.TChan ( TChan )
+import Data.Aeson ( ToJSON )
 import GHC.Generics ( Generic )
 import Ltc.Store.Types ( Key )
 
@@ -14,5 +15,7 @@ data Event = SetEvent Key
            | GetEvent Key
            | CloseEvent
            deriving ( Show, Generic )
+
+instance ToJSON Event
 
 type EventChannel = TChan Event

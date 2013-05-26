@@ -21,14 +21,19 @@
   :LOGBOOK:
   CLOCK: [2013-05-25 Sat 23:45]--[2013-05-25 Sat 23:53] =>  0:08
   :END:
-* TODO Store statistics
+* DONE Store statistics
   :LOGBOOK:
+  CLOCK: [2013-05-26 Sun 16:33]--[2013-05-26 Sun 16:47] =>  0:14
   CLOCK: [2013-05-26 Sun 15:05]--[2013-05-26 Sun 15:23] =>  0:18
   CLOCK: [2013-05-26 Sun 14:16]--[2013-05-26 Sun 15:03] =>  0:47
   :END:
   - [X] Event-handler
-  - [ ] Server
-* TODO Store exerciser
+  - [X] Server
+* TODO Monkey
+* TODO Status web interface
+  - [ ] Show log of events
+  - [ ] Count sets/gets
+  - [ ] Graph sets/gets
 * TODO Components configuration
   Some way to chose what parts of LTc to start.
 * TODO UDP Connections

@@ -8,14 +8,17 @@ module Network.StatusServer (
     ) where
 
 import Control.Concurrent ( forkIO )
-import Control.Concurrent.STM ( newTChanIO )
+import Control.Concurrent.STM ( atomically, newTChanIO, readTChan )
 import Control.Exception ( Exception )
+import Control.Monad ( forever )
+import Data.Aeson ( encode )
 import Data.Monoid ( mempty )
 import Data.Typeable ( Typeable )
 import Ltc.Store ( Store(..), EventChannel )
 import Network.Types ( Hostname, Port )
-import Network.WebSockets ( WebSockets, Hybi00 )
+import Network.WebSockets ( WebSockets, Hybi00, textData )
 import Network.WebSockets.Snap ( runWebSocketsSnap )
+import Network.WebSockets.Util.PubSub ( PubSub, newPubSub, subscribe, publish )
 import qualified Control.Exception as CE
 import Snap.Core ( route )
 import Snap.Http.Server ( ConfigLog(..), setErrorLog, setAccessLog
@@ -47,15 +50,17 @@ instance Exception Shutdown
 data Status = Status
     { getShutdown     :: IO ()
     , getEventChannel :: EventChannel
+    , getPubSub       :: PubSub Hybi00
     }
 
 -- | Start the status interface.
 serve :: (Store s) => s -> IO Status
 serve store = do
     debugM tag "starting status interface on 8000"
+    pubSub <- newPubSub
     let handler = route [ ("", indexHandler)
                         , ("r", resourcesHandler)
-                        , ("status", statusHandler)
+                        , ("status", statusHandler pubSub)
                         ]
         config = setAccessLog ConfigNoLog $
                  setErrorLog ConfigNoLog $
@@ -66,15 +71,20 @@ serve store = do
                httpServe config handler
     eventChannel <- newTChanIO
     addEventChannel store eventChannel
-    let status = Status { getShutdown     = CE.throwTo tid Shutdown
+    tidPublisher <- forkIO $ forever $ do
+        event <- atomically (readTChan eventChannel)
+        publish pubSub (textData (encode event))
+    let doShutdown = mapM_ (flip CE.throwTo Shutdown) [tidPublisher, tid]
+    let status = Status { getShutdown     = doShutdown
                         , getEventChannel = eventChannel
+                        , getPubSub       = pubSub
                         }
     return status
   where
     indexHandler = serveFile "www/index.html"
     resourcesHandler = serveDirectory "www/r"
-    statusHandler = runWebSocketsSnap $ \_req -> do
-        undefined :: WebSockets Hybi00 ()
+    statusHandler pubSub = runWebSocketsSnap $ \_req -> do
+        subscribe pubSub :: WebSockets Hybi00 ()
 
 -- | Shutdown a running 'Status'.  Idempotent.
 shutdown :: Status -> IO ()
