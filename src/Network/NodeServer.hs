@@ -81,6 +81,32 @@ serve store = do
     hostname <- getHostName
     serveWithHostAndPort hostname ltcPort store
 
+-- | Start the Ltc interface on the given port, backed by the given
+-- store.
+serveWithHostAndPort :: (Store s) => Hostname -> Int -> s -> IO Node
+serveWithHostAndPort hostname port store = do
+    debugM tag (printf "serveWithHostAndPort %s:%d" hostname port)
+    tid <- forkIO $
+           CE.bracket
+               (bindPort port)
+               (\sock -> sClose sock)
+               (\sock -> CE.handle (\(_ :: Shutdown) -> return ())
+                                   (ltcHandler (hostname, port) store (socketReader sock) (socketWriter sock)))
+    let nodeData = NodeData { getShutdown         = CE.throwTo tid Shutdown
+                            , getNextConnectionId = ConnectionId 1
+                            , getConnections      = M.empty
+                            , getPort             = port
+                            , getHostname         = hostname
+                            }
+    Node <$> newMVar nodeData
+
+-- | Shutdown a running 'Node'.  Idempotent.
+shutdown :: Node -> IO ()
+shutdown node = do
+    withMVar (getNodeData node) $ \nodeData -> do
+        debugM tag (printf "shutdown %s:%d" (getHostname nodeData) (getPort nodeData))
+        getShutdown nodeData
+
 data Connection = Connection
     { getConnectionSocket   :: Socket
     , getConnectionHostname :: Hostname
@@ -113,32 +139,6 @@ closeConnection conn = do
                        (getConnectionPort conn))
     sClose (getConnectionSocket conn)
     debugM tag "closed connection"
-
--- | Start the Ltc interface on the given port, backed by the given
--- store.
-serveWithHostAndPort :: (Store s) => Hostname -> Int -> s -> IO Node
-serveWithHostAndPort hostname port store = do
-    debugM tag (printf "serveWithHostAndPort %s:%d" hostname port)
-    tid <- forkIO $
-           CE.bracket
-               (bindPort port)
-               (\sock -> sClose sock)
-               (\sock -> CE.handle (\(_ :: Shutdown) -> return ())
-                                   (ltcHandler (hostname, port) store (socketReader sock) (socketWriter sock)))
-    let nodeData = NodeData { getShutdown         = CE.throwTo tid Shutdown
-                            , getNextConnectionId = ConnectionId 1
-                            , getConnections      = M.empty
-                            , getPort             = port
-                            , getHostname         = hostname
-                            }
-    Node <$> newMVar nodeData
-
--- | Shutdown a running 'Node'.  Idempotent.
-shutdown :: Node -> IO ()
-shutdown node = do
-    withMVar (getNodeData node) $ \nodeData -> do
-        debugM tag (printf "shutdown %s:%d" (getHostname nodeData) (getPort nodeData))
-        getShutdown nodeData
 
 ltcHandler :: (Store s) => (Hostname, Port) -> s -> Handler ProxyFast
 ltcHandler hp _ p c = do
