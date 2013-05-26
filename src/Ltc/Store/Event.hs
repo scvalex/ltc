@@ -2,9 +2,10 @@
 
 module Ltc.Store.Event (
         -- * Types
-        EventHandler(..), Event(..)
+        Event(..), EventChannel
     ) where
 
+import Control.Concurrent.STM.TChan ( TChan )
 import GHC.Generics ( Generic )
 import Ltc.Store.Types ( Key )
 
@@ -14,9 +15,4 @@ data Event = SetEvent Key
            | CloseEvent
            deriving ( Show, Generic )
 
--- | An 'EventHandler' is something that consumes 'Event's.  This is just the type-class;
--- see the other modules for actual event handlers.
-class EventHandler a where
-    -- | Handle an event.  All event handlers associated with a store are run on a
-    -- separate thread, so this should not block, and it should not throw exceptions.
-    handleEvent :: a -> Event -> IO ()
+type EventChannel = TChan Event

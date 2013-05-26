@@ -1,5 +1,4 @@
 {-# LANGUAGE TypeFamilies, TupleSections, DeriveGeneric, FlexibleContexts #-}
-{-# LANGUAGE ExistentialQuantification #-}
 
 -- | Imagine desiging a key-value store on top of the file system.
 -- The 'Simple' store is basically that, with a few added
@@ -45,8 +44,8 @@ module Ltc.Store.Simple (
 
 import qualified Codec.Compression.GZip as Z
 import Control.Applicative
-import Control.Concurrent ( forkIO )
 import Control.Concurrent.MVar ( MVar, newMVar, modifyMVar_, readMVar )
+import Control.Concurrent.STM ( atomically, writeTChan )
 import qualified Control.Exception as CE
 import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -59,7 +58,7 @@ import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, printHum )
 import Ltc.Store.Class
-import Ltc.Store.Event ( EventHandler(..), Event(..) )
+import Ltc.Store.Event ( EventChannel, Event(..) )
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents )
 import System.FilePath ( (</>) )
@@ -89,13 +88,11 @@ storeVsn = 4
 -- Types
 ----------------------
 
-data SomeEventHandler = forall h. (EventHandler h) => SomeEventHandler h
-
 data Simple = Simple
     { getBase           :: FilePath
     , getUseCompression :: Bool
     , getNodeName       :: NodeName
-    , getEventHandlers  :: MVar [SomeEventHandler]
+    , getEventChannels  :: MVar [EventChannel]
     , getIsOpen         :: MVar Bool
     }
 
@@ -153,7 +150,7 @@ instance Store Simple where
 
     keys store = doKeys store
 
-    addEventHandler store eventHandler = doAddEventHandler store eventHandler
+    addEventChannel store eventChannel = doAddEventChannel store eventChannel
 
 doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
@@ -164,12 +161,12 @@ doOpen params = do
     when (nn /= nodeName params) $
         CE.throw (NodeNameMismatchError { requestedName = nodeName params
                                         , storeName     = nn })
-    eventHandlers <- newMVar []
+    eventChannels <- newMVar []
     isOpen <- newMVar True
     return (Simple { getBase           = location params
                    , getUseCompression = useCompression params
                    , getNodeName       = nodeName params
-                   , getEventHandlers  = eventHandlers
+                   , getEventChannels  = eventChannels
                    , getIsOpen         = isOpen
                    })
 
@@ -177,13 +174,13 @@ doClose :: Simple -> IO ()
 doClose store = do
     debugM tag (printf "close store '%s'" (getBase store))
     modifyMVar_ (getIsOpen store) (const (return False))
-    notifyEventHandlers store CloseEvent
+    writeEventChannels store CloseEvent
 
 doGet :: (ValueString (Value a))
       => Simple -> Key -> Version -> IO (Maybe (Value a))
 doGet store key version = do
     debugM tag (printf "get %s" (show key))
-    notifyEventHandlers store (GetEvent key)
+    writeEventChannels store (GetEvent key)
     CE.handle (\(exn :: CE.IOException) -> do
                 CE.throw (CorruptKeyFileError { keyFilePath = locationKey store key
                                               , ckfReason   = show exn })) $ do
@@ -234,7 +231,7 @@ doSet :: (ValueString (Value a), ValueType (Value a))
 doSet store key value = do
     assertIsOpen store
     debugM tag (printf "set %s" (show key))
-    notifyEventHandlers store (SetEvent key)
+    writeEventChannels store (SetEvent key)
     let vhash = valueHash value
     atomicWriteFile store (locationValueHash store vhash)
         ((if getUseCompression store then Z.compress else id) (valueString value))
@@ -272,10 +269,10 @@ doKeys store = do
         S.empty
         kfs
 
-doAddEventHandler :: (EventHandler h) => Simple -> h -> IO ()
-doAddEventHandler store handler = do
-    modifyMVar_ (getEventHandlers store) $ \eventHandlers ->
-        return (SomeEventHandler handler : eventHandlers)
+doAddEventChannel :: Simple -> EventChannel -> IO ()
+doAddEventChannel store eventChannel = do
+    modifyMVar_ (getEventChannels store) $ \eventChannels ->
+        return (eventChannel : eventChannels)
 
 ----------------------
 -- Helpers
@@ -354,15 +351,11 @@ valueHash = BL.pack . showDigest . sha1 . valueString
 findVersion :: Version -> KeyRecord -> Maybe KeyVersion
 findVersion vsn kr = find (\kv -> getVersion kv == vsn) (getTip kr : getHistory kr)
 
--- | Notify all event handlers asynchronously.
-notifyEventHandlers :: Simple -> Event -> IO ()
-notifyEventHandlers store event = do
-    eventHandlers <- readMVar (getEventHandlers store)
-    _ <- forkIO $ mapM_ notifyEventHandler eventHandlers
-    return ()
-  where
-    notifyEventHandler (SomeEventHandler handler) = do
-        handleEvent handler event
+-- | Write event to all event channels
+writeEventChannels :: Simple -> Event -> IO ()
+writeEventChannels store event = do
+    eventChannels <- readMVar (getEventChannels store)
+    mapM_ (atomically . flip writeTChan event) eventChannels
 
 -- | If the store is not open, throw 'StoreClosed'.
 assertIsOpen :: Simple -> IO ()

@@ -25,8 +25,8 @@ import Data.Set ( Set )
 import Data.Typeable ( Typeable )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..), printHum, parseMaybe )
-import Ltc.Store.Event ( EventHandler )
 import Ltc.Store.Types
+import Ltc.Store.Event ( EventChannel )
 import qualified Control.Exception as CE
 import qualified Data.Set as S
 
@@ -72,11 +72,9 @@ class Store a where
     -- because the set of keys may change before it is used.
     keys :: a -> IO (Set Key)
 
-    -- | Add an event handler to a store.  Multiple event handlers may be associated with
-    -- a store at any one time.  Note that you can only add event handlers /after/ you
-    -- open a store, so you may mistakenly introduce a short window where events are not
-    -- seen by them; be careful.
-    addEventHandler :: (EventHandler h) => a -> h -> IO ()
+    -- | Add an event channel to the store.  Events will be written are written to it as
+    -- they happen.
+    addEventChannel :: a -> EventChannel -> IO ()
 
 -- | Open a store, run the given action, and close the store.  The store is cleanly closed
 -- even if the action throws an exception; the exception is rethrown afterwards.

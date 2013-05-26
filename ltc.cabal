@@ -40,6 +40,7 @@ Library
                         regex-tdfa,
                         sexp >= 0.6,
                         SHA,
+                        stm,
                         unix,
                         vector-clock,
                         zlib

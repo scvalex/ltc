@@ -12,6 +12,7 @@
   be as well.
 * DONE Store event interface
   :LOGBOOK:
+  CLOCK: [2013-05-26 Sun 02:12]--[2013-05-26 Sun 02:23] =>  0:11
   CLOCK: [2013-05-25 Sat 22:26]--[2013-05-25 Sat 23:41] =>  1:15
   :END:
   Store should export some sort of event interface.  We need this both
