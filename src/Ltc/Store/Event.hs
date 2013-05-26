@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Ltc.Store.EventHandler (
+module Ltc.Store.Event (
         -- * Types
         EventHandler(..), Event(..)
     ) where

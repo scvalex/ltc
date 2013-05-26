@@ -25,7 +25,7 @@ import Data.Set ( Set )
 import Data.Typeable ( Typeable )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..), printHum, parseMaybe )
-import Ltc.Store.EventHandler ( EventHandler )
+import Ltc.Store.Event ( EventHandler )
 import Ltc.Store.Types
 import qualified Control.Exception as CE
 import qualified Data.Set as S

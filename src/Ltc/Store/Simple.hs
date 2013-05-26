@@ -59,7 +59,7 @@ import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, printHum )
 import Ltc.Store.Class
-import Ltc.Store.EventHandler ( EventHandler(..), Event(..) )
+import Ltc.Store.Event ( EventHandler(..), Event(..) )
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents )
 import System.FilePath ( (</>) )

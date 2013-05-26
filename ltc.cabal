@@ -48,7 +48,7 @@ Library
                         Ltc.Store,
                         Ltc.Store.Class,
                         Ltc.Store.Diff,
-                        Ltc.Store.EventHandler,
+                        Ltc.Store.Event,
                         Ltc.Store.Simple,
                         Ltc.Store.Serialization,
                         Ltc.Store.Types,
