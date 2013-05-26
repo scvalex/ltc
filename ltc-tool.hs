@@ -19,6 +19,7 @@ import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
 import qualified Network.NodeServer as N
+import qualified Network.StatusServer as S
 import qualified Network.NodeProtocol as P
 import qualified Network.RedisServer as R
 import System.Console.CmdArgs
@@ -117,13 +118,14 @@ main = do
             hostname <- getHostName
             store <- open (openParameters d hostname)
             shutdown <- R.serve store
-            shutdownOnInt store shutdown
+            shutdownOnInt store [shutdown]
         Node d -> do
             _ <- printf "Running Node on %d with %s\n" N.ltcPort d
             hostname <- getHostName
             store <- open (openParameters d hostname)
             node <- N.serve store
-            shutdownOnInt store (N.shutdown node)
+            status <- S.serve store
+            shutdownOnInt store [N.shutdown node, S.shutdown status]
         WireClient h p -> do
             _ <- printf "Connecting NodeCat to %s:%d\n" h p
             hostname <- getHostName
@@ -151,11 +153,11 @@ main = do
         _ <- printf "done\n"
         return ()
 
-    shutdownOnInt :: (Store s) => s -> IO () -> IO ()
-    shutdownOnInt store shutdown = do
+    shutdownOnInt :: (Store s) => s -> [IO ()] -> IO ()
+    shutdownOnInt store shutdowns = do
         done <- newEmptyMVar
         _ <- installHandler sigINT (Catch $ putMVar done ()) Nothing
-        takeMVar done `CE.finally` shutdownNow [shutdown, close store]
+        takeMVar done `CE.finally` shutdownNow (shutdowns ++ [close store])
 
     doInfo :: (Store s) => FilePath -> Bool -> String -> s -> IO ()
     doInfo d lk hostname store = do
