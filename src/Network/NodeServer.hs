@@ -49,7 +49,7 @@ tag = "NodeServer"
 -- Node interface
 ----------------------
 
--- | The standard LTc port.
+-- | The standard node port.
 ltcPort :: Port
 ltcPort = 3582
 

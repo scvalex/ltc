@@ -4,11 +4,12 @@ module Network.StatusServer (
         module Network.Types,
 
         Status, shutdown,
-        serve
+        serve, statusPort
     ) where
 
 import Control.Concurrent ( forkIO )
 import Control.Exception ( Exception )
+import Data.Monoid ( mempty )
 import Data.Typeable ( Typeable )
 import Ltc.Store ( Store )
 import Network.Types ( Hostname, Port )
@@ -16,7 +17,8 @@ import Network.WebSockets ( WebSockets, Hybi00 )
 import Network.WebSockets.Snap ( runWebSocketsSnap )
 import qualified Control.Exception as CE
 import Snap.Core ( route )
-import Snap.Http.Server ( httpServe, defaultConfig )
+import Snap.Http.Server ( ConfigLog(..), setErrorLog, setAccessLog
+                        , httpServe, setPort )
 import Snap.Util.FileServe ( serveFile, serveDirectory )
 import System.Log.Logger ( debugM )
 
@@ -32,6 +34,10 @@ tag = "StatusServer"
 -- Status interface
 ----------------------
 
+-- | The standard status port.
+statusPort :: Port
+statusPort = 8000
+
 data Shutdown = Shutdown
               deriving ( Show, Typeable )
 
@@ -44,14 +50,18 @@ data Status = Status
 -- | Start the status interface.
 serve :: (Store s) => s -> IO Status
 serve _store = do
-    debugM tag "starting status interface"
+    debugM tag "starting status interface on 8000"
     let handler = route [ ("", indexHandler)
                         , ("r", resourcesHandler)
                         , ("status", statusHandler)
                         ]
+        config = setAccessLog ConfigNoLog $
+                 setErrorLog ConfigNoLog $
+                 setPort statusPort $
+                 mempty
     tid <- forkIO $
            CE.handle (\(_ :: Shutdown) -> return ()) $ do
-               httpServe defaultConfig handler
+               httpServe config handler
     let status = Status { getShutdown = CE.throwTo tid Shutdown
                         }
     return status
