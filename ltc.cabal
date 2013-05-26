@@ -38,6 +38,7 @@ Library
                         network,
                         pipes >= 3.1,
                         pipes-attoparsec,
+                        random,
                         regex-tdfa,
                         sexp >= 0.6,
                         SHA,

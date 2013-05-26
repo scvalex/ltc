@@ -29,7 +29,12 @@
   :END:
   - [X] Event-handler
   - [X] Server
-* TODO Monkey
+* DONE Monkey
+  :LOGBOOK:
+  CLOCK: [2013-05-26 Sun 21:53]--[2013-05-26 Sun 22:45] =>  0:52
+  CLOCK: [2013-05-26 Sun 21:33]--[2013-05-26 Sun 21:45] =>  0:12
+  CLOCK: [2013-05-26 Sun 19:43]--[2013-05-26 Sun 20:06] =>  0:23
+  :END:
 * TODO Status web interface
   - [ ] Show log of events
   - [ ] Count sets/gets

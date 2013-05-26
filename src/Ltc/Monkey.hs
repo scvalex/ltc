@@ -5,12 +5,16 @@ module Ltc.Monkey (
         Monkey, start, shutdown
     ) where
 
-import Control.Concurrent ( forkIO )
+import Control.Concurrent ( forkIO, threadDelay )
 import Control.Exception ( Exception )
+import Control.Monad ( forever )
+import Data.String ( fromString )
 import Data.Typeable ( Typeable )
-import Ltc.Store ( Store(..) )
+import Ltc.Store ( Store(..), Value(..), Single, Version )
 import qualified Control.Exception as CE
 import System.Log.Logger ( debugM )
+import System.Random ( randomRIO )
+import Text.Printf ( printf )
 
 ----------------------
 -- Debugging
@@ -35,14 +39,39 @@ data Monkey = Monkey
 
 -- | Start the monkey on the given store.
 start :: (Store s) => s -> IO Monkey
-start _store = do
+start store = do
     debugM tag "starting monkey"
     tid <- forkIO $
            CE.handle (\(_ :: Shutdown) -> return ()) $ do
-               return ()
+               forever $ do
+                   d <- randomRIO (100 * 1000, 200 * 1000) -- 0.1s - 0.2s
+                   threadDelay d
+                   accessStoreRandomly
     let monkey = Monkey { getShutdown = CE.throwTo tid Shutdown
                         }
     return monkey
+  where
+    -- FIXME Monkey should use String values as well.
+    accessStoreRandomly = do
+        n <- randomRIO (1, 4 :: Int)
+        if n <= 3               -- 75% chance of read
+            then readStoreRandomly
+            else writeStoreRandomly
+
+    readStoreRandomly = do
+        key <- randomKey
+        (_ :: Maybe (Value (Single Integer), Version)) <- getLatest store key
+        return ()
+
+    writeStoreRandomly = do
+        key <- randomKey
+        v <- randomRIO (1, 1000 :: Integer)
+        _ <- set store key (VaInt v)
+        return ()
+
+    randomKey = do
+        i <- randomRIO (1, 100 :: Int)
+        return (fromString (printf "i%03d" i))
 
 -- | Shutdown the given monkey.
 shutdown :: Monkey -> IO ()

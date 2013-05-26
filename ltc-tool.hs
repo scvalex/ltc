@@ -13,6 +13,7 @@ import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn, parse )
 import Ltc.Store
 import Ltc.Store.Serialization ( DiffPack, getDiffPack )
 import Ltc.Store.VersionControl ( insertChangesInto )
+import qualified Ltc.Monkey as M
 import Network.BSD ( getHostName )
 import Paths_ltc ( version )
 import qualified Control.Exception as CE
@@ -125,7 +126,8 @@ main = do
             store <- open (openParameters d hostname)
             node <- N.serve store
             status <- S.serve store
-            shutdownOnInt store [N.shutdown node, S.shutdown status]
+            monkey <- M.start store
+            shutdownOnInt store [N.shutdown node, S.shutdown status, M.shutdown monkey]
         WireClient h p -> do
             _ <- printf "Connecting NodeCat to %s:%d\n" h p
             hostname <- getHostName
