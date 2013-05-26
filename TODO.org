@@ -23,6 +23,7 @@
   :END:
 * TODO Store statistics
   :LOGBOOK:
+  CLOCK: [2013-05-26 Sun 15:05]--[2013-05-26 Sun 15:23] =>  0:18
   CLOCK: [2013-05-26 Sun 14:16]--[2013-05-26 Sun 15:03] =>  0:47
   :END:
   - [X] Event-handler

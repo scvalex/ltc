@@ -8,10 +8,11 @@ module Network.StatusServer (
     ) where
 
 import Control.Concurrent ( forkIO )
+import Control.Concurrent.STM ( newTChanIO )
 import Control.Exception ( Exception )
 import Data.Monoid ( mempty )
 import Data.Typeable ( Typeable )
-import Ltc.Store ( Store )
+import Ltc.Store ( Store(..), EventChannel )
 import Network.Types ( Hostname, Port )
 import Network.WebSockets ( WebSockets, Hybi00 )
 import Network.WebSockets.Snap ( runWebSocketsSnap )
@@ -44,12 +45,13 @@ data Shutdown = Shutdown
 instance Exception Shutdown
 
 data Status = Status
-    { getShutdown :: IO ()
+    { getShutdown     :: IO ()
+    , getEventChannel :: EventChannel
     }
 
 -- | Start the status interface.
 serve :: (Store s) => s -> IO Status
-serve _store = do
+serve store = do
     debugM tag "starting status interface on 8000"
     let handler = route [ ("", indexHandler)
                         , ("r", resourcesHandler)
@@ -62,7 +64,10 @@ serve _store = do
     tid <- forkIO $
            CE.handle (\(_ :: Shutdown) -> return ()) $ do
                httpServe config handler
-    let status = Status { getShutdown = CE.throwTo tid Shutdown
+    eventChannel <- newTChanIO
+    addEventChannel store eventChannel
+    let status = Status { getShutdown     = CE.throwTo tid Shutdown
+                        , getEventChannel = eventChannel
                         }
     return status
   where
