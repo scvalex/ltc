@@ -23,6 +23,8 @@
   :END:
 * TODO Store statistics event-handler/adapter/server
 * TODO Store exerciser
+* TODO Components configuration
+Some way to chose what parts of LTc to start.
 * TODO UDP Connections
   :LOGBOOK:
   CLOCK: [2013-05-23 Thu 13:48]--[2013-05-23 Thu 13:56] =>  0:08
