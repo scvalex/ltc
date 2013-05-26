@@ -59,6 +59,7 @@ Library
                         Ltc.Store.Serialization,
                         Ltc.Store.Types,
                         Ltc.Store.VersionControl,
+                        Ltc.Monkey,
                         Network.NodeProtocol,
                         Network.NodeServer,
                         Network.Redis,
