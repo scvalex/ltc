@@ -57,7 +57,8 @@ Library
                         Network.NodeProtocol,
                         Network.NodeServer,
                         Network.Redis,
-                        Network.RedisServer
+                        Network.RedisServer,
+                        Network.StatusServer
 
 Executable ltc
   Ghc-options:          -Wall
