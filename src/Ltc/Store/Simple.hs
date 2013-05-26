@@ -43,11 +43,11 @@ module Ltc.Store.Simple (
     ) where
 
 import qualified Codec.Compression.GZip as Z
-import Control.Applicative
+import Control.Applicative ( (<$>) )
 import Control.Concurrent.MVar ( MVar, newMVar, modifyMVar_, readMVar )
 import Control.Concurrent.STM ( atomically, writeTChan )
 import qualified Control.Exception as CE
-import Control.Monad
+import Control.Monad ( when, unless )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import GHC.Generics ( Generic )
@@ -57,7 +57,12 @@ import Data.Set ( Set )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, printHum )
-import Ltc.Store.Class
+import Ltc.Store.Class ( Store(..), ValueType(..), ValueString(..), Type(..)
+                       , Value, ValueHash, Version
+                       , Key(..), KeyHash
+                       , NodeName
+                       , TypeMismatchError(..), CorruptStoreError(..), CorruptKeyFileError(..)
+                       , StoreClosed(..), CorruptValueFileError(..), NodeNameMismatchError(..) )
 import Ltc.Store.Event ( EventChannel, Event(..) )
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents )

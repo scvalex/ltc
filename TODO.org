@@ -41,3 +41,7 @@ Some way to chose what parts of LTc to start.
   Figure out what properties the whole thing should have, and what
   properties the individual components should have to be able to prove
   the bigger thing.
+* Code improvements
+  :LOGBOOK:
+  CLOCK: [2013-05-26 Sun 02:26]--[2013-05-26 Sun 02:30] =>  0:04
+  :END:

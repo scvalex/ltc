@@ -18,6 +18,9 @@ module Ltc.Store.Class (
         module Ltc.Store.Types
     ) where
 
+-- Re-exported module
+import Ltc.Store.Types
+
 import Control.Applicative ( (<$>) )
 import Control.Exception ( Exception )
 import Data.ByteString.Lazy.Char8 ( ByteString, pack, unpack )
@@ -25,7 +28,6 @@ import Data.Set ( Set )
 import Data.Typeable ( Typeable )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..), printHum, parseMaybe )
-import Ltc.Store.Types
 import Ltc.Store.Event ( EventChannel )
 import qualified Control.Exception as CE
 import qualified Data.Set as S
