@@ -21,7 +21,8 @@
   :LOGBOOK:
   CLOCK: [2013-05-25 Sat 23:45]--[2013-05-25 Sat 23:53] =>  0:08
   :END:
-* TODO Store statistics event-handler/adapter/server
+  - [X] Event-handler
+  - [ ] Server
 * TODO Store exerciser
 * TODO Components configuration
   Some way to chose what parts of LTc to start.

@@ -40,9 +40,13 @@ Library
                         regex-tdfa,
                         sexp >= 0.6,
                         SHA,
+                        snap-core,
+                        snap-server,
                         stm,
                         unix,
                         vector-clock,
+                        websockets,
+                        websockets-snap,
                         zlib
   Exposed-modules:
                         Ltc.Adapter.RedisAdapter,
