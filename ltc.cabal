@@ -45,6 +45,7 @@ Library
                         snap-core,
                         snap-server,
                         stm,
+                        transformers,
                         unix,
                         vector-clock,
                         websockets,

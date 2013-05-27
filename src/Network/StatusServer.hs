@@ -11,20 +11,23 @@ import Control.Concurrent ( forkIO )
 import Control.Concurrent.STM ( atomically, newTChanIO, readTChan )
 import Control.Exception ( Exception )
 import Control.Monad ( forever )
+import Control.Monad.IO.Class ( liftIO )
 import Data.Aeson ( encode )
 import Data.Monoid ( mempty )
 import Data.Typeable ( Typeable )
 import Ltc.Store ( Store(..), EventChannel )
 import Network.Types ( Hostname, Port )
-import Network.WebSockets ( WebSockets, Hybi00, textData )
+import Network.WebSockets ( WebSockets, Hybi00, textData, acceptRequest )
 import Network.WebSockets.Snap ( runWebSocketsSnap )
 import Network.WebSockets.Util.PubSub ( PubSub, newPubSub, subscribe, publish )
+import qualified Data.ByteString.Char8 as BS
 import qualified Control.Exception as CE
 import Snap.Core ( route )
 import Snap.Http.Server ( ConfigLog(..), setErrorLog, setAccessLog
                         , httpServe, setPort )
 import Snap.Util.FileServe ( serveFile, serveDirectory )
 import System.Log.Logger ( debugM )
+import Text.Printf ( printf )
 
 ----------------------
 -- Debugging
@@ -56,7 +59,7 @@ data Status = Status
 -- | Start the status interface.
 serve :: (Store s) => s -> IO Status
 serve store = do
-    debugM tag "starting status interface on 8000"
+    debugM tag (printf "starting status interface on %d" statusPort)
     pubSub <- newPubSub
     let handler = route [ ("", indexHandler)
                         , ("r", resourcesHandler)
@@ -66,15 +69,15 @@ serve store = do
                  setErrorLog ConfigNoLog $
                  setPort statusPort $
                  mempty
-    tid <- forkIO $
-           CE.handle (\(_ :: Shutdown) -> return ()) $ do
-               httpServe config handler
+    tidHttp <- forkIO $
+               CE.handle (\(_ :: Shutdown) -> return ()) $ do
+                   httpServe config handler
     eventChannel <- newTChanIO
     addEventChannel store eventChannel
     tidPublisher <- forkIO $ forever $ do
         event <- atomically (readTChan eventChannel)
         publish pubSub (textData (encode event))
-    let doShutdown = mapM_ (flip CE.throwTo Shutdown) [tidPublisher, tid]
+    let doShutdown = mapM_ (flip CE.throwTo Shutdown) [tidPublisher, tidHttp]
     let status = Status { getShutdown     = doShutdown
                         , getEventChannel = eventChannel
                         , getPubSub       = pubSub
@@ -83,7 +86,9 @@ serve store = do
   where
     indexHandler = serveFile "www/index.html"
     resourcesHandler = serveDirectory "www/r"
-    statusHandler pubSub = runWebSocketsSnap $ \_req -> do
+    statusHandler pubSub = runWebSocketsSnap $ \req -> do
+        acceptRequest req
+        liftIO $ debugM tag "new client subscription"
         subscribe pubSub :: WebSockets Hybi00 ()
 
 -- | Shutdown a running 'Status'.  Idempotent.
