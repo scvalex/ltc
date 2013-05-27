@@ -65,8 +65,8 @@ serve store = do
                         , ("r", resourcesHandler)
                         , ("status", statusHandler pubSub)
                         ]
-        config = setAccessLog ConfigNoLog $
-                 setErrorLog ConfigNoLog $
+        config = setAccessLog (ConfigIoLog BS.putStrLn) $
+                 setErrorLog (ConfigIoLog BS.putStrLn) $
                  setPort statusPort $
                  mempty
     tidHttp <- forkIO $
