@@ -19,6 +19,9 @@ function AppViewModel() {
     self.socket.onclose = function(event) {
         log("websocket closed: ", event)
     }
+    self.socket.onmessage = function(event) {
+        log("message: ", event.data)
+    }
 }
 
 document.addEvent("domready", function() {
