@@ -4,3 +4,16 @@
     padding: 0;
     list-style: none;
 }
+
+#log {
+    border: 1px solid #999;
+    height: 20em;
+    overflow-y: auto;
+}
+
+#log span.operation {
+    margin: 0 0.4em;
+    font-variant: small-caps;
+    font-weight: bold;
+    font-size: 1.2em;
+}

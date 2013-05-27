@@ -14,5 +14,14 @@
   </head>
   <body>
     <h1>LTc Status</h1>
+
+    <h3>Log</h3>
+    <ul id="log" data-bind="foreach: log">
+      <li class="logItem">
+        <time data-bind="text: prettyTime, attr: { datetime: time }"></time>
+        <span class="operation" data-bind="text: operation"></span>
+        <span class="target" data-bind="text: target"></span>
+      </li>
+    </ul>
   </body>
 </html>

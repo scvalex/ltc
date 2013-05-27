@@ -6,8 +6,27 @@ function log() {
     }
 }
 
+function LogEntry(msg) {
+    var self = this;
+
+    var now = new Date();
+    self.time = now.toISOString();
+    self.prettyTime = now.toTimeString();
+    if (msg.hasOwnProperty("GetEvent")) {
+        self.operation = "get";
+        self.target = msg["GetEvent"].eventTarget;
+    } else if (msg.hasOwnProperty("SetEvent")) {
+        self.operation = "set";
+        self.target = msg["SetEvent"].eventTarget;
+    } else {
+        log("got unknown message: ", msg);
+    }
+}
+
 function AppViewModel() {
     var self = this;
+
+    self.log = ko.observableArray();
 
     self.socket = new WebSocket(WS_URL, "status");
     self.socket.onopen = function() {
@@ -20,7 +39,9 @@ function AppViewModel() {
         log("websocket closed: ", event)
     }
     self.socket.onmessage = function(event) {
-        log("message: ", event.data)
+        self.log.push(new LogEntry(JSON.parse(event.data)));
+        // Scroll to bottom
+        $("log").scrollTop = $("log").scrollHeight;
     }
 }
 

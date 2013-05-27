@@ -11,8 +11,8 @@ import GHC.Generics ( Generic )
 import Ltc.Store.Types ( Key )
 
 -- | An event signals that something has happened inside an "Ltc.Store".
-data Event = SetEvent Key
-           | GetEvent Key
+data Event = SetEvent { eventTarget :: Key }
+           | GetEvent { eventTarget :: Key }
            | CloseEvent
            deriving ( Show, Generic )
 
