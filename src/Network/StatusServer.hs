@@ -63,7 +63,7 @@ serve = serveWithPort statusPort
 -- | Start the status interface on the given port.
 serveWithPort :: (Store s) => Port -> s -> IO Status
 serveWithPort port store = do
-    debugM tag (printf "starting status interface on %d" statusPort)
+    debugM tag (printf "starting status interface on %d" port)
     pubSub <- newPubSub
     let handler = route [ ("", indexHandler)
                         , ("r", resourcesHandler)
