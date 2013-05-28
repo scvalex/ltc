@@ -16,7 +16,7 @@ install: build
 
 clean:
 	$(CABAL) clean
-	rm -rf cabal-dev/ test-store/
+	rm -rf cabal-dev/ *store*/
 
 dist/setup-config: ltc.cabal
 # If you don't have all the necessary packages installed on the first
