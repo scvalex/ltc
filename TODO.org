@@ -55,6 +55,13 @@
   :END:
 * TODO Components configuration
   Some way to chose what parts of LTc to start.
+* TODO Report outline
+  - [ ] General outline
+  - [ ] Assessment outline
+* TODO Draw DB tip
+  - [ ] Keys tip
+  - [ ] Values tip
+* TODO Smarter
 * TODO UDP Maximum Sync
 * TODO Better merging
 * TODO Multi-entry changes
