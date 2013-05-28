@@ -49,7 +49,7 @@ tag = "NodeServer"
 -- Node interface
 ----------------------
 
--- | The standard node port.
+-- | The default node port.
 ltcPort :: Port
 ltcPort = 3582
 
@@ -75,14 +75,13 @@ data NodeData = NodeData
     , getHostname         :: Hostname
     }
 
--- | Start the LTc interface on the standard LTc port (3582)).
+-- | Start the node interface on the default port.
 serve :: (Store s) => s -> IO Node
 serve store = do
     hostname <- getHostName
     serveWithHostAndPort hostname ltcPort store
 
--- | Start the Ltc interface on the given port, backed by the given
--- store.
+-- | Start the node interface on the given port.
 serveWithHostAndPort :: (Store s) => Hostname -> Int -> s -> IO Node
 serveWithHostAndPort hostname port store = do
     debugM tag (printf "serveWithHostAndPort %s:%d" hostname port)

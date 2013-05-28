@@ -41,7 +41,7 @@ tag = "StatusServer"
 -- Status interface
 ----------------------
 
--- | The standard status port.
+-- | The default status port.
 statusPort :: Port
 statusPort = 8000
 
@@ -56,9 +56,13 @@ data Status = Status
     , getPubSub       :: PubSub Hybi00
     }
 
--- | Start the status interface.
+-- | Start the status interface on the default port.
 serve :: (Store s) => s -> IO Status
-serve store = do
+serve = flip serveWithPort statusPort
+
+-- | Start the status interface on the given port.
+serveWithPort :: (Store s) => s -> Port -> IO Status
+serveWithPort store port = do
     debugM tag (printf "starting status interface on %d" statusPort)
     pubSub <- newPubSub
     let handler = route [ ("", indexHandler)
@@ -67,7 +71,7 @@ serve store = do
                         ]
         config = setAccessLog (ConfigIoLog BS.putStrLn) $
                  setErrorLog (ConfigIoLog BS.putStrLn) $
-                 setPort statusPort $
+                 setPort port $
                  mempty
     tidHttp <- forkIO $
                CE.handle (\(_ :: Shutdown) -> return ()) $ do

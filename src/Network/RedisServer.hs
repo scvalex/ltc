@@ -53,9 +53,7 @@ instance Exception Shutdown
 serve :: (Store s) => s -> IO (IO ())
 serve = serveWithPort redisPort
 
--- | Start the Redis interface on the given port, backed by the given
--- store.  "Ltc.Adapter.RedisAdapter" is used to translate between
--- Redis and LTc commands.
+-- | Start the Redis interface on the given port.
 serveWithPort :: (Store s) => Int -> s -> IO (IO ())
 serveWithPort port store = do
     debugM tag (printf "serveWithPort %d" port)
