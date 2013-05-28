@@ -48,7 +48,7 @@ data Modes = Fsck { dir :: FilePath }
            | Import { dir :: FilePath, file :: FilePath }
            | Populate { dir :: FilePath, count :: Int }
            | Redis { dir :: FilePath }
-           | Node { dir :: FilePath, nodeIndex :: Int }
+           | Node { storeDir :: Maybe FilePath, nodeIndex :: Int }
            | WireClient { host :: String, port :: Int }
            deriving ( Show, Data, Typeable )
 
@@ -70,7 +70,7 @@ ltcModes =
       &= help "populate a store with random values"
     , Redis { dir = "store" &= typDir }
       &= help "run a store with a Redis interface"
-    , Node { dir = "store" &= typDir
+    , Node { storeDir = def &= typDir
            , nodeIndex = 0 &= help "what is the index of this node on this machine" }
       &= help "run a store with an LTc node interface"
     , WireClient { host = "localhost" &= typ "HOST"
@@ -121,10 +121,11 @@ main = do
             store <- open (openParameters d hostname)
             shutdown <- R.serve store
             shutdownOnInt store [shutdown]
-        Node d idx -> do
-            _ <- printf "Running Node on %d with %s\n" (N.nodePort + idx) d
+        Node mStoreDir idx -> do
+            let myStoreDir = maybe (printf "node-store-%d" idx) id mStoreDir
+            _ <- printf "Running Node on %d with %s\n" (N.nodePort + idx) myStoreDir
             hostname <- getHostName
-            store <- open (openParameters d hostname)
+            store <- open (openParameters myStoreDir hostname)
             node <- N.serveWithHostAndPort hostname (N.nodePort + idx) store
             status <- S.serveWithPort (S.statusPort + idx) store
             monkey <- M.start store
