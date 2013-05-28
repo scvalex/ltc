@@ -165,9 +165,9 @@ ltcEchoD () = runIdentityP $ forever $ do
             lift $ warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp envelope))))
 
 ltcEncoderD :: (Proxy p) => (Hostname, Port) -> () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) IO ()
-ltcEncoderD (nodeHostname, nodePort) () = runIdentityP $ forever $ do
+ltcEncoderD (hostname, port) () = runIdentityP $ forever $ do
     (msg, addr) <- request ()
-    let envelope = NodeEnvelope { getEnvelopeSender  = (nodeHostname, nodePort)
+    let envelope = NodeEnvelope { getEnvelopeSender  = (hostname, port)
                                 , getEnvelopeMessage = msg
                                 }
     respond (encode envelope, addr)
