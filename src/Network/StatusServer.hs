@@ -4,7 +4,7 @@ module Network.StatusServer (
         module Network.Types,
 
         Status, shutdown,
-        serve, statusPort
+        serve, serveWithPort, statusPort
     ) where
 
 import Control.Concurrent ( forkIO )
@@ -43,7 +43,7 @@ tag = "StatusServer"
 
 -- | The default status port.
 statusPort :: Port
-statusPort = 8000
+statusPort = 5000
 
 data Shutdown = Shutdown
               deriving ( Show, Typeable )
@@ -58,11 +58,11 @@ data Status = Status
 
 -- | Start the status interface on the default port.
 serve :: (Store s) => s -> IO Status
-serve = flip serveWithPort statusPort
+serve = serveWithPort statusPort
 
 -- | Start the status interface on the given port.
-serveWithPort :: (Store s) => s -> Port -> IO Status
-serveWithPort store port = do
+serveWithPort :: (Store s) => Port -> s -> IO Status
+serveWithPort port store = do
     debugM tag (printf "starting status interface on %d" statusPort)
     pubSub <- newPubSub
     let handler = route [ ("", indexHandler)

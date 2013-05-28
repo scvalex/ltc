@@ -3,7 +3,7 @@
 module Network.NodeServer (
         module Network.Types,
 
-        ltcPort,
+        nodePort,
         Node, shutdown,
         serve, serveWithHostAndPort,
         Connection, ConnectionId, connect, closeConnection,
@@ -50,8 +50,8 @@ tag = "NodeServer"
 ----------------------
 
 -- | The default node port.
-ltcPort :: Port
-ltcPort = 3582
+nodePort :: Port
+nodePort = 3582
 
 data Shutdown = Shutdown
               deriving ( Show, Typeable )
@@ -79,10 +79,10 @@ data NodeData = NodeData
 serve :: (Store s) => s -> IO Node
 serve store = do
     hostname <- getHostName
-    serveWithHostAndPort hostname ltcPort store
+    serveWithHostAndPort hostname nodePort store
 
 -- | Start the node interface on the given port.
-serveWithHostAndPort :: (Store s) => Hostname -> Int -> s -> IO Node
+serveWithHostAndPort :: (Store s) => Hostname -> Port -> s -> IO Node
 serveWithHostAndPort hostname port store = do
     debugM tag (printf "serveWithHostAndPort %s:%d" hostname port)
     tid <- forkIO $

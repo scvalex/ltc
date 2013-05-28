@@ -48,7 +48,7 @@ data Modes = Fsck { dir :: FilePath }
            | Import { dir :: FilePath, file :: FilePath }
            | Populate { dir :: FilePath, count :: Int }
            | Redis { dir :: FilePath }
-           | Node { dir :: FilePath }
+           | Node { dir :: FilePath, nodeIndex :: Int }
            | WireClient { host :: String, port :: Int }
            deriving ( Show, Data, Typeable )
 
@@ -70,10 +70,11 @@ ltcModes =
       &= help "populate a store with random values"
     , Redis { dir = "store" &= typDir }
       &= help "run a store with a Redis interface"
-    , Node { dir = "store" &= typDir }
+    , Node { dir = "store" &= typDir
+           , nodeIndex = 0 &= help "what is the index of this node on this machine" }
       &= help "run a store with an LTc node interface"
     , WireClient { host = "localhost" &= typ "HOST"
-                 , port = N.ltcPort &= typ "PORT" }
+                 , port = N.nodePort &= typ "PORT" }
       &= help "connect a low-level client to an LTc node"
     ]
     &= program "ltc"
@@ -120,19 +121,19 @@ main = do
             store <- open (openParameters d hostname)
             shutdown <- R.serve store
             shutdownOnInt store [shutdown]
-        Node d -> do
-            _ <- printf "Running Node on %d with %s\n" N.ltcPort d
+        Node d idx -> do
+            _ <- printf "Running Node on %d with %s\n" (N.nodePort + idx) d
             hostname <- getHostName
             store <- open (openParameters d hostname)
-            node <- N.serve store
-            status <- S.serve store
+            node <- N.serveWithHostAndPort hostname (N.nodePort + idx) store
+            status <- S.serveWithPort (S.statusPort + idx) store
             monkey <- M.start store
             shutdownOnInt store [N.shutdown node, S.shutdown status, M.shutdown monkey]
         WireClient h p -> do
-            _ <- printf "Connecting NodeCat to %s:%d\n" h p
+            _ <- printf "Connecting wire client to %s:%d\n" h p
             hostname <- getHostName
             store <- open (openParameters "wire-client-store" hostname)
-            node <- N.serveWithHostAndPort hostname (N.ltcPort + 1) store
+            node <- N.serveWithHostAndPort hostname (N.nodePort + 11) store
             conn <- N.connect node h p
             homeDir <- getHomeDirectory
             CE.handle (\Interrupt -> return ())

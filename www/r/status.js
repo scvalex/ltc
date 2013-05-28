@@ -1,4 +1,4 @@
-WS_URL = "ws://" + window.location.hostname + ":8000/status"
+WS_URL = "ws://" + window.location.hostname + ":" + window.location.port + "/status"
 
 function log() {
     if (console && console.log) {
