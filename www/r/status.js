@@ -15,9 +15,11 @@ function LogEntry(msg) {
     if (msg.hasOwnProperty("GetEvent")) {
         self.operation = "get";
         self.target = msg["GetEvent"].eventTarget;
+        model.countGets(model.countGets() + 1);
     } else if (msg.hasOwnProperty("SetEvent")) {
         self.operation = "set";
         self.target = msg["SetEvent"].eventTarget;
+        model.countSets(model.countSets() + 1);
     } else {
         log("got unknown message: ", msg);
     }
@@ -27,6 +29,8 @@ function AppViewModel() {
     var self = this;
 
     self.log = ko.observableArray();
+    self.countGets = ko.observable(0);
+    self.countSets = ko.observable(0);
 
     self.socket = new WebSocket(WS_URL, "status");
     self.socket.onopen = function() {

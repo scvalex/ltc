@@ -5,6 +5,15 @@
     list-style: none;
 }
 
+#eventCounts {
+    text-align: center;
+    padding: 0 .2em;
+}
+
+#eventCounts th {
+    background-color: #cfc;
+}
+
 #log {
     border: 1px solid #999;
     height: 20em;

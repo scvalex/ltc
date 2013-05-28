@@ -15,6 +15,26 @@
   <body>
     <h1>LTc Status</h1>
 
+    <h3>Events</h3>
+    <table id="eventCounts">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Counts</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>Get</th>
+          <td data-bind="text: countGets"></td>
+        </tr>
+        <tr>
+          <th>Set</th>
+          <td data-bind="text: countSets"></td>
+        </tr>
+      </tbody>
+    </table>
+
     <h3>Log</h3>
     <ul id="log" data-bind="foreach: log">
       <li class="logItem">
