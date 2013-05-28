@@ -26,3 +26,24 @@
     font-weight: bold;
     font-size: 1.2em;
 }
+
+/* ******************** */
+/* Charts */
+/* ******************** */
+
+/* #eventsChartContainer { */
+/*     position: relative; */
+/*     font-family: Arial, Helvetica, sans-serif; */
+/* } */
+
+/* #eventsChart { */
+/*     position: relative; */
+/*     left: 40px; */
+/* } */
+
+/* #eventsYAxis { */
+/*     position: absolute; */
+/*     top: 0; */
+/*     bottom: 0; */
+/*     width: 40px; */
+/* } */

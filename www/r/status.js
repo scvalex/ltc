@@ -32,8 +32,30 @@ function AppViewModel() {
 
     self.countGets = ko.observable(0);
     self.countSets = ko.observable(0);
-    self.eventsPerSec = [];
-    self.eventsCurrentSec = {"get": 0, "set": 0};
+
+    var eventsCurPeriod = {"get": 0, "set": 0};
+
+    var getsPerPeriod = [{x: 0, y: 0}];
+    var setsPerPeriod = [{x: 0, y: 0}];
+    var eventsGraph = new Rickshaw.Graph( {
+        element: document.querySelector("#eventsChart"),
+        width: 500,
+        height: 200,
+        stroke: true,
+        series: [{
+            color: "blue",
+            data: getsPerPeriod
+        }, {
+            color: "red",
+            data: setsPerPeriod
+        }]
+    });
+    // new Rickshaw.Graph.Axis.Y({
+    //     graph: eventsGraph,
+    //     orientation: 'left',
+    //     element: document.getElementById("eventsYAxis"),
+    // });
+    eventsGraph.render();
 
     handleEvent = function(type) {
         if (type == "set") {
@@ -41,13 +63,22 @@ function AppViewModel() {
         } else if (type == "get") {
             self.countGets(self.countGets() + 1);
         }
-        self.eventsCurrentSec[type] = self.eventsCurrentSec[type] + 1;
+        eventsCurPeriod[type] = eventsCurPeriod[type] + 1;
     }
 
+    var x = 1;
     setInterval(function () {
-        self.eventsPerSec.push(self.eventsCurrentSec);
-        self.eventsCurrentSec = {"get": 0, "set": 0};
-    }, 1000);
+        getsPerPeriod.push({x: x, y: eventsCurPeriod["get"]});
+        setsPerPeriod.push({x: x, y: eventsCurPeriod["set"]});
+        x = x + 1;
+        if (x > 10) {
+            // Only keep last 10 measurements
+            getsPerPeriod.shift();
+            setsPerPeriod.shift();
+        }
+        eventsGraph.render();
+        eventsCurPeriod = {"get": 0, "set": 0};
+    }, 5000);
 
     self.socket = new WebSocket(WS_URL, "status");
     self.socket.onopen = function() {
@@ -66,7 +97,7 @@ function AppViewModel() {
     }
 }
 
-document.addEvent("domready", function() {
+document.addEventListener("DOMContentLoaded", function() {
     // Model is global.
     model = new AppViewModel();
     ko.applyBindings(model);
