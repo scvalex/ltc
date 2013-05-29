@@ -165,38 +165,6 @@ closeConnection conn = do
     NI.close (getConnectionInterface conn)
     debugM tag "closed connection"
 
--- | Handle incoming node envelopes.
-nodeHandler :: (NetworkInterface a, Store s)
-            => s -> a -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
-nodeHandler store intf p =
-    runProxy $ p >-> envelopeDecoderD intf >-> handleNodeEnvelopeC store intf
-
--- | Decode envelopes and pass them downstream.  Malformed inputs are discarded, and a
--- warning is emitted.
-envelopeDecoderD :: (NetworkInterface a, Proxy p)
-                 => a -> () -> Pipe p ByteString (NodeEnvelope a) IO ()
-envelopeDecoderD _intf () = runIdentityP $ forever $ do
-    bin <- request ()
-    case decode bin of
-        Nothing       -> lift $ warningM tag "failed to decode envelope"
-        Just envelope -> respond envelope
-
--- | Handle incoming node envelopes.
-handleNodeEnvelopeC :: (NetworkInterface a, Proxy p, Store s)
-                    => s -> a -> () -> Consumer p (NodeEnvelope a) IO ()
-handleNodeEnvelopeC store intf () = runIdentityP $ forever $ do
-    envelope <- request ()
-    lift $ debugM tag "handling envelope"
-    lift $ handleNodeEnvelope store intf envelope
-
--- | Handle a single node envelope.
-handleNodeEnvelope :: (NetworkInterface a, Store s) => s -> a -> NodeEnvelope a -> IO ()
-handleNodeEnvelope _store _intf envelope@NodeEnvelope {getEnvelopeMessage = Ping _} = do
-    debugM tag (printf "handling %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
-    debugM tag "envelope handled"
-handleNodeEnvelope _store _intf envelope = do
-    warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
-
 -- | Send a single message from the local node on a connection to a remote node.
 sendMessage :: (NetworkInterface a) => Node a -> Connection a -> NodeMessage -> IO ()
 sendMessage node conn msg = do
@@ -207,6 +175,10 @@ sendMessage node conn msg = do
                                 }
     NI.send (getConnectionInterface conn) (encode envelope)
     debugM tag "message sent"
+
+----------------------
+-- Neighbour-set manipulation
+----------------------
 
 -- | Tell the given node that it has a neighbour at the given location.  Adding the same
 -- location twice is a bad idea (which will probably lead to fd leaks).
@@ -233,14 +205,46 @@ removeNeighbour node location = do
         return (nodeData { getNeighbours = neighbours' })
 
 ----------------------
--- Sockets
+-- Handler pipeline for incoming messages
 ----------------------
+
+-- | Handle incoming node envelopes.
+nodeHandler :: (NetworkInterface a, Store s)
+            => s -> a -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
+nodeHandler store intf p =
+    runProxy $ p >-> envelopeDecoderD intf >-> handleNodeEnvelopeC store intf
 
 -- | Stream data from the network interface..
 interfaceReader :: (Proxy p, NetworkInterface a) => a -> () -> Producer p ByteString IO ()
 interfaceReader intf () = runIdentityP $ forever $ do
     bin <- lift $ NI.receive intf
     unless (BS.null bin) $ respond bin
+
+-- | Decode envelopes and pass them downstream.  Malformed inputs are discarded, and a
+-- warning is emitted.
+envelopeDecoderD :: (NetworkInterface a, Proxy p)
+                 => a -> () -> Pipe p ByteString (NodeEnvelope a) IO ()
+envelopeDecoderD _intf () = runIdentityP $ forever $ do
+    bin <- request ()
+    case decode bin of
+        Nothing       -> lift $ warningM tag "failed to decode envelope"
+        Just envelope -> respond envelope
+
+-- | Handle incoming node envelopes.
+handleNodeEnvelopeC :: (NetworkInterface a, Proxy p, Store s)
+                    => s -> a -> () -> Consumer p (NodeEnvelope a) IO ()
+handleNodeEnvelopeC store intf () = runIdentityP $ forever $ do
+    envelope <- request ()
+    lift $ debugM tag "handling envelope"
+    lift $ handleNodeEnvelope store intf envelope
+
+-- | Handle a single node envelope.
+handleNodeEnvelope :: (NetworkInterface a, Store s) => s -> a -> NodeEnvelope a -> IO ()
+handleNodeEnvelope _store _intf envelope@NodeEnvelope {getEnvelopeMessage = Ping _} = do
+    debugM tag (printf "handling %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
+    debugM tag "envelope handled"
+handleNodeEnvelope _store _intf envelope = do
+    warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
 
 ----------------------
 -- Change propagation
