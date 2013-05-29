@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, FlexibleInstances #-}
 
 module Network.Interface.UDP (
         UDPInterface, NetworkLocation(..)
@@ -13,6 +13,7 @@ import Network.Types ( Hostname, Port )
 import Network.Interface ( NetworkInterface(..) )
 import qualified Control.Exception as CE
 import qualified Network.Socket as NS
+import Text.Printf ( printf )
 
 -- FIXME Use phantoms to distinguish between sending/receiving sockets.
 data UDPInterface = UDPInterface
@@ -23,7 +24,7 @@ instance NetworkInterface UDPInterface where
     data NetworkLocation UDPInterface = NetworkLocation
         { host :: Hostname
         , port :: Port
-        } deriving ( Show )
+        }
 
     serve addr = do
         CE.bracketOnError
@@ -52,3 +53,6 @@ instance NetworkInterface UDPInterface where
     send intf bin = sendAll (getSocket intf) bin
 
     close intf = sClose (getSocket intf)
+
+instance Show (NetworkLocation UDPInterface) where
+    show location = printf "%s:%d" (host location) (port location)

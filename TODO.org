@@ -60,6 +60,7 @@
   updates to, and request updates from.
 * TODO Abstract network interface
   :LOGBOOK:
+  CLOCK: [2013-05-29 Wed 03:16]--[2013-05-29 Wed 03:25] =>  0:09
   CLOCK: [2013-05-29 Wed 02:10]--[2013-05-29 Wed 03:02] =>  0:52
   CLOCK: [2013-05-29 Wed 01:59]--[2013-05-29 Wed 02:09] =>  0:10
   CLOCK: [2013-05-29 Wed 01:49]--[2013-05-29 Wed 01:56] =>  0:07

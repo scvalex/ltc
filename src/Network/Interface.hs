@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
 
 module Network.Interface (
         NetworkInterface(..)
@@ -6,7 +6,7 @@ module Network.Interface (
 
 import Data.ByteString ( ByteString )
 
-class NetworkInterface a where
+class (Show (NetworkLocation a)) => NetworkInterface a where
     data NetworkLocation a :: *
 
     serve :: NetworkLocation a -> IO a

@@ -83,7 +83,7 @@ serve store = do
 -- | Start the node interface on the given port.
 serveFromLocation :: (Store s, NetworkInterface a) => NetworkLocation a -> s -> IO (Node a)
 serveFromLocation location store = do
-    debugM tag (printf "serveFromLocation ###SOMWHERE###")
+    debugM tag (printf "serveFromLocation %s" (show location))
     tid <- forkIO $
            CE.bracket
                (NI.serve location)
@@ -97,10 +97,10 @@ serveFromLocation location store = do
     Node <$> newMVar nodeData
 
 -- | Shutdown a running 'Node'.  Idempotent.
-shutdown :: Node a -> IO ()
+shutdown :: (NetworkInterface a) => Node a -> IO ()
 shutdown node = do
     withMVar (getNodeData node) $ \nodeData -> do
-        debugM tag (printf "shutdown ###SOMETHING###")
+        debugM tag (printf "shutdown %s" (show (getLocation nodeData)))
         getShutdown nodeData
 
 -- | Use a local 'Node' to connect to a remote 'Node'.  Since this is an asynchronous
@@ -108,7 +108,7 @@ shutdown node = do
 -- connection.
 connect :: (NetworkInterface a) => Node a -> NetworkLocation a -> IO (Connection a)
 connect _node location = do
-    debugM tag (printf "connecting to ###SOMEWHERE###")
+    debugM tag (printf "connecting to %s" (show location))
     intf <- NI.connect location
     let conn = Connection { getConnectionInterface = intf
                           , getConnectionLocation  = location }
@@ -118,7 +118,7 @@ connect _node location = do
 -- | Close a `Connection` to a remote `Node`.
 closeConnection :: (NetworkInterface a) => Connection a -> IO ()
 closeConnection conn = do
-    debugM tag (printf "closing connection to ###SOMEWHERE###")
+    debugM tag (printf "closing connection to %s" (show (getConnectionLocation conn)))
     NI.close (getConnectionInterface conn)
     debugM tag "closed connection"
 
@@ -153,7 +153,7 @@ handleNodeEnvelope _store envelope = do
 -- | Send a single message from the local node on a connection to a remote node.
 sendMessage :: (NetworkInterface a) => Node a -> Connection a -> NodeMessage -> IO ()
 sendMessage _node conn msg = do
-    debugM tag (printf "sending message to ###SOMEWHERE###")
+    debugM tag (printf "sending message to %s" (show (getConnectionLocation conn)))
     let envelope = NodeEnvelope { getEnvelopeSender  = undefined
                                 , getEnvelopeMessage = msg
                                 }
