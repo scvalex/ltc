@@ -19,7 +19,7 @@ import Paths_ltc ( version )
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
-import qualified Network.Interface.UDP as UDP
+import qualified Network.Interface.UDP as U
 import qualified Network.NodeServer as N
 import qualified Network.StatusServer as S
 import qualified Network.NodeProtocol as P
@@ -127,8 +127,8 @@ main = do
             _ <- printf "Running Node on %d with %s\n" (N.nodePort + idx) myStoreDir
             hostname <- getHostName
             store <- open (openParameters myStoreDir hostname)
-            node <- N.serveFromLocation (UDP.NetworkLocation { UDP.host = hostname
-                                                             , UDP.port = N.nodePort + idx })
+            node <- N.serveFromLocation (U.NetworkLocation { U.host = hostname
+                                                           , U.port = N.nodePort + idx })
                                         store
             status <- S.serveWithPort (S.statusPort + idx) store
             monkey <- M.start store
@@ -137,10 +137,11 @@ main = do
             _ <- printf "Connecting wire client to %s:%d\n" h p
             hostname <- getHostName
             store <- open (openParameters "wire-client-store" hostname)
-            node <- N.serveFromLocation (UDP.NetworkLocation { UDP.host = hostname
-                                                             , UDP.port = N.nodePort + 11 })
+            node <- N.serveFromLocation (U.NetworkLocation { U.host = hostname
+                                                           , U.port = N.nodePort + 11 })
                                         store
-            conn <- N.connect node (UDP.NetworkLocation { UDP.host = h, UDP.port = p })
+            conn <- N.connect node (U.NetworkLocation { U.host = h
+                                                      , U.port = p })
             homeDir <- getHomeDirectory
             CE.handle (\Interrupt -> return ())
                       (flip runInputT (withInterrupt (repl node conn)) $
@@ -220,7 +221,7 @@ main = do
 
     -- | Read a 'NodeMessage' from an S-Expression, encode it with cereal, and send it to
     -- the remote node.
-    repl :: N.Node UDP.UDPInterface -> N.Connection UDP.UDPInterface -> InputT IO ()
+    repl :: N.Node U.UdpInterface -> N.Connection U.UdpInterface -> InputT IO ()
     repl node conn = do
         minput <- getInputLine "> "
         case minput of

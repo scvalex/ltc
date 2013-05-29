@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies, FlexibleInstances, DeriveGeneric #-}
 
 module Network.Interface.UDP (
-        UDPInterface, NetworkLocation(..)
+        UdpInterface, NetworkLocation(..)
     ) where
 
 import Data.Serialize ( Serialize )
@@ -19,12 +19,12 @@ import qualified Network.Socket as NS
 import Text.Printf ( printf )
 
 -- FIXME Use phantoms to distinguish between sending/receiving sockets.
-data UDPInterface = UDPInterface
+data UdpInterface = UdpInterface
     { getSocket :: Socket
     }
 
-instance NetworkInterface UDPInterface where
-    data NetworkLocation UDPInterface = NetworkLocation
+instance NetworkInterface UdpInterface where
+    data NetworkLocation UdpInterface = NetworkLocation
         { host :: Hostname
         , port :: Port
         } deriving ( Generic )
@@ -37,7 +37,7 @@ instance NetworkInterface UDPInterface where
                   -- FIXME See the examples at the end of Network.Socket.ByteString
                   setSocketOption sock ReuseAddr 1
                   bindSocket sock (SockAddrInet (fromIntegral (port addr)) iNADDR_ANY)
-                  return $ UDPInterface { getSocket = sock })
+                  return $ UdpInterface { getSocket = sock })
 
     receive intf = recv (getSocket intf) 4096
 
@@ -51,15 +51,15 @@ instance NetworkInterface UDPInterface where
             sClose
             (\sock -> do
                  NS.connect sock (addrAddress $ head addrInfos)
-                 return $ UDPInterface { getSocket = sock})
+                 return $ UdpInterface { getSocket = sock})
 
     send intf bin = sendAll (getSocket intf) bin
 
     close intf = sClose (getSocket intf)
 
-instance Show (NetworkLocation UDPInterface) where
+instance Show (NetworkLocation UdpInterface) where
     show location = printf "%s:%d" (host location) (port location)
 
-instance Serialize (NetworkLocation UDPInterface)
+instance Serialize (NetworkLocation UdpInterface)
 
-instance Sexpable (NetworkLocation UDPInterface)
+instance Sexpable (NetworkLocation UdpInterface)

@@ -23,7 +23,7 @@ import Language.Sexp ( printMach, toSexp )
 import Ltc.Store ( Store )
 import Network.BSD ( getHostName )
 import Network.Interface ( NetworkInterface, NetworkLocation )
-import Network.Interface.UDP ( UDPInterface )
+import Network.Interface.UDP ( UdpInterface )
 import Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
 import Network.Types ( Hostname, Port )
 import qualified Control.Exception as CE
@@ -31,7 +31,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
 import qualified Network.Interface as NI
-import qualified Network.Interface.UDP as UDP
+import qualified Network.Interface.UDP as U
 import System.Log.Logger ( debugM, warningM )
 import Text.Printf ( printf )
 
@@ -57,7 +57,7 @@ data Shutdown = Shutdown
 instance Exception Shutdown
 
 -- | The abstract type of a network connection.  Note that it is parametrised by the type
--- of the network interface (e.g. 'UDPInterface').  Note also that since these connections
+-- of the network interface (e.g. 'UdpInterface').  Note also that since these connections
 -- are asynchronous, there is generally no way to tell if the other side is running on
 -- not.
 data Connection a = (NetworkInterface a) => Connection
@@ -80,11 +80,11 @@ data NodeData a = NodeData
     }
 
 -- | Start the node interface on the default port.
-serve :: (Store s) => s -> IO (Node UDPInterface)
+serve :: (Store s) => s -> IO (Node UdpInterface)
 serve store = do
     hostname <- getHostName
-    let location = UDP.NetworkLocation { UDP.host = hostname
-                                       , UDP.port = nodePort }
+    let location = U.NetworkLocation { U.host = hostname
+                                     , U.port = nodePort }
     serveFromLocation location store
 
 -- | Start the node interface on the given port.
