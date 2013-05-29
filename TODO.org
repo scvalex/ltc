@@ -59,6 +59,10 @@
   :END:
   Nodes should have a set of "neighbor" nodes which they propagate
   updates to, and request updates from.
+  - [ ] Propagate store changes to neighbours
+  - [ ] Receive store changes from neighbours
+  - [ ] Keep track of suspected neighbour version clock
+  - [ ] Initial synchronization with neighbours
 * DONE Abstract network interface
   :LOGBOOK:
   CLOCK: [2013-05-29 Wed 13:56]--[2013-05-29 Wed 15:02] =>  1:06
@@ -72,22 +76,20 @@
   - [X] Abstract serve/send/receive
   - [X] Use abstract interface
   - [X] Null interface
-* TODO Components configuration
-  Some way to chose what parts of LTc to start.
 * TODO Report outline
   - [ ] General outline
   - [ ] Assessment outline
+* TODO Pick a nice palette
+  ColourLovers to the rescue!
 * TODO Draw DB tip
   - [ ] Keys tip
   - [ ] Values tip
-* TODO Pick a nice palette
-  ColourLovers to the rescue!
+* TODO Components configuration
+  Some way to chose what parts of LTc to start.
 * TODO Prettify events graph
   http://code.shutterstock.com/rickshaw/tutorial/introduction.html
-* TODO Smarter
-* TODO UDP Maximum Sync
-* TODO Better merging
 * TODO Multi-entry changes
+* TODO Better merging
 * TODO Artificial delay network interface
 * TODO Test network interfaces
 * TODO Temporal logic formalization
