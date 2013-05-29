@@ -16,9 +16,10 @@ import Control.Concurrent ( forkIO
 import Control.Exception ( Exception )
 import Control.Monad ( unless )
 import Control.Proxy
-import Data.Typeable ( Typeable )
 import Data.ByteString ( ByteString )
 import Data.Map ( Map )
+import Data.Set ( Set )
+import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
 import Ltc.Store ( Store )
 import Network.BSD ( getHostName )
@@ -33,6 +34,7 @@ import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map as M
+import qualified Data.Set as S
 import qualified Network.Socket as NS
 import System.Log.Logger ( debugM, warningM )
 import Text.Printf ( printf )
@@ -67,12 +69,16 @@ newtype ConnectionId = ConnectionId Int
 
 newtype Node = Node { getNodeData :: MVar NodeData }
 
+-- | The local node's view of a remote node.
+data RemoteNode = RemoteNode
+
 data NodeData = NodeData
     { getShutdown         :: IO ()
     , getNextConnectionId :: ConnectionId
     , getConnections      :: Map ConnectionId Connection
     , getPort             :: Port
     , getHostname         :: Hostname
+    , getNeighbours       :: Set RemoteNode
     }
 
 -- | Start the node interface on the default port.
@@ -96,6 +102,7 @@ serveWithHostAndPort hostname port store = do
                             , getConnections      = M.empty
                             , getPort             = port
                             , getHostname         = hostname
+                            , getNeighbours       = S.empty
                             }
     Node <$> newMVar nodeData
 

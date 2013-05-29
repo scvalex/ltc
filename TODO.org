@@ -47,6 +47,7 @@
   - [X] Graph sets/gets
 * TODO UDP Connections
   :LOGBOOK:
+  CLOCK: [2013-05-29 Wed 01:23]--[2013-05-29 Wed 01:27] =>  0:04
   CLOCK: [2013-05-28 Tue 19:41]--[2013-05-28 Tue 20:06] =>  0:25
   CLOCK: [2013-05-23 Thu 13:48]--[2013-05-23 Thu 13:56] =>  0:08
   CLOCK: [2013-05-22 Wed 03:48]--[2013-05-22 Wed 03:58] =>  0:10
@@ -57,6 +58,9 @@
   :END:
   Nodes should have a set of "neighbor" nodes which they propagate
   updates to, and request updates from.
+* TODO Abstract network interface
+  - [ ] Abstract location (host/port)
+  - [ ] Abstract serve/send/receive
 * TODO Components configuration
   Some way to chose what parts of LTc to start.
 * TODO Report outline
