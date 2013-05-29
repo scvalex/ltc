@@ -1,6 +1,11 @@
 {-# LANGUAGE GADTs, DeriveDataTypeable, FlexibleInstances, FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances, DeriveGeneric #-}
 
+-- | This module provides the types and functions for working with changes to values.  See
+-- the documentation for 'Diff' and 'Diffable' for more information.
+--
+-- The only reason this module is in the "Ltc.Store" hierarchy is because all the diffing
+-- is done on 'Value's, and so it wouldn't be of any use outside of LTc.
 module Ltc.Store.Diff (
         Diffable(..), Diff
     ) where
@@ -15,6 +20,11 @@ import Ltc.Store.Class ( Value(..), Single, Collection )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
 
+-- | A 'Diff' is a description of how to change one 'Value' into another (of the same
+-- type).  For instance, in the case of 'Integer's, a diff is simply the difference
+-- between the new value and the old.
+--
+-- For a reasonable way to create and use 'Diff's, see 'Diffable'.
 data Diff a where
     DiffInt :: Integer -> Diff (Single Integer)
     DiffString :: EditScript -> Diff (Single ByteString)
@@ -49,9 +59,28 @@ instance (Sexpable (Value (Single a)), Ord (Value (Single a)))
     fromSexp (List ["DiffSet", s1, s2]) = DiffSet <$> fromSexp s1 <*> fromSexp s2
     fromSexp _                          = fail "fromSexp Diff (Collection Integer)"
 
+-- | 'Diffable' is a way of creating, manipulating, and applying 'Diff's.  The 'Diff's
+-- created here have the properties mentioned in the documentation for the class
+-- functions.
 class Diffable a where
+    -- | Generate the 'Diff' from the first value to the second.  In other words, this is
+    -- the 'Diff' that applied to the first value, yields the second.
+    --
+    -- @
+    --     applyDiff v1 (diffFromTo v1 v2) == v2
+    -- @
     diffFromTo :: Value a -> Value a -> Diff a
+
+    -- | Apply the given 'Diff' to the given value.  Note that applying a 'Diff' to a
+    -- value other than the one it was generated from may give unexpected results.
     applyDiff :: Value a -> Diff a -> Value a
+
+    -- | Reverse a 'Diff'.  In other words, if you have a 'Diff' that turns one value into
+    -- another, its reverse is the 'Diff' that turns the second value into the first.
+    --
+    -- @
+    --     applyDiff v2 (reverseDiff (diffFromTo v1 v2)) == v1
+    -- @
     reverseDiff :: Diff a -> Diff a
 
 instance Diffable (Single Integer) where
