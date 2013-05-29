@@ -20,7 +20,7 @@ data NodeEnvelope a = NetworkInterface a => NodeEnvelope
     , getEnvelopeMessage :: NodeMessage
     }
 
-deriving instance (NetworkInterface a) => Show (NodeEnvelope a)
+deriving instance Show (NodeEnvelope a)
 
 -- | Type-parameter-less and versioned 'NodeEnvelope'.  This is what is actually sent on
 -- the wire.
