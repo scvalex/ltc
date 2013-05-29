@@ -1,7 +1,8 @@
 {-# LANGUAGE ExistentialQuantification, FlexibleContexts #-}
 
+-- | This module ties "Ltc.Store.Diff" to the rest of "Ltc.Store".
 module Ltc.Store.VersionControl (
-       insertChangesInto
+       insertChangesInto, Reason
     ) where
 
 import Data.Foldable ( foldlM )
@@ -10,11 +11,11 @@ import Ltc.Store.Diff ( Diff, Diffable(..) )
 import Ltc.Store.Serialization ( DiffPack(..), KeyHistory(..), getKeyHistory )
 import qualified Data.Map as M
 
-type Reason = String
-
 ----------------------
 -- Exposed interface
 ----------------------
+
+type Reason = String
 
 -- | Insert the given changes into the store.  Returns a list of conflicting keys.
 insertChangesInto :: (Store s) => s -> DiffPack -> IO [(Key, Reason)]

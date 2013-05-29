@@ -5,7 +5,8 @@
 -- the documentation for 'Diff' and 'Diffable' for more information.
 --
 -- The only reason this module is in the "Ltc.Store" hierarchy is because all the diffing
--- is done on 'Value's, and so it wouldn't be of any use outside of LTc.
+-- is done on 'Value's, and so it wouldn't be of any use outside of LTc.  See
+-- "Ltc.Store.VersionControl" for the code that actually works with LTc stores.
 module Ltc.Store.Diff (
         Diffable(..), Diff
     ) where
