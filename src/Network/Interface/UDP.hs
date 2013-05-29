@@ -33,7 +33,7 @@ instance NetworkInterface UdpInterface where
     data NetworkLocation UdpInterface = NetworkLocation
         { host :: Hostname
         , port :: Port
-        } deriving ( Generic )
+        } deriving ( Eq, Generic, Ord )
 
     serve addr = do
         CE.bracketOnError

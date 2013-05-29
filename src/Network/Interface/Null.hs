@@ -16,7 +16,7 @@ data NullInterface = NullInterface
 instance NetworkInterface NullInterface where
     -- | A null location is just that.
     data NetworkLocation NullInterface = NullLocation
-                                       deriving ( Generic, Show )
+                                       deriving ( Eq, Generic, Ord, Show )
 
     serve _ = return NullInterface
     receive _ = takeMVar =<< newEmptyMVar

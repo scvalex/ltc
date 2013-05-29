@@ -9,7 +9,9 @@ import Data.Serialize ( Serialize )
 import Language.Sexp ( Sexpable )
 
 -- | An abstract network interface.
-class (Serialize (NetworkLocation a),
+class (Eq (NetworkLocation a),
+       Ord (NetworkLocation a),
+       Serialize (NetworkLocation a),
        Sexpable (NetworkLocation a),
        Show (NetworkLocation a)) => NetworkInterface a where
     data NetworkLocation a :: *
