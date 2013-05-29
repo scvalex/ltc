@@ -1,5 +1,7 @@
 {-# LANGUAGE TypeFamilies, FlexibleInstances, DeriveGeneric #-}
 
+-- | The UDP interface exposes the operating system's underlying UDP network functions as
+-- a 'NetworkInterface', and handles name resolution automatically.
 module Network.Interface.UDP (
         UdpInterface, NetworkLocation(..)
     ) where
@@ -19,11 +21,15 @@ import qualified Network.Socket as NS
 import Text.Printf ( printf )
 
 -- FIXME Use phantoms to distinguish between sending/receiving sockets.
+
+-- | The abstract type of a UDP socket.  This is used both for receiving and sending
+-- sockets.
 data UdpInterface = UdpInterface
     { getSocket :: Socket
     }
 
 instance NetworkInterface UdpInterface where
+    -- | A UDP network location is a host/port pair.
     data NetworkLocation UdpInterface = NetworkLocation
         { host :: Hostname
         , port :: Port
