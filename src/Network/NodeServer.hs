@@ -12,7 +12,7 @@ module Network.NodeServer (
 
 import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO
-                          , MVar, newMVar, withMVar )
+                          , MVar, newMVar, withMVar, readMVar )
 import Control.Exception ( Exception )
 import Control.Monad ( unless )
 import Control.Proxy
@@ -89,7 +89,7 @@ serveFromLocation location store = do
                (NI.serve location)
                (\intf -> NI.close intf)
                (\intf -> CE.handle (\(_ :: Shutdown) -> return ())
-                                   (nodeHandler store (interfaceReader intf)))
+                                   (nodeHandler store intf (interfaceReader intf)))
     let nodeData = NodeData { getShutdown         = CE.throwTo tid Shutdown
                             , getLocation         = location
                             , getNeighbours       = S.empty
@@ -123,38 +123,43 @@ closeConnection conn = do
     debugM tag "closed connection"
 
 -- | Handle incoming node envelopes.
-nodeHandler :: (Store s) => s -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
-nodeHandler store p = runProxy $ p >-> envelopeDecoderD >-> handleNodeEnvelopeC store
+nodeHandler :: (Store s, NetworkInterface a)
+            => s -> a -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
+nodeHandler store intf p =
+    runProxy $ p >-> envelopeDecoderD intf >-> handleNodeEnvelopeC store intf
 
 -- | Decode envelopes and pass them downstream.  Malformed inputs are discarded, and a
 -- warning is emitted.
-envelopeDecoderD :: (Proxy p) => () -> Pipe p ByteString NodeEnvelope IO ()
-envelopeDecoderD () = runIdentityP $ forever $ do
+envelopeDecoderD :: (Proxy p, NetworkInterface a)
+                 => a -> () -> Pipe p ByteString (NodeEnvelope a) IO ()
+envelopeDecoderD _intf () = runIdentityP $ forever $ do
     bin <- request ()
     case decode bin of
         Nothing       -> lift $ warningM tag "failed to decode envelope"
         Just envelope -> respond envelope
 
 -- | Handle incoming node envelopes.
-handleNodeEnvelopeC :: (Proxy p, Store s) => s -> () -> Consumer p NodeEnvelope IO ()
-handleNodeEnvelopeC store () = runIdentityP $ forever $ do
+handleNodeEnvelopeC :: (Proxy p, Store s, NetworkInterface a)
+                    => s -> a -> () -> Consumer p (NodeEnvelope a) IO ()
+handleNodeEnvelopeC store intf () = runIdentityP $ forever $ do
     envelope <- request ()
     lift $ debugM tag "handling envelope"
-    lift $ handleNodeEnvelope store envelope
+    lift $ handleNodeEnvelope store intf envelope
 
 -- | Handle a single node envelope.
-handleNodeEnvelope :: (Store s) => s -> NodeEnvelope -> IO ()
-handleNodeEnvelope _store envelope@NodeEnvelope {getEnvelopeMessage = Ping _} = do
-    debugM tag (printf "handling %s" (BL.unpack (printMach (toSexp envelope))))
+handleNodeEnvelope :: (Store s, NetworkInterface a) => s -> a -> NodeEnvelope a -> IO ()
+handleNodeEnvelope _store _intf envelope@NodeEnvelope {getEnvelopeMessage = Ping _} = do
+    debugM tag (printf "handling %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
     debugM tag "envelope handled"
-handleNodeEnvelope _store envelope = do
-    warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp envelope))))
+handleNodeEnvelope _store _intf envelope = do
+    warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
 
 -- | Send a single message from the local node on a connection to a remote node.
 sendMessage :: (NetworkInterface a) => Node a -> Connection a -> NodeMessage -> IO ()
-sendMessage _node conn msg = do
+sendMessage node conn msg = do
     debugM tag (printf "sending message to %s" (show (getConnectionLocation conn)))
-    let envelope = NodeEnvelope { getEnvelopeSender  = undefined
+    nodeData <- readMVar (getNodeData node)
+    let envelope = NodeEnvelope { getEnvelopeSender  = getLocation nodeData
                                 , getEnvelopeMessage = msg
                                 }
     NI.send (getConnectionInterface conn) (encode envelope)

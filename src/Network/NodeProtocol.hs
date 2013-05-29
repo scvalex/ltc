@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, ExistentialQuantification, StandaloneDeriving #-}
 
 module Network.NodeProtocol (
         NodeEnvelope(..), NodeMessage(..), encode, decode
@@ -8,21 +8,32 @@ import Data.ByteString ( ByteString )
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable )
-import Network.Types ( Hostname, Port )
+import Network.Interface ( NetworkInterface(..) )
 import qualified Data.Serialize as S
 
 ----------------------
 -- Message type
 ----------------------
 
-data NodeEnvelope = NodeEnvelope
-    { getEnvelopeSender  :: (Hostname, Port)
+data NodeEnvelope a = NetworkInterface a => NodeEnvelope
+    { getEnvelopeSender  :: NetworkLocation a
     , getEnvelopeMessage :: NodeMessage
-    } deriving ( Generic, Show )
+    }
 
-instance Serialize NodeEnvelope
+deriving instance (NetworkInterface a) => Show (NodeEnvelope a)
 
-instance Sexpable NodeEnvelope
+-- | Type-parameter-less and versioned 'NodeEnvelope'.  This is what is actually sent on
+-- the wire.
+data SerializedNodeEnvelope
+    = V0
+    | V1 { getSender  :: ByteString
+         , getMessage :: NodeMessage
+         }
+    deriving ( Generic, Show )
+
+instance Serialize SerializedNodeEnvelope
+
+instance Sexpable SerializedNodeEnvelope
 
 data NodeMessage = Ping String
                  | Pong String
@@ -38,12 +49,27 @@ instance Sexpable NodeMessage
 ----------------------
 
 -- | Encode a 'NodeEnvelope' as a strict 'ByteString'.
-encode :: NodeEnvelope -> ByteString
-encode = S.encode
+encode :: (NetworkInterface a) => NodeEnvelope a -> ByteString
+encode env =
+    let serEnv = V1 { getSender  = S.encode (getEnvelopeSender env)
+                    , getMessage = getEnvelopeMessage env
+                    }
+    in S.encode serEnv
 
--- | Try to decode a 'NodeEnvelope'.
-decode :: ByteString -> Maybe NodeEnvelope
+-- | Try to decode a 'NodeEnvelope'.  Note that trying to decode a message with the wrong
+-- network interface is undefined behaviour (it will probably fail).
+decode :: (NetworkInterface a) => ByteString -> Maybe (NodeEnvelope a)
 decode bin =
     case S.decode bin of
-        Left _  -> Nothing
-        Right e -> Just e
+        Left _ ->
+            Nothing
+        Right V0 ->
+            Nothing
+        Right serEnv@(V1 {}) ->
+            case S.decode (getSender serEnv) of
+                Left _ ->
+                    Nothing
+                Right location ->
+                    Just (NodeEnvelope { getEnvelopeSender  = location
+                                       , getEnvelopeMessage = getMessage serEnv
+                                       })

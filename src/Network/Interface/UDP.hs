@@ -1,9 +1,12 @@
-{-# LANGUAGE TypeFamilies, FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies, FlexibleInstances, DeriveGeneric #-}
 
 module Network.Interface.UDP (
         UDPInterface, NetworkLocation(..)
     ) where
 
+import Data.Serialize ( Serialize )
+import GHC.Generics ( Generic )
+import Language.Sexp ( Sexpable )
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
                       , AddrInfo(..), getAddrInfo, defaultHints
                       , Family(..), SocketType(..), SockAddr(..)
@@ -24,7 +27,7 @@ instance NetworkInterface UDPInterface where
     data NetworkLocation UDPInterface = NetworkLocation
         { host :: Hostname
         , port :: Port
-        }
+        } deriving ( Generic )
 
     serve addr = do
         CE.bracketOnError
@@ -56,3 +59,7 @@ instance NetworkInterface UDPInterface where
 
 instance Show (NetworkLocation UDPInterface) where
     show location = printf "%s:%d" (host location) (port location)
+
+instance Serialize (NetworkLocation UDPInterface)
+
+instance Sexpable (NetworkLocation UDPInterface)

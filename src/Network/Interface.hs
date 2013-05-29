@@ -5,8 +5,12 @@ module Network.Interface (
     ) where
 
 import Data.ByteString ( ByteString )
+import Data.Serialize ( Serialize )
+import Language.Sexp ( Sexpable )
 
-class (Show (NetworkLocation a)) => NetworkInterface a where
+class (Show (NetworkLocation a),
+       Serialize (NetworkLocation a),
+       Sexpable (NetworkLocation a)) => NetworkInterface a where
     data NetworkLocation a :: *
 
     serve :: NetworkLocation a -> IO a

@@ -68,7 +68,7 @@
   :END:
   - [X] Abstract location (host/port)
   - [X] Abstract serve/send/receive
-  - [ ] Use abstract interface
+  - [X] Use abstract interface
   - [ ] Null interface
 * TODO Components configuration
   Some way to chose what parts of LTc to start.
