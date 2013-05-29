@@ -62,6 +62,8 @@ Library
                         Ltc.Store.Types,
                         Ltc.Store.VersionControl,
                         Ltc.Monkey,
+                        Network.Interface,
+                        Network.Interface.UDP,
                         Network.NodeProtocol,
                         Network.NodeServer,
                         Network.Redis,
