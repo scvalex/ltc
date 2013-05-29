@@ -74,8 +74,8 @@ serveWithPort port store = do
                  setPort port $
                  mempty
     tidHttp <- forkIO $
-               CE.handle (\(_ :: Shutdown) -> return ()) $ do
-                   httpServe config handler
+        CE.handle (\(_ :: Shutdown) -> return ()) $ do
+            httpServe config handler
     eventChannel <- newTChanIO
     addEventChannel store eventChannel
     tidPublisher <- forkIO $ forever $ do
