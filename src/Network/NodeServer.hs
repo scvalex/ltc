@@ -21,7 +21,7 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO
                           , MVar, newMVar, withMVar, readMVar, modifyMVar_ )
 import Control.Exception ( Exception )
-import Control.Monad ( unless )
+import Control.Monad ( unless, forM_ )
 import Control.Proxy
 import Data.ByteString ( ByteString )
 import Data.Function ( on )
@@ -79,10 +79,9 @@ newtype Node a = Node { getNodeData :: MVar (NodeData a) }
 
 -- | The local node's view of a remote node.
 data RemoteNode a = NetworkInterface a => RemoteNode
-    { getRemoteLocation :: NetworkLocation a
+    { getRemoteLocation  :: NetworkLocation a
+    , getRemoteInterface :: a
     }
-
-deriving instance Show (RemoteNode a)
 
 instance (NetworkInterface a) => Eq (RemoteNode a) where
     (==) = (==) `on` getRemoteLocation
@@ -190,11 +189,14 @@ sendMessage node conn msg = do
     NI.send (getConnectionInterface conn) (encode envelope)
     debugM tag "message sent"
 
--- | Tell the given node that it has a neighbour at the given location.
+-- | Tell the given node that it has a neighbour at the given location.  Adding the same
+-- location twice is a bad idea (which will probably lead to fd leaks).
 addNeighbour :: (NetworkInterface a) => Node a -> NetworkLocation a -> IO ()
 addNeighbour node location = do
     modifyMVar_ (getNodeData node) $ \nodeData -> do
-        let remoteNode = RemoteNode { getRemoteLocation = location
+        intf <- NI.connect location
+        let remoteNode = RemoteNode { getRemoteLocation  = location
+                                    , getRemoteInterface = intf
                                     }
         return (nodeData { getNeighbours = S.insert remoteNode (getNeighbours nodeData) })
 
@@ -204,7 +206,11 @@ removeNeighbour :: (NetworkInterface a) => Node a -> NetworkLocation a -> IO ()
 removeNeighbour node location = do
     modifyMVar_ (getNodeData node) $ \nodeData -> do
         let neighbours = getNeighbours nodeData
-            neighbours' = S.filter (\r -> getRemoteLocation r /= location) neighbours
+            (neighbours', rms) = S.partition (\r -> getRemoteLocation r /= location) neighbours
+        -- There should be only one removed node, but we can't express this in the logic
+        -- of Set.
+        forM_ (S.toList rms) $ \removedNode ->
+            NI.close (getRemoteInterface removedNode)
         return (nodeData { getNeighbours = neighbours' })
 
 ----------------------
