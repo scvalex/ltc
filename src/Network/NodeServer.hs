@@ -1,22 +1,30 @@
-{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification #-}
+{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, StandaloneDeriving #-}
 
 module Network.NodeServer (
         module Network.Types,
 
         nodePort,
+
+        -- * Nodes and serving
         Node, shutdown,
         serve, serveFromLocation,
+
+        -- * Connections and sending
         Connection, connect, closeConnection,
-        sendMessage
+        sendMessage,
+
+        -- * Neighbours
+        addNeighbour, removeNeighbour
     ) where
 
 import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO
-                          , MVar, newMVar, withMVar, readMVar )
+                          , MVar, newMVar, withMVar, readMVar, modifyMVar_ )
 import Control.Exception ( Exception )
 import Control.Monad ( unless )
 import Control.Proxy
 import Data.ByteString ( ByteString )
+import Data.Function ( on )
 import Data.Set ( Set )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
@@ -70,7 +78,17 @@ data Connection a = (NetworkInterface a) => Connection
 newtype Node a = Node { getNodeData :: MVar (NodeData a) }
 
 -- | The local node's view of a remote node.
-data RemoteNode a = RemoteNode
+data RemoteNode a = NetworkInterface a => RemoteNode
+    { getRemoteLocation :: NetworkLocation a
+    }
+
+deriving instance Show (RemoteNode a)
+
+instance (NetworkInterface a) => Eq (RemoteNode a) where
+    (==) = (==) `on` getRemoteLocation
+
+instance (NetworkInterface a) => Ord (RemoteNode a) where
+    compare = compare `on` getRemoteLocation
 
 -- | The node's mutable state.
 data NodeData a = NodeData
@@ -171,6 +189,23 @@ sendMessage node conn msg = do
                                 }
     NI.send (getConnectionInterface conn) (encode envelope)
     debugM tag "message sent"
+
+-- | Tell the given node that it has a neighbour at the given location.
+addNeighbour :: (NetworkInterface a) => Node a -> NetworkLocation a -> IO ()
+addNeighbour node location = do
+    modifyMVar_ (getNodeData node) $ \nodeData -> do
+        let remoteNode = RemoteNode { getRemoteLocation = location
+                                    }
+        return (nodeData { getNeighbours = S.insert remoteNode (getNeighbours nodeData) })
+
+-- | Tell the given node to not consider the node at the given location its neighbour
+-- anymore.  Idempotent.
+removeNeighbour :: (NetworkInterface a) => Node a -> NetworkLocation a -> IO ()
+removeNeighbour node location = do
+    modifyMVar_ (getNodeData node) $ \nodeData -> do
+        let neighbours = getNeighbours nodeData
+            neighbours' = S.filter (\r -> getRemoteLocation r /= location) neighbours
+        return (nodeData { getNeighbours = neighbours' })
 
 ----------------------
 -- Sockets
