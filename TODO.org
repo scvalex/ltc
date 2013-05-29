@@ -87,6 +87,7 @@
 * TODO Better merging
 * TODO Multi-entry changes
 * TODO Artificial delay network interface
+* TODO Test network interfaces
 * TODO Temporal logic formalization
   Figure out what properties the whole thing should have, and what
   properties the individual components should have to be able to prove

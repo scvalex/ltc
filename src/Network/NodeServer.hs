@@ -56,16 +56,23 @@ data Shutdown = Shutdown
 
 instance Exception Shutdown
 
+-- | The abstract type of a network connection.  Note that it is parametrised by the type
+-- of the network interface (e.g. 'UDPInterface').  Note also that since these connections
+-- are asynchronous, there is generally no way to tell if the other side is running on
+-- not.
 data Connection a = (NetworkInterface a) => Connection
     { getConnectionInterface :: a
     , getConnectionLocation  :: NetworkLocation a
     }
 
+-- | The abstract type of a node.  You make a node with the @serve*@ functions, and you
+-- close a node with 'shutdown'.
 newtype Node a = Node { getNodeData :: MVar (NodeData a) }
 
 -- | The local node's view of a remote node.
 data RemoteNode a = RemoteNode
 
+-- | The node's mutable state.
 data NodeData a = NodeData
     { getShutdown         :: IO ()
     , getLocation         :: NetworkLocation a
