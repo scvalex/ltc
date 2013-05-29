@@ -1,18 +1,18 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification #-}
 
 module Network.NodeServer (
         module Network.Types,
 
         nodePort,
         Node, shutdown,
-        serve, serveWithHostAndPort,
+        serve, serveFromLocation,
         Connection, connect, closeConnection,
         sendMessage
     ) where
 
 import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO
-                          , MVar, newMVar, withMVar, readMVar )
+                          , MVar, newMVar, withMVar )
 import Control.Exception ( Exception )
 import Control.Monad ( unless )
 import Control.Proxy
@@ -22,18 +22,16 @@ import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
 import Ltc.Store ( Store )
 import Network.BSD ( getHostName )
-import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
-                      , AddrInfo(..), getAddrInfo, defaultHints
-                      , Family(..), SocketType(..), SockAddr(..)
-                      , SocketOption(..), setSocketOption, defaultProtocol )
-import Network.Socket.ByteString ( sendAll, recvFrom )
+import Network.Interface ( NetworkInterface, NetworkLocation )
+import Network.Interface.UDP ( UDPInterface )
 import Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
 import Network.Types ( Hostname, Port )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
-import qualified Network.Socket as NS
+import qualified Network.Interface as NI
+import qualified Network.Interface.UDP as UDP
 import System.Log.Logger ( debugM, warningM )
 import Text.Printf ( printf )
 
@@ -58,73 +56,70 @@ data Shutdown = Shutdown
 
 instance Exception Shutdown
 
-data Connection = Connection
-    { getConnectionSocket   :: Socket
-    , getConnectionHostname :: Hostname
-    , getConnectionPort     :: Port
+data Connection a = (NetworkInterface a) => Connection
+    { getConnectionInterface :: a
+    , getConnectionLocation  :: NetworkLocation a
     }
 
-newtype Node = Node { getNodeData :: MVar NodeData }
+newtype Node a = Node { getNodeData :: MVar (NodeData a) }
 
 -- | The local node's view of a remote node.
-data RemoteNode = RemoteNode
+data RemoteNode a = RemoteNode
 
-data NodeData = NodeData
+data NodeData a = NodeData
     { getShutdown         :: IO ()
-    , getPort             :: Port
-    , getHostname         :: Hostname
-    , getNeighbours       :: Set RemoteNode
+    , getLocation         :: NetworkLocation a
+    , getNeighbours       :: Set (RemoteNode a)
     }
 
 -- | Start the node interface on the default port.
-serve :: (Store s) => s -> IO Node
+serve :: (Store s) => s -> IO (Node UDPInterface)
 serve store = do
     hostname <- getHostName
-    serveWithHostAndPort hostname nodePort store
+    let location = UDP.NetworkLocation { UDP.host = hostname
+                                       , UDP.port = nodePort }
+    serveFromLocation location store
 
 -- | Start the node interface on the given port.
-serveWithHostAndPort :: (Store s) => Hostname -> Port -> s -> IO Node
-serveWithHostAndPort hostname port store = do
-    debugM tag (printf "serveWithHostAndPort %s:%d" hostname port)
+serveFromLocation :: (Store s, NetworkInterface a) => NetworkLocation a -> s -> IO (Node a)
+serveFromLocation location store = do
+    debugM tag (printf "serveFromLocation ###SOMWHERE###")
     tid <- forkIO $
            CE.bracket
-               (bindPort port)
-               (\sock -> sClose sock)
-               (\sock -> CE.handle (\(_ :: Shutdown) -> return ())
-                                   (nodeHandler store (socketReader sock)))
+               (NI.serve location)
+               (\intf -> NI.close intf)
+               (\intf -> CE.handle (\(_ :: Shutdown) -> return ())
+                                   (nodeHandler store (interfaceReader intf)))
     let nodeData = NodeData { getShutdown         = CE.throwTo tid Shutdown
-                            , getPort             = port
-                            , getHostname         = hostname
+                            , getLocation         = location
                             , getNeighbours       = S.empty
                             }
     Node <$> newMVar nodeData
 
 -- | Shutdown a running 'Node'.  Idempotent.
-shutdown :: Node -> IO ()
+shutdown :: Node a -> IO ()
 shutdown node = do
     withMVar (getNodeData node) $ \nodeData -> do
-        debugM tag (printf "shutdown %s:%d" (getHostname nodeData) (getPort nodeData))
+        debugM tag (printf "shutdown ###SOMETHING###")
         getShutdown nodeData
 
--- | Use a local 'Node' to connect to a remote 'Node'.  Since this is a UDP connection, we
--- don't actually /connect/ to anything; we just get a handle for the connection.
-connect :: Node -> Hostname -> Port -> IO Connection
-connect _node hostname port = do
-    debugM tag (printf "connecting to %s:%d" hostname port)
-    sock <- getSocket hostname port
-    let conn = Connection { getConnectionSocket   = sock
-                          , getConnectionHostname = hostname
-                          , getConnectionPort     = port }
+-- | Use a local 'Node' to connect to a remote 'Node'.  Since this is an asynchronous
+-- connection, we don't actually /connect/ to anything; we just get a handle for the
+-- connection.
+connect :: (NetworkInterface a) => Node a -> NetworkLocation a -> IO (Connection a)
+connect _node location = do
+    debugM tag (printf "connecting to ###SOMEWHERE###")
+    intf <- NI.connect location
+    let conn = Connection { getConnectionInterface = intf
+                          , getConnectionLocation  = location }
     debugM tag "connected"
     return conn
 
 -- | Close a `Connection` to a remote `Node`.
-closeConnection :: Connection -> IO ()
+closeConnection :: (NetworkInterface a) => Connection a -> IO ()
 closeConnection conn = do
-    debugM tag (printf "closing connection to %s:%d"
-                       (getConnectionHostname conn)
-                       (getConnectionPort conn))
-    sClose (getConnectionSocket conn)
+    debugM tag (printf "closing connection to ###SOMEWHERE###")
+    NI.close (getConnectionInterface conn)
     debugM tag "closed connection"
 
 -- | Handle incoming node envelopes.
@@ -156,49 +151,21 @@ handleNodeEnvelope _store envelope = do
     warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp envelope))))
 
 -- | Send a single message from the local node on a connection to a remote node.
-sendMessage :: Node -> Connection -> NodeMessage -> IO ()
-sendMessage node conn msg = do
-    debugM tag (printf "sending message to %s:%d"
-                       (getConnectionHostname conn)
-                       (getConnectionPort conn))
-    nodeData <- readMVar (getNodeData node)
-    let envelope = NodeEnvelope { getEnvelopeSender  = (getHostname nodeData, getPort nodeData)
+sendMessage :: (NetworkInterface a) => Node a -> Connection a -> NodeMessage -> IO ()
+sendMessage _node conn msg = do
+    debugM tag (printf "sending message to ###SOMEWHERE###")
+    let envelope = NodeEnvelope { getEnvelopeSender  = undefined
                                 , getEnvelopeMessage = msg
                                 }
-    sendAll (getConnectionSocket conn) (encode envelope)
+    NI.send (getConnectionInterface conn) (encode envelope)
     debugM tag "message sent"
 
 ----------------------
 -- Sockets
 ----------------------
 
--- | Create a UDP socket and bind it to the given port.
-bindPort :: Port -> IO Socket
-bindPort port = do
-    CE.bracketOnError
-        (socket AF_INET Datagram defaultProtocol)
-        sClose
-        (\sock -> do
-            -- FIXME See the examples at the end of Network.Socket.ByteString
-            setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet (fromIntegral port) iNADDR_ANY)
-            return sock)
-
--- | Stream data from the UDP socket.
-socketReader :: (Proxy p) => Socket -> () -> Producer p ByteString IO ()
-socketReader sock () = runIdentityP $ forever $ do
-    (bin, _) <- lift $ recvFrom sock 4096
+-- | Stream data from the network interface..
+interfaceReader :: (Proxy p, NetworkInterface a) => a -> () -> Producer p ByteString IO ()
+interfaceReader intf () = runIdentityP $ forever $ do
+    bin <- lift $ NI.receive intf
     unless (BS.null bin) $ respond bin
-
--- | Create a socket connected to the given network address.
-getSocket :: Hostname -> Port -> IO Socket
-getSocket hostname port = do
-    addrInfos <- getAddrInfo (Just (defaultHints { addrFamily = AF_INET }))
-                             (Just hostname)
-                             (Just $ show port)
-    CE.bracketOnError
-        (socket AF_INET Datagram defaultProtocol)
-        sClose
-        (\s -> do
-             NS.connect s (addrAddress $ head addrInfos)
-             return s)

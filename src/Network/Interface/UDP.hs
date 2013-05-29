@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Network.Interface.UDP (
-        UDPInterface, Location(..)
+        UDPInterface, NetworkLocation(..)
     ) where
 
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
@@ -20,7 +20,7 @@ data UDPInterface = UDPInterface
     }
 
 instance NetworkInterface UDPInterface where
-    data Location UDPInterface = Location
+    data NetworkLocation UDPInterface = NetworkLocation
         { host :: Hostname
         , port :: Port
         } deriving ( Show )
@@ -50,3 +50,5 @@ instance NetworkInterface UDPInterface where
                  return $ UDPInterface { getSocket = sock})
 
     send intf bin = sendAll (getSocket intf) bin
+
+    close intf = sClose (getSocket intf)

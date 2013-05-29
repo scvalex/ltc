@@ -7,10 +7,12 @@ module Network.Interface (
 import Data.ByteString ( ByteString )
 
 class NetworkInterface a where
-    data Location a :: *
+    data NetworkLocation a :: *
 
-    serve :: Location a -> IO a
+    serve :: NetworkLocation a -> IO a
     receive :: a -> IO ByteString
 
-    connect :: Location a -> IO a
+    connect :: NetworkLocation a -> IO a
     send :: a -> ByteString -> IO ()
+
+    close :: a -> IO ()
