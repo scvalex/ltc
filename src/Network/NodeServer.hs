@@ -88,7 +88,7 @@ serve store = do
     serveFromLocation location store
 
 -- | Start the node interface on the given port.
-serveFromLocation :: (Store s, NetworkInterface a) => NetworkLocation a -> s -> IO (Node a)
+serveFromLocation :: (NetworkInterface a, Store s) => NetworkLocation a -> s -> IO (Node a)
 serveFromLocation location store = do
     debugM tag (printf "serveFromLocation %s" (show location))
     tid <- forkIO $
@@ -130,14 +130,14 @@ closeConnection conn = do
     debugM tag "closed connection"
 
 -- | Handle incoming node envelopes.
-nodeHandler :: (Store s, NetworkInterface a)
+nodeHandler :: (NetworkInterface a, Store s)
             => s -> a -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
 nodeHandler store intf p =
     runProxy $ p >-> envelopeDecoderD intf >-> handleNodeEnvelopeC store intf
 
 -- | Decode envelopes and pass them downstream.  Malformed inputs are discarded, and a
 -- warning is emitted.
-envelopeDecoderD :: (Proxy p, NetworkInterface a)
+envelopeDecoderD :: (NetworkInterface a, Proxy p)
                  => a -> () -> Pipe p ByteString (NodeEnvelope a) IO ()
 envelopeDecoderD _intf () = runIdentityP $ forever $ do
     bin <- request ()
@@ -146,7 +146,7 @@ envelopeDecoderD _intf () = runIdentityP $ forever $ do
         Just envelope -> respond envelope
 
 -- | Handle incoming node envelopes.
-handleNodeEnvelopeC :: (Proxy p, Store s, NetworkInterface a)
+handleNodeEnvelopeC :: (NetworkInterface a, Proxy p, Store s)
                     => s -> a -> () -> Consumer p (NodeEnvelope a) IO ()
 handleNodeEnvelopeC store intf () = runIdentityP $ forever $ do
     envelope <- request ()
@@ -154,7 +154,7 @@ handleNodeEnvelopeC store intf () = runIdentityP $ forever $ do
     lift $ handleNodeEnvelope store intf envelope
 
 -- | Handle a single node envelope.
-handleNodeEnvelope :: (Store s, NetworkInterface a) => s -> a -> NodeEnvelope a -> IO ()
+handleNodeEnvelope :: (NetworkInterface a, Store s) => s -> a -> NodeEnvelope a -> IO ()
 handleNodeEnvelope _store _intf envelope@NodeEnvelope {getEnvelopeMessage = Ping _} = do
     debugM tag (printf "handling %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
     debugM tag "envelope handled"
