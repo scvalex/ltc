@@ -64,6 +64,7 @@ Library
                         Ltc.Monkey,
                         Network.Interface,
                         Network.Interface.UDP,
+                        Network.Interface.Null,
                         Network.NodeProtocol,
                         Network.NodeServer,
                         Network.Redis,

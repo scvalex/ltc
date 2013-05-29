@@ -58,8 +58,9 @@
   :END:
   Nodes should have a set of "neighbor" nodes which they propagate
   updates to, and request updates from.
-* TODO Abstract network interface
+* DONE Abstract network interface
   :LOGBOOK:
+  CLOCK: [2013-05-29 Wed 13:56]--[2013-05-29 Wed 15:02] =>  1:06
   CLOCK: [2013-05-29 Wed 03:16]--[2013-05-29 Wed 03:25] =>  0:09
   CLOCK: [2013-05-29 Wed 02:10]--[2013-05-29 Wed 03:02] =>  0:52
   CLOCK: [2013-05-29 Wed 01:59]--[2013-05-29 Wed 02:09] =>  0:10
@@ -69,7 +70,7 @@
   - [X] Abstract location (host/port)
   - [X] Abstract serve/send/receive
   - [X] Use abstract interface
-  - [ ] Null interface
+  - [X] Null interface
 * TODO Components configuration
   Some way to chose what parts of LTc to start.
 * TODO Report outline
