@@ -20,6 +20,7 @@ module Network.NodeServer (
 import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO
                           , MVar, newMVar, withMVar, readMVar, modifyMVar_ )
+import Control.Concurrent.STM ( atomically, newTChanIO, readTChan )
 import Control.Exception ( Exception )
 import Control.Monad ( unless, forM_ )
 import Control.Proxy
@@ -28,7 +29,7 @@ import Data.Function ( on )
 import Data.Set ( Set )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
-import Ltc.Store ( Store )
+import Ltc.Store ( Store(..), Event(..) )
 import Network.BSD ( getHostName )
 import Network.Interface ( NetworkInterface, NetworkLocation )
 import Network.Interface.UDP ( UdpInterface )
@@ -108,17 +109,35 @@ serve store = do
 serveFromLocation :: (NetworkInterface a, Store s) => NetworkLocation a -> s -> IO (Node a)
 serveFromLocation location store = do
     debugM tag (printf "serveFromLocation %s" (show location))
-    tid <- forkIO $
-           CE.bracket
-               (NI.serve location)
-               (\intf -> NI.close intf)
-               (\intf -> CE.handle (\(_ :: Shutdown) -> return ())
-                                   (nodeHandler store intf (interfaceReader intf)))
-    let nodeData = NodeData { getShutdown         = CE.throwTo tid Shutdown
-                            , getLocation         = location
-                            , getNeighbours       = S.empty
+
+    -- Make the node data-structure
+    let nodeData = NodeData { getShutdown   = error "shutdown not yet defined"
+                            , getLocation   = location
+                            , getNeighbours = S.empty
                             }
-    Node <$> newMVar nodeData
+    node <- Node <$> newMVar nodeData
+
+    -- Start the incoming message handler
+    tidNetwork <- forkIO $
+        CE.bracket
+            (NI.serve location)
+            (\intf -> NI.close intf)
+            (\intf -> CE.handle (\(_ :: Shutdown) -> return ())
+                                (nodeHandler store intf (interfaceReader intf)))
+
+    -- Start the store event listener
+    eventChannel <- newTChanIO
+    addEventChannel store eventChannel
+    tidPublisher <- forkIO $ forever $ do
+        event <- atomically (readTChan eventChannel)
+        sendEventToNeighbours node event
+
+    -- Fill in the 'getShutdown' field of the node
+    modifyMVar_ (getNodeData node) $ \ndata ->
+        return (ndata { getShutdown = mapM_ (flip CE.throwTo Shutdown)
+                                            [tidNetwork, tidPublisher] })
+
+    return node
 
 -- | Shutdown a running 'Node'.  Idempotent.
 shutdown :: (NetworkInterface a) => Node a -> IO ()
@@ -222,3 +241,21 @@ interfaceReader :: (Proxy p, NetworkInterface a) => a -> () -> Producer p ByteSt
 interfaceReader intf () = runIdentityP $ forever $ do
     bin <- lift $ NI.receive intf
     unless (BS.null bin) $ respond bin
+
+----------------------
+-- Change propagation
+----------------------
+
+sendEventToNeighbours :: (NetworkInterface a) => Node a -> Event -> IO ()
+sendEventToNeighbours node (SetEvent key) = do
+    withMVar (getNodeData node) $ \nodeData -> do
+        mapM_ sendEventToNeighbour (S.toList (getNeighbours nodeData))
+  where
+    sendEventToNeighbour remoteNode = do
+        debugM tag (printf "sending update for %s to neighbour %s"
+                           (show key)
+                           (show (getRemoteLocation remoteNode)))
+        return ()
+sendEventToNeighbours _node _event = do
+    -- Uninteresting event
+    return ()

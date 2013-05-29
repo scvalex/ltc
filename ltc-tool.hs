@@ -130,6 +130,9 @@ main = do
             node <- N.serveFromLocation (U.NetworkLocation { U.host = hostname
                                                            , U.port = N.nodePort + idx })
                                         store
+            -- FIXME Remove hacky "connect to next node in the ring"
+            N.addNeighbour node (U.NetworkLocation { U.host = hostname
+                                                   , U.port = N.nodePort + idx + 1 })
             status <- S.serveWithPort (S.statusPort + idx) store
             monkey <- M.start store
             shutdownOnInt store [N.shutdown node, S.shutdown status, M.shutdown monkey]
