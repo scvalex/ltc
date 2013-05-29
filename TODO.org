@@ -47,6 +47,7 @@
   - [X] Graph sets/gets
 * TODO UDP Connections
   :LOGBOOK:
+  CLOCK: [2013-05-29 Wed 17:46]--[2013-05-29 Wed 18:38] =>  0:52
   CLOCK: [2013-05-29 Wed 15:32]--[2013-05-29 Wed 16:15] =>  0:43
   CLOCK: [2013-05-29 Wed 01:23]--[2013-05-29 Wed 01:27] =>  0:04
   CLOCK: [2013-05-28 Tue 19:41]--[2013-05-28 Tue 20:06] =>  0:25
@@ -88,6 +89,8 @@
   Some way to chose what parts of LTc to start.
 * TODO Prettify events graph
   http://code.shutterstock.com/rickshaw/tutorial/introduction.html
+* TODO SQL Store Backend
+  It's going to be SQLite, but it should work on any SQL database.
 * TODO Multi-entry changes
 * TODO Better merging
 * TODO Artificial delay network interface
@@ -96,6 +99,7 @@
   Figure out what properties the whole thing should have, and what
   properties the individual components should have to be able to prove
   the bigger thing.
+* TODO Check documentation
 * Code improvements
   :LOGBOOK:
   CLOCK: [2013-05-26 Sun 02:26]--[2013-05-26 Sun 02:30] =>  0:04

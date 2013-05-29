@@ -1,5 +1,7 @@
 {-# LANGUAGE TypeFamilies, FlexibleContexts #-}
 
+-- FIXME Maybe NetworkInterface should be put into Network.Interface.Class.
+
 module Network.Interface (
         NetworkInterface(..)
     ) where
