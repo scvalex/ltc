@@ -66,6 +66,7 @@
   - [X] Abstract location (host/port)
   - [X] Abstract serve/send/receive
   - [ ] Use abstract interface
+  - [ ] Null interface
 * TODO Components configuration
   Some way to chose what parts of LTc to start.
 * TODO Report outline
@@ -82,6 +83,7 @@
 * TODO UDP Maximum Sync
 * TODO Better merging
 * TODO Multi-entry changes
+* TODO Artificial delay network interface
 * TODO Temporal logic formalization
   Figure out what properties the whole thing should have, and what
   properties the individual components should have to be able to prove
