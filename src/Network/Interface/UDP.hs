@@ -14,6 +14,7 @@ import Network.Interface ( NetworkInterface(..) )
 import qualified Control.Exception as CE
 import qualified Network.Socket as NS
 
+-- FIXME Use phantoms to distinguish between sending/receiving sockets.
 data UDPInterface = UDPInterface
     { getSocket :: Socket
     }
