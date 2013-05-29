@@ -28,7 +28,7 @@ import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
                       , AddrInfo(..), getAddrInfo, defaultHints
                       , Family(..), SocketType(..), SockAddr(..)
                       , SocketOption(..), setSocketOption, defaultProtocol )
-import Network.Socket.ByteString ( sendAll, sendAllTo, recvFrom )
+import Network.Socket.ByteString ( sendAll, recvFrom )
 import Network.Types ( Hostname, Port )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
@@ -59,10 +59,6 @@ data Shutdown = Shutdown
               deriving ( Show, Typeable )
 
 instance Exception Shutdown
-
-type Handler p = (() -> Producer p ByteString IO ())
-                 -> (() -> Consumer p (ByteString, SockAddr) IO ())
-                 -> IO ()
 
 newtype ConnectionId = ConnectionId Int
                        deriving ( Eq, Ord, Show )
@@ -96,7 +92,7 @@ serveWithHostAndPort hostname port store = do
                (bindPort port)
                (\sock -> sClose sock)
                (\sock -> CE.handle (\(_ :: Shutdown) -> return ())
-                                   (nodeHandler (hostname, port) store (socketReader sock) (socketWriter sock)))
+                                   (nodeHandler store (socketReader sock)))
     let nodeData = NodeData { getShutdown         = CE.throwTo tid Shutdown
                             , getNextConnectionId = ConnectionId 1
                             , getConnections      = M.empty
@@ -146,38 +142,26 @@ closeConnection conn = do
     sClose (getConnectionSocket conn)
     debugM tag "closed connection"
 
-nodeHandler :: (Store s) => (Hostname, Port) -> s -> Handler ProxyFast
-nodeHandler hp _ p c = do
-    runProxy $ p >-> nodeEchoD
-                 >-> (nodeEncoderD hp)
-                 >-> c
+nodeHandler :: (Store s) => s -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
+nodeHandler _ p = do
+    runProxy $ p >-> handleNodeEnvelopeC
 
-nodeEchoD :: (Proxy p) => () -> Pipe p ByteString (NodeMessage, SockAddr) IO ()
-nodeEchoD () = runIdentityP $ forever $ do
+handleNodeEnvelopeC :: (Proxy p) => () -> Consumer p ByteString IO ()
+handleNodeEnvelopeC () = runIdentityP $ forever $ do
     bin <- request ()
     lift $ debugM tag "handling message"
     case decode bin of
         Nothing -> do
             lift $ warningM tag "failed to decode message"
-        Just (envelope@NodeEnvelope {getEnvelopeMessage = Ping ping}) -> do
+        Just (envelope@NodeEnvelope {getEnvelopeMessage = Ping _}) -> do
             lift $ debugM tag (printf "handling %s" (BL.unpack (printMach (toSexp envelope))))
-            let (senderHostName, senderPort) = getEnvelopeSender envelope
-            sockaddr <- lift $ addrAddress . head <$>
-                        getAddrInfo (Just (defaultHints { addrFamily = AF_INET }))
-                                    (Just senderHostName)
-                                    (Just $ show senderPort)
-            respond (Pong ping, sockaddr)
+            lift $ handleNodeEnvelope envelope
             lift $ debugM tag "message handled"
         Just envelope -> do
             lift $ warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp envelope))))
 
-nodeEncoderD :: (Proxy p) => (Hostname, Port) -> () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) IO ()
-nodeEncoderD (hostname, port) () = runIdentityP $ forever $ do
-    (msg, addr) <- request ()
-    let envelope = NodeEnvelope { getEnvelopeSender  = (hostname, port)
-                                , getEnvelopeMessage = msg
-                                }
-    respond (encode envelope, addr)
+handleNodeEnvelope :: NodeEnvelope -> IO ()
+handleNodeEnvelope _ = return ()
 
 -- | Send a single message from the local node on a connection to a remote node.
 sendMessage :: Node -> Connection -> NodeMessage -> IO ()
@@ -213,12 +197,6 @@ socketReader :: (Proxy p) => Socket -> () -> Producer p ByteString IO ()
 socketReader sock () = runIdentityP $ forever $ do
     (bin, _) <- lift $ recvFrom sock 4096
     unless (BS.null bin) $ respond bin
-
--- | Stream data to the UDP socket.
-socketWriter :: (Proxy p) => Socket -> () -> Consumer p (ByteString, SockAddr) IO ()
-socketWriter sock () = runIdentityP $ forever $ do
-    (bin, addr) <- request ()
-    lift $ sendAllTo sock bin addr
 
 -- | Create a socket connected to the given network address.
 getSocket :: Hostname -> Port -> IO Socket
