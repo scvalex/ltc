@@ -96,7 +96,7 @@ serveWithHostAndPort hostname port store = do
                (bindPort port)
                (\sock -> sClose sock)
                (\sock -> CE.handle (\(_ :: Shutdown) -> return ())
-                                   (ltcHandler (hostname, port) store (socketReader sock) (socketWriter sock)))
+                                   (nodeHandler (hostname, port) store (socketReader sock) (socketWriter sock)))
     let nodeData = NodeData { getShutdown         = CE.throwTo tid Shutdown
                             , getNextConnectionId = ConnectionId 1
                             , getConnections      = M.empty
@@ -146,14 +146,14 @@ closeConnection conn = do
     sClose (getConnectionSocket conn)
     debugM tag "closed connection"
 
-ltcHandler :: (Store s) => (Hostname, Port) -> s -> Handler ProxyFast
-ltcHandler hp _ p c = do
-    runProxy $ p >-> ltcEchoD
-                 >-> (ltcEncoderD hp)
+nodeHandler :: (Store s) => (Hostname, Port) -> s -> Handler ProxyFast
+nodeHandler hp _ p c = do
+    runProxy $ p >-> nodeEchoD
+                 >-> (nodeEncoderD hp)
                  >-> c
 
-ltcEchoD :: (Proxy p) => () -> Pipe p ByteString (NodeMessage, SockAddr) IO ()
-ltcEchoD () = runIdentityP $ forever $ do
+nodeEchoD :: (Proxy p) => () -> Pipe p ByteString (NodeMessage, SockAddr) IO ()
+nodeEchoD () = runIdentityP $ forever $ do
     bin <- request ()
     lift $ debugM tag "handling message"
     case decode bin of
@@ -171,8 +171,8 @@ ltcEchoD () = runIdentityP $ forever $ do
         Just envelope -> do
             lift $ warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp envelope))))
 
-ltcEncoderD :: (Proxy p) => (Hostname, Port) -> () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) IO ()
-ltcEncoderD (hostname, port) () = runIdentityP $ forever $ do
+nodeEncoderD :: (Proxy p) => (Hostname, Port) -> () -> Pipe p (NodeMessage, SockAddr) (ByteString, SockAddr) IO ()
+nodeEncoderD (hostname, port) () = runIdentityP $ forever $ do
     (msg, addr) <- request ()
     let envelope = NodeEnvelope { getEnvelopeSender  = (hostname, port)
                                 , getEnvelopeMessage = msg
