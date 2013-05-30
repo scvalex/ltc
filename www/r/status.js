@@ -88,7 +88,7 @@ function AppViewModel() {
         }
         eventsGraph.render();
         eventsCurPeriod = {"get": 0, "set": 0};
-    }, 5000);
+    }, 1000);
 
     self.socket = new WebSocket(WS_URL, "status");
     self.socket.onopen = function() {

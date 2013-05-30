@@ -44,7 +44,7 @@ start store = do
     tid <- forkIO $
            CE.handle (\(_ :: Shutdown) -> return ()) $ do
                forever $ do
-                   d <- randomRIO (1000 * 1000, 2000 * 1000) -- 1s - 2s
+                   d <- randomRIO (200 * 1000, 400 * 1000) -- 0.2s - 0.4s
                    threadDelay d
                    accessStoreRandomly
     let monkey = Monkey { getShutdown = CE.throwTo tid Shutdown
