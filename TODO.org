@@ -94,10 +94,14 @@
   http://www.colourlovers.com/palette/1930/cheer_up_emo_kid
 * TODO Draw DB tip
   :LOGBOOK:
-  CLOCK: [2013-05-30 Thu 13:04]
+  CLOCK: [2013-05-30 Thu 17:11]
+  CLOCK: [2013-05-30 Thu 16:00]--[2013-05-30 Thu 17:06] =>  1:06
+  CLOCK: [2013-05-30 Thu 14:40]--[2013-05-30 Thu 15:10] =>  0:30
+  CLOCK: [2013-05-30 Thu 13:04]--[2013-05-30 Thu 14:10] =>  1:06
   :END:
-  - [ ] Keys tip
-  - [ ] Values tip
+  - [X] Keys tip
+  - [X] Values tip
+  - [ ] Send all keys initially
 * TODO Components configuration
   Some way to chose what parts of LTc to start.
 * TODO Prettify events graph

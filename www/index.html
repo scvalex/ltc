@@ -25,15 +25,21 @@
 
     <h3>Data-store tip</h3>
     <div id="tipBox">
+      <table id="tipGraphLegend">
+        <tbody>
+          <tr><td>Keys</td></tr>
+          <tr><td>Values</td></tr>
+        </tbody>
+      </table>
       <svg id="tipGraph" width="0" height="200px" version="1.1"
            xmlns="http://www.w3.org/2000/svg">
         <g data-bind="foreach: tipBoxes">
           <rect data-bind="attr: { x: x, width: $root.tipBoxWidth, fill: keyFill }"
                 y="0"
-                height="50%" />
+                height="49%" />
           <rect data-bind="attr: { x: x, width: $root.tipBoxWidth, fill: valueFill }"
-                y="50%"
-                height="50%" />
+                y="51%"
+                height="49%" />
         </g>
       </svg>
     </div>

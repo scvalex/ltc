@@ -94,7 +94,7 @@ function AppViewModel() {
                 // New key!
                 self.keys[event.key] = new KeyEntry(event.key, event.keyDigest, event.valueDigest);
                 self.keys[event.key].valueColour(self.colourFromDigest(event.valueDigest));
-                var width = document.getSize().x;
+                var width = document.getSize().x - $("tipGraphLegend").getSize().x - 20;
                 self.tipBoxWidth(Math.floor(width / Object.keys(self.keys).length));
                 self.tipBoxes.removeAll();
                 var i = 0;
@@ -102,7 +102,7 @@ function AppViewModel() {
                     self.tipBoxes.push({key : k,
                                         x : i * self.tipBoxWidth(),
                                         keyFill : self.keys[k].keyColour,
-                                        valueFill : self.keys[k].valueColour()
+                                        valueFill : self.keys[k].valueColour
                                        });
                     i++;
                 }
@@ -166,7 +166,7 @@ function setupLayout() {
     var height = document.getSize().y - $$("header")[0].getSize().y - 20;
     var width = document.getSize().x;
     model.eventsGraph.configure({width: width});
-    $("tipGraph").style.width = width + "px";
+    $("tipGraph").style.width = width - $("tipGraphLegend").getSize().x - 20 + "px";
 }
 
 document.addEventListener("DOMContentLoaded", function() {
