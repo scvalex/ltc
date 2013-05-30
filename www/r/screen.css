@@ -31,11 +31,20 @@
     overflow-y: auto;
 }
 
-#log span.operation {
-    margin: 0 0.4em;
+.logItem .time {
+    display: inline-block;
+    width: 14em;
+    text-align: right;
+}
+
+.logItem .operation {
+    display: inline-block;
+    margin: 0 0.3em;
     font-variant: small-caps;
     font-weight: bold;
     font-size: 1.2em;
+    width: 2.6em;
+    text-align: center;
 }
 
 /* ******************** */
