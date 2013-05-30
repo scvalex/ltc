@@ -5,13 +5,24 @@
     list-style: none;
 }
 
+/* Palette: */
+/*   - Mighty Slate     :: #556270 */
+/*   - Pacifica         :: #4ECDC4 */
+/*   - apple chic       :: #C7F464 */
+/*   - Cheery Pink      :: #FF6B6B */
+/*   - grandma's pillow :: #C44D58 */
+
 #eventCounts {
     text-align: center;
     padding: 0 .2em;
 }
 
-#eventCounts th {
-    background-color: #cfc;
+.getBackground {
+    background-color: #4ECDC4;
+}
+
+.setBackground {
+    background-color: #C7F464;
 }
 
 #log {

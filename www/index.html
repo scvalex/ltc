@@ -32,11 +32,11 @@
       <tbody>
         <tr>
           <th>Get</th>
-          <td data-bind="text: countGets"></td>
+          <td class="getBackground" data-bind="text: countGets"></td>
         </tr>
         <tr>
           <th>Set</th>
-          <td data-bind="text: countSets"></td>
+          <td class="setBackground" data-bind="text: countSets"></td>
         </tr>
       </tbody>
     </table>
@@ -50,7 +50,7 @@
     <ul id="log" data-bind="foreach: log">
       <li class="logItem">
         <time data-bind="text: prettyTime, attr: { datetime: time }"></time>
-        <span class="operation" data-bind="text: operation"></span>
+        <span class="operation" data-bind="text: operation, css: { getBackground: operation == 'get', setBackground: operation == 'set' }"></span>
         <span class="target" data-bind="text: target"></span>
       </li>
     </ul>

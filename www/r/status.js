@@ -1,5 +1,12 @@
 WS_URL = "ws://" + window.location.hostname + ":" + window.location.port + "/status"
 
+// Palette:
+//   - Mighty Slate     :: #556270
+//   - Pacifica         :: #4ECDC4
+//   - apple chic       :: #C7F464
+//   - Cheery Pink      :: #FF6B6B
+//   - grandma's pillow :: #C44D58
+
 function log() {
     if (console && console.log) {
         console.log.apply(console.log, arguments);
@@ -43,10 +50,10 @@ function AppViewModel() {
         height: 200,
         stroke: true,
         series: [{
-            color: "blue",
+            color: "#4ECDC4",
             data: getsPerPeriod
         }, {
-            color: "red",
+            color: "#C7F464",
             data: setsPerPeriod
         }]
     });

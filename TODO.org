@@ -81,8 +81,13 @@
 * TODO Report outline
   - [ ] General outline
   - [ ] Assessment outline
-* TODO Pick a nice palette
+* DONE Pick a nice palette
+  :LOGBOOK:
+  CLOCK: [2013-05-30 Thu 02:20]--[2013-05-30 Thu 02:34] =>  0:14
+  :END:
   ColourLovers to the rescue!
+
+  http://www.colourlovers.com/palette/1930/cheer_up_emo_kid
 * TODO Draw DB tip
   - [ ] Keys tip
   - [ ] Values tip
