@@ -80,11 +80,12 @@ function AppViewModel() {
             data: setsPerPeriod
         }]
     });
-    // new Rickshaw.Graph.Axis.Y({
-    //     graph: self.eventsGraph,
-    //     orientation: 'left',
-    //     element: document.getElementById("eventsYAxis"),
-    // });
+    new Rickshaw.Graph.Axis.Y({
+        graph: self.eventsGraph,
+        orientation: 'left',
+        element: document.getElementById("eventsYAxis"),
+    });
+    var axes = new Rickshaw.Graph.Axis.Time( { graph: self.eventsGraph } );
     self.eventsGraph.render();
 
     var handleEvent = function(type, event) {
@@ -165,7 +166,7 @@ function AppViewModel() {
 function setupLayout() {
     var height = document.getSize().y - $$("header")[0].getSize().y - 20;
     var width = document.getSize().x;
-    model.eventsGraph.configure({width: width});
+    model.eventsGraph.configure({width: width - 40});
     $("tipGraph").style.width = width - $("tipGraphLegend").getSize().x - 20 + "px";
 }
 

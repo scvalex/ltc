@@ -92,7 +92,7 @@
   ColourLovers to the rescue!
 
   http://www.colourlovers.com/palette/1930/cheer_up_emo_kid
-* TODO Draw DB tip
+* DONE Draw DB tip
   :LOGBOOK:
   CLOCK: [2013-05-30 Thu 17:11]--[2013-05-30 Thu 17:24] =>  0:13
   CLOCK: [2013-05-30 Thu 16:00]--[2013-05-30 Thu 17:06] =>  1:06
@@ -101,10 +101,13 @@
   :END:
   - [X] Keys tip
   - [X] Values tip
-  - [ ] Send all keys initially
+  - [X] Send all keys initially
 * TODO Components configuration
   Some way to chose what parts of LTc to start.
 * TODO Prettify events graph
+  :LOGBOOK:
+  CLOCK: [2013-05-30 Thu 17:27]--[2013-05-30 Thu 17:59] =>  0:32
+  :END:
   http://code.shutterstock.com/rickshaw/tutorial/introduction.html
 * TODO SQL Store Backend
   It's going to be SQLite, but it should work on any SQL database.

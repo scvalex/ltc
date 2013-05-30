@@ -85,19 +85,19 @@ h3 {
 /* Charts */
 /* ******************** */
 
-/* #eventsChartContainer { */
-/*     position: relative; */
-/*     font-family: Arial, Helvetica, sans-serif; */
-/* } */
+#eventsGraphContainer {
+    position: relative;
+    font-family: Arial, Helvetica, sans-serif;
+}
 
-/* #eventsChart { */
-/*     position: relative; */
-/*     left: 40px; */
-/* } */
+#eventsGraph {
+    position: relative;
+    left: 40px;
+}
 
-/* #eventsYAxis { */
-/*     position: absolute; */
-/*     top: 0; */
-/*     bottom: 0; */
-/*     width: 40px; */
-/* } */
+#eventsYAxis {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+}
