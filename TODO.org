@@ -65,6 +65,7 @@
   - [ ] Receive store changes from neighbours
   - [ ] Keep track of suspected neighbour version clock
   - [ ] Initial synchronization with neighbours
+  - [ ] Configurable update frequency
 * DONE Abstract network interface
   :LOGBOOK:
   CLOCK: [2013-05-29 Wed 13:56]--[2013-05-29 Wed 15:02] =>  1:06
@@ -78,12 +79,12 @@
   - [X] Abstract serve/send/receive
   - [X] Use abstract interface
   - [X] Null interface
-* TODO Report outline
+* DONE Report outline
   :LOGBOOK:
-  CLOCK: [2013-05-30 Thu 09:30]
+  CLOCK: [2013-05-30 Thu 09:30]--[2013-05-30 Thu 12:02] =>  2:32
   :END:
-  - [ ] General outline
-  - [ ] Assessment outline
+  - [X] General outline
+  - [X] Assessment outline
 * DONE Pick a nice palette
   :LOGBOOK:
   CLOCK: [2013-05-30 Thu 02:20]--[2013-05-30 Thu 02:34] =>  0:14

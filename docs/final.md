@@ -165,22 +165,60 @@ lossy, and unpredictable.
 
 Although a traditional database system could function in such an
 environment, it would also have to handle the inevitable network
-partitions gracefully.  This is not often the case.  For instance,
-\href{http://redis.io/}{Redis}, a widely used key-value store,
-requires nodes to perform a re-synchronization of all the data once
-the connection has been re-established \citep{redis-replication}.
+partitions gracefully.  This is not often the case, as we will see in
+Section \ref{sec:other-data-stores}.
 
 \clearpage
 
 Background
 ==========
 
+<!-- What am I trying to achieve? -->
+
 In this section we discuss various design decisions we made for LTc,
 what factors we considered, the advantages and disadvantages of our
-approach. and the ways similar products have tackled the same
-problems.
+approach, and the ways other products have tackled the same problems.
 
-## Key-Value Store
+## Replicating Other Data-Stores
+
+\label{sec:other-data-stores}
+
+<!-- FIXME Explain how other databases are lacking. -->
+
+<!-- FIXME Mention The Fallacies of Distributed Computing:
+
+https://en.wikipedia.org/wiki/Fallacies_of_Distributed_Computing -->
+
+### Traditional Databases
+
+### NoSQL Data-Stores
+
+### Version Control Systems
+
+For instance, \href{http://redis.io/}{Redis}, a widely used key-value
+store, requires nodes to perform a re-synchronization of all the data
+once the connection has been re-established \citep{redis-replication}.
+
+## Data Interface
+
+<!-- FIXME Discuss the various interfaces LTc could expose and why we
+chose KV. -->
+
+When people talk about "relational", "NoSQL", or "logical" databases,
+they refer to the data interface exposed to user.  The two main ways
+to access data are through SQL interfaces, and various key-value
+interfaces.  We explain how these are usually a tradeoff between
+richness/complexity/difficulty-to-write/difficulty-to-reason-about,
+and
+simplicity/generality/scalability/ease-to-write/ease-to-reason-about.
+
+~~~~ {.sourceCode}
+  Simple ------------------------------------------ Complex
+~~~~
+
+### Relational
+
+### Key-Value
 
 \label{sec:kv-store}
 
@@ -225,7 +263,43 @@ been to use the latter strictly as the former.  For example,
 site with 270 million page views per month, achieves its performance
 by using MySQL as a key-value store.
 
-## ecAP
+### Other
+
+## Field Types
+
+### No Types
+
+<!-- File Systems, BerkleyDB?, Almost Redis. -->
+
+### Primitive Types
+
+<!-- SQL Databases, though the relational structures can be used to
+build more complex types. -->
+
+<!-- Document Stores, though documents themselves are richer types.
+It's all Javascript, so meh. -->
+
+### Rich Types
+
+<!-- OO Databases -->
+
+## Guarantees
+
+### The CAP Problem
+
+~~~~ {.sourceCode}
+  +---------------+  +----------------+  +-----------------------+
+  |  Consistency  |  |  Availability  |  |  Partition-Tolerance  |
+  +---------------+  +----------------+  +-----------------------+
+
+                          Pick TWO
+~~~~
+
+### CAp
+
+### CaP
+
+### ecAP
 
 LTc is a distributed data store and one of the ways to characterize it
 is in terms of Eric Brewer's CAP Theorem \citep{Gil02}.  The CAP
@@ -239,8 +313,6 @@ partitions happen, we cannot relax the last guarantee. \citep{Vog08}
 LTc takes this observation further: not only do network partitions
 happen, the network *is* partitioned.
 
-<!-- FIXME: Susan: Expand the above. -->
-
 Since communication between nodes can be very slow, guaranteeing
 consistency would mean that most operations have to be equally slow.
 So, we relax the strict consistency guarantee and use *eventual
@@ -251,7 +323,9 @@ True Data Set.
 The downside to using eventually consistent semantics is that the user
 has to take into account that they may be operating on "old" data.
 
-## ACID?
+## Atomicity
+
+### ACID
 
 Orthogonal to which of the CAP guarantees LTc makes, we ask whether it
 supports ACID transactions. \citet{wiki:ACID} defines ACID as the
@@ -269,7 +343,105 @@ operations, but this is not as limiting as it first seems: widely used
 data stores such as MongoDB and CouchDB have similar limitations.
 \citep{mongodb-transactions} \citep{couchdb-transactions}
 
-## UDP
+### MSET/MGET
+
+### Atomic Read/Write
+
+## Delay-Tolerant Network Model
+
+\label{sec:dtn}
+
+As mentioned in Section \ref{sec:motivation}, LTc's synchronization
+mechanism is meant to work even on networks where packet round-trip
+times are prohibitively large, and end-to-end connectivity may be
+impossible.  The approach LTc takes with regards to communication is
+not new, and is called Delay-Tolerant Networking\footnote{or,
+\emph{Disruption}-Tolerant Networking as DARPA likes to call it}
+(DTN).  Although research in DTN has been done since the first
+computer networks were built, the pace has increased greatly in the
+last decade.  More relevant to LTc, the
+\href{https://www.ietf.org/}{IETF} has now published two RFCs about
+the architecture of DTN systems, and the protocol used by them.
+
+RFC 4838 \citep{rfc4838} outlines the reasons for developing DTN and
+describes the high-level architecture of such networks.  Usefully, it
+identifies the tacit assumptions made by most networked programs:
+
+> "The existing Internet protocols do not work well for some
+> environments, due to some fundamental assumptions built into the
+> Internet architecture:
+>
+> - that an end-to-end path between source and destination exists for
+>   the duration of a communication session
+>
+> - (for reliable communication) that retransmissions based on timely
+>   and stable feedback from data receivers is an effective means for
+>   repairing errors
+>
+> - that end-to-end loss is relatively small
+>
+> - that all routers and end stations support the TCP/IP protocols
+>
+> - that applications need not worry about communication performance
+>
+> - that endpoint-based security mechanisms are sufficient for meeting
+>   most security concerns
+>
+> - that packet switching is the most appropriate abstraction for
+>   interoperability and performance
+>
+> - that selecting a single route between sender and receiver is
+>   sufficient for achieving acceptable communication performance"
+
+As described in mentioned in Section \ref{sec:motivation}, and
+described in Section \ref{sec:scenarios}, there are several
+environments where the previous assumptions do not hold.  Protocols
+that make these assumptions will not function as expected in such
+environments, and programs relying on them will fail.  In particular,
+this is the case for distributed data stores which perform many
+network operations during synchronization.
+
+### Bundle Protocol
+
+Taking these assumptions into account and relaxing them, RFC 5050
+\citep{rfc5050} describes the Bundle Protocol (BP), a protocol for DTN
+networks.  \citet{rfc4838} again lists the guiding principles behind
+BP.
+
+> "The DTN architecture is conceived to relax most of these
+> assumptions, based on a number of design principles that are
+> summarized here:
+>
+> - Use variable-length (possibly long) messages (not streams or
+>   limited-sized packets) as the communication abstraction to help
+>   enhance the ability of the network to make good scheduling/path
+>   selection decisions when possible.
+>
+> - Use a naming syntax that supports a wide range of naming and
+>   addressing conventions to enhance interoperability.
+>
+> - Use storage within the network to support store-and-forward
+>   operation over multiple paths, and over potentially long timescales
+>   (i.e., to support operation in environments where many and/or no
+>   end-to-end paths may ever exist); do not require end-to-end
+>   reliability.
+>
+> - Provide security mechanisms that protect the infrastructure from
+>   unauthorized use by discarding traffic as quickly as possible.
+>
+> - Provide coarse-grained classes of service, delivery options, and a
+>   way to express the useful lifetime of data to allow the network to
+>   better deliver data in serving the needs of applications.
+
+As mentioned in Section \ref{sec:udp}, LTc uses UDP instead of BP, but
+this decision was made because of the obscurity of BP, and not based
+on the relative technical merits of the two protocols.  Despite this,
+LTc is internally written as if it were using BP; for example, LTc
+node names follow the same convention as BP endpoint ids.  Given this
+policy, and because UDP has strictly fewer features than BP, adapting
+LTc to BP in the future should not be difficult.
+
+### UDP
 
 \label{sec:udp}
 
@@ -308,64 +480,36 @@ times.  Again, this is problematic because updates should only be
 applied once.  Because BP was designed with systems like LTc in mind,
 if we used it, it would solve or alleviate all these problems.
 
-## Epidemic Updating
+### Other Protocols
 
-In the previous sections, we mentioned some of the issues surrounding
-the synchronization of two nodes, but we did not discuss the way
-updates are propagated through the network of LTc nodes.  In other
-words, when a node sees an update to one of its entries, how does it
-propagate the update to all the other nodes that hold a copy of the
-data set?
+Needless to say, LTc would work well on models that offer more
+guarantees.
 
-Because of the disconnected nature of the network, we do not have much
-choice in the matter, and updates can only be propagated on a
-node-by-node basis.  We note that this is the same problem routers
-that are in partially connected have when updating their routing
-tables.  "When instantaneous end-to-end paths are difficult or
-impossible to establish, routing protocols must take to a 'store and
-forward' approach, where data is incrementally moved and stored
-throughout the network in hopes that it will eventually reach its
-destination."  \citep{wiki:dtn-routing}
+\clearpage
 
-Our update propagation algorithm will be a variant of epidemic
-routing: When a node becomes "infected" by an update, it seeks out
-uninfected nodes, and infects them.  After some time has passed, an
-update is assumed to have propagated through the network, and ceases
-to be infectious. \citep{Vah00} Thus, the update executes a
-breadth-first walk of network graph.
+<!-- How am I achieving it? -->
 
-~~~~ {.sourceCode}
-    A    B    C           Day 1: None of the three nodes is
-    o    o    o                  infected.
+# Design and Implementation
 
-    A    B    C           Day 2: B is "infected" by an update.
-    o    I    o
+## Outside View
 
-    A    B    C           Day 3: C connects to B and is infected
-    o    I -- I                  by the update.
+<!-- FIXME Say how an LTc systems looks like from the outside: on the
+network (nodes, UDP connections, etc.), on the machine (processes,
+threads, directories). -->
 
-    A    B    C           Day 4: B does not consider the update
-    o    i    I                  infections any more.
+## Haskell
 
-    A    B    C           Day 5: A connects to B, but does not
-    o -- i    I                  receive the update.
+## Component Architecture
 
-       The propagation of an update through a partially
-       connected network of three nodes.  Ultimately, the
-       update does not fully propagate due to it ceasing to
-       be infectious too soon in B.
-~~~~
-
-The algorithm outlined above is rumor mongering, and it is what LTc
-will initially use.  By changing the way a nodes selects other nodes
-to infect, and the time until an update is no longer considered
-infections, several variations of the basic algorithm
-arise. \citep{wiki:dtn-routing} Exploring which of these is best
-suited for LTc is a future path for development.
-
-## Plugable Internal Architecture
+### The Static View: Plugable Architecture
 
 \label{sec:plugable}
+
+<!-- FIXME Mention its a choice between complexity/flexibility, and
+simplicity/staticity -->
+
+<!-- FIXME Break down by plugable component: explain what each
+plugable enables. -->
 
 Because LTc is a research project, we are not entirely sure what it
 will look like in the end.  In particular, we do not know exactly what
@@ -442,97 +586,27 @@ to configure LTc.  On the other hand, it makes the system much easier
 to tweak by advanced users, and it is the Haskell way of approaching
 this problem.
 
-## DTN
+### The Dynamic View: Actor-Model Concurrency
 
-\label{sec:dtn}
+\clearpage
 
-As mentioned in Section \ref{sec:motivation}, LTc's synchronization
-mechanism is meant to work even on networks where packet round-trip
-times are prohibitively large, and end-to-end connectivity may be
-impossible.  The approach LTc takes with regards to communication is
-not new, and is called Delay-Tolerant Networking\footnote{or,
-\emph{Disruption}-Tolerant Networking as DARPA likes to call it}
-(DTN).  Although research in DTN has been done since the first
-computer networks were built, the pace has increased greatly in the
-last decade.  More relevant to LTc, the
-\href{https://www.ietf.org/}{IETF} has now published two RFCs about
-the architecture of DTN systems, and the protocol used by them.
+Type Safety
+===========
 
-RFC 4838 \citep{rfc4838} outlines the reasons for developing DTN and
-describes the high-level architecture of such networks.  Usefully, it
-identifies the tacit assumptions made by most networked programs:
+## Types in Database Interfaces
 
-> "The existing Internet protocols do not work well for some
-> environments, due to some fundamental assumptions built into the
-> Internet architecture:
->
-> - that an end-to-end path between source and destination exists for
->   the duration of a communication session
->
-> - (for reliable communication) that retransmissions based on timely
->   and stable feedback from data receivers is an effective means for
->   repairing errors
->
-> - that end-to-end loss is relatively small
->
-> - that all routers and end stations support the TCP/IP protocols
->
-> - that applications need not worry about communication performance
->
-> - that endpoint-based security mechanisms are sufficient for meeting
->   most security concerns
->
-> - that packet switching is the most appropriate abstraction for
->   interoperability and performance
->
-> - that selecting a single route between sender and receiver is
->   sufficient for achieving acceptable communication performance"
+## A Strongly Typed Database Interface
 
-As described in mentioned in Section \ref{sec:motivation}, and
-described in Section \ref{sec:scenarios}, there are several
-environments where the previous assumptions do not hold.  Protocols
-that make these assumptions will not function as expected in such
-environments, and programs relying on them will fail.  In particular,
-this is the case for distributed data stores which perform many
-network operations during synchronization.
+### GADTs
 
-Taking these assumptions into account and relaxing them, RFC 5050
-\citep{rfc5050} describes the Bundle Protocol (BP), a protocol for DTN
-networks.  \citet{rfc4838} again lists the guiding principles behind
-BP.
+### Phantom Types
 
-> "The DTN architecture is conceived to relax most of these
-> assumptions, based on a number of design principles that are
-> summarized here:
->
-> - Use variable-length (possibly long) messages (not streams or
->   limited-sized packets) as the communication abstraction to help
->   enhance the ability of the network to make good scheduling/path
->   selection decisions when possible.
->
-> - Use a naming syntax that supports a wide range of naming and
->   addressing conventions to enhance interoperability.
->
-> - Use storage within the network to support store-and-forward
->   operation over multiple paths, and over potentially long timescales
->   (i.e., to support operation in environments where many and/or no
->   end-to-end paths may ever exist); do not require end-to-end
->   reliability.
->
-> - Provide security mechanisms that protect the infrastructure from
->   unauthorized use by discarding traffic as quickly as possible.
->
-> - Provide coarse-grained classes of service, delivery options, and a
->   way to express the useful lifetime of data to allow the network to
->   better deliver data in serving the needs of applications.
+\clearpage
 
-As mentioned in Section \ref{sec:udp}, LTc uses UDP instead of BP, but
-this decision was made because of the obscurity of BP, and not based
-on the relative technical merits of the two protocols.  Despite this,
-LTc is internally written as if it were using BP; for example, LTc
-node names follow the same convention as BP endpoint ids.  Given this
-policy, and because UDP has strictly fewer features than BP, adapting
-LTc to BP in the future should not be difficult.
+Changes
+=======
+
+## Patches
 
 ## Conflict Resolution
 
@@ -610,7 +684,7 @@ there are no published works on the topic, but the
 \href{http://darcs.net/Theory}{Darcs Theory} page links to several
 talks and unfinished articles.
 
-## Vector Clocks
+## Versioning with Vector Clocks
 
 \label{sec:vector-clocks}
 
@@ -722,6 +796,86 @@ between overhead and scope.  If we wanted less overhead, we would use
 Lamport timestamps, and if we wanted more causal relations to be
 detected, we would use Matrix Clocks \citep{Bal02}.
 
+## Epidemic Updating
+
+In the previous sections, we mentioned some of the issues surrounding
+the synchronization of two nodes, but we did not discuss the way
+updates are propagated through the network of LTc nodes.  In other
+words, when a node sees an update to one of its entries, how does it
+propagate the update to all the other nodes that hold a copy of the
+data set?
+
+Because of the disconnected nature of the network, we do not have much
+choice in the matter, and updates can only be propagated on a
+node-by-node basis.  We note that this is the same problem routers
+that are in partially connected have when updating their routing
+tables.  "When instantaneous end-to-end paths are difficult or
+impossible to establish, routing protocols must take to a 'store and
+forward' approach, where data is incrementally moved and stored
+throughout the network in hopes that it will eventually reach its
+destination."  \citep{wiki:dtn-routing}
+
+Our update propagation algorithm will be a variant of epidemic
+routing: When a node becomes "infected" by an update, it seeks out
+uninfected nodes, and infects them.  After some time has passed, an
+update is assumed to have propagated through the network, and ceases
+to be infectious. \citep{Vah00} Thus, the update executes a
+breadth-first walk of network graph.
+
+~~~~ {.sourceCode}
+    A    B    C           Day 1: None of the three nodes is
+    o    o    o                  infected.
+
+    A    B    C           Day 2: B is "infected" by an update.
+    o    I    o
+
+    A    B    C           Day 3: C connects to B and is infected
+    o    I -- I                  by the update.
+
+    A    B    C           Day 4: B does not consider the update
+    o    i    I                  infections any more.
+
+    A    B    C           Day 5: A connects to B, but does not
+    o -- i    I                  receive the update.
+
+       The propagation of an update through a partially
+       connected network of three nodes.  Ultimately, the
+       update does not fully propagate due to it ceasing to
+       be infectious too soon in B.
+~~~~
+
+The algorithm outlined above is rumor mongering, and it is what LTc
+will initially use.  By changing the way a nodes selects other nodes
+to infect, and the time until an update is no longer considered
+infections, several variations of the basic algorithm
+arise. \citep{wiki:dtn-routing} Exploring which of these is best
+suited for LTc is a future path for development.
+
+\clearpage
+
+Correctness
+===========
+
+## Empirical Correctness
+
+### Unit Testing
+
+### Random Testing
+
+### Exhaustive Testing
+
+## Provable Correctness
+
+### Global Properties
+
+<!-- This is what we want to prove. -->
+
+### Local Properties
+
+<!-- This is what we konw. -->
+
+### Proof
+
 \clearpage
 
 Evaluation Plan
@@ -760,9 +914,27 @@ repeatedly, expecting the two data sets to eventually become
 consistent.  If we complete Phase X, we would need to perform the
 above test for networks of nodes, and not just for pairs of nodes.
 
+### Almost-Drop-In Replacement for Redis
+
+### Writing a Address Book Example
+
+<!-- Emphasis on how hard it would be to write with something
+else. -->
+
+### Writing a Collaborative Editor Example
+
+<!-- Emphasis on how hard it would be to write with something
+else. -->
+
+### Large Amounts of Data
+
+<!-- The perils thereof. -->
+
 ## Performance
 
 \label{sec:performance}
+
+### Read/Write Throughput
 
 In terms of performance, we are interested in several measures.
 First, we need to know the throughput of the key-value store.
@@ -772,13 +944,24 @@ Although this is not strictly the project's focus, it seems a waste
 not to measure, and it may be useful in interpreting the following
 measures.
 
+### Round Trips vs. Deteriorating Links *
+
 Second, we need to determine the number of times two nodes need to
 synchronize in order to reach consistency, when connected over
 channels of decreasing quality.
+
+### Protocol Overhead
 
 Third, we need to measure the synchronization protocol's overhead,
 defined as the size of the data sent, and possibly lost, divided by
 the total size of the entries that needed synchronization.
 
-If we complete Phase X, we would also need to perform the second
-benchmark for networks of nodes of varying size.
+\clearpage
+
+Conclusions and Future Work
+===========================
+
+\appendix
+
+User Guide
+==========
