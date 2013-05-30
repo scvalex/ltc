@@ -12,8 +12,7 @@ import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Foldable ( foldlM )
 import Data.List ( find )
 import Data.Monoid
-import Ltc.Store.Serialization ( getDiffPack )
-import Ltc.Store.VersionControl ( insertChangesInto )
+import Ltc.Store.VersionControl ( getDiffPack, insertChangesInto )
 import Network.BSD ( getHostName )
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy.Char8 as BL

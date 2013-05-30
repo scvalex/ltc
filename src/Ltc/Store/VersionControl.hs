@@ -1,21 +1,60 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric, ExistentialQuantification, FlexibleContexts #-}
 
 -- | This module ties "Ltc.Store.Diff" to the rest of "Ltc.Store".
 module Ltc.Store.VersionControl (
-       insertChangesInto, Reason
+        -- * Getting history
+        DiffPack(..),
+        KeyHistory(..), getDiffPack, getKeyHistory,
+
+        -- * Applying history
+        insertChangesInto, Reason
     ) where
 
+import Control.Applicative ( (<$>) )
+import Control.Monad ( forM )
+import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Foldable ( foldlM )
-import Ltc.Store.Class ( Store(..), Value, ValueString, ValueType, Key )
+import Data.Map ( Map )
+import GHC.Generics ( Generic )
+import Language.Sexp ( Sexpable(..) )
+import Ltc.Store.Class ( Store(..)
+                       , Value(..), ValueString, Single, Collection
+                       , Type(..), ValueType
+                       , Key, keyVersionsExn, getExn, getLatestExn )
 import Ltc.Store.Diff ( Diff, Diffable(..) )
-import Ltc.Store.Serialization ( DiffPack(..), KeyHistory(..), getKeyHistory )
 import qualified Data.Map as M
 
 ----------------------
--- Exposed interface
+-- Wrappers around values and diffs
 ----------------------
 
+-- | 'KeyHistory' achieves two goals.  First, it solidifies the type parameter of 'Value'
+-- by encoding the possibilities as a sum type.  Second, it encapsulates the current value
+-- associated with a key, and the history of changes leading up to that point.
+--
+-- The diffs are reversed such that they can be applied to the tip.  So, the most recent
+-- value is @tip@, the second most recent value is @applyDiff tip (head diffs)@, and so
+-- on.
+data KeyHistory = IntKeyHistory (Value (Single Integer)) [Diff (Single Integer)]
+                | IntSetKeyHistory (Value (Collection Integer)) [Diff (Collection Integer)]
+                | StringKeyHistory (Value (Single ByteString)) [Diff (Single ByteString)]
+                | StringSetKeyHistory (Value (Collection ByteString))
+                                      [Diff (Collection ByteString)]
+                deriving ( Eq, Generic, Show )
+
+instance Sexpable KeyHistory
+
+-- | 'DiffPack' is just a map of 'Key's to 'KeyHistory's.
+data DiffPack = DiffPack (Map Key KeyHistory)
+              deriving ( Eq, Generic, Show )
+
+instance Sexpable DiffPack
+
 type Reason = String
+
+----------------------
+-- Applying history
+----------------------
 
 -- | Insert the given changes into the store.  Returns a list of conflicting keys.
 insertChangesInto :: (Store s) => s -> DiffPack -> IO [(Key, Reason)]
@@ -87,3 +126,53 @@ diffsToValues :: (Diffable a) => Value a -> [Diff a] -> [Value a]
 diffsToValues tip diffs = tip : reverse (snd (foldl diffToValue (tip, []) diffs))
   where
     diffToValue (v, vs) diff = let v' = applyDiff v diff in (v', v' : vs)
+
+----------------------
+-- Getting history
+----------------------
+
+-- | Get all the data from a store.
+getDiffPack :: (Store s) => s -> IO DiffPack
+getDiffPack store = do
+    ks <- keys store
+    DiffPack <$> foldlM addKeyHistory M.empty ks
+  where
+    addKeyHistory m key = do
+        -- We just got the keys from the database, so the following cannot fail.
+        Just kh <- getKeyHistory store key
+        return (M.insert key kh m)
+
+-- | Get the entire history of a key.  If the key is missing, return 'Nothing'.
+getKeyHistory :: (Store s) => s -> Key -> IO (Maybe KeyHistory)
+getKeyHistory store key = do
+    mty <- keyType store key
+    case mty of
+        Nothing ->
+            return Nothing
+        Just SingleInteger -> do
+            (tip :: Value (Single Integer), _) <- getLatestExn store key
+            diffs <- getDiffs tip
+            return (Just (IntKeyHistory tip diffs))
+        Just CollectionInteger -> do
+            (tip :: Value (Collection Integer), _) <- getLatestExn store key
+            diffs <- getDiffs tip
+            return (Just (IntSetKeyHistory tip diffs))
+        Just SingleString -> do
+            (tip :: Value (Single ByteString), _) <- getLatestExn store key
+            diffs <- getDiffs tip
+            return (Just (StringKeyHistory tip diffs))
+        Just CollectionString -> do
+            (tip :: Value (Collection ByteString), _) <- getLatestExn store key
+            diffs <- getDiffs tip
+            return (Just (StringSetKeyHistory tip diffs))
+  where
+    getDiffs :: (ValueString (Value a), Diffable a, Sexpable (Value a))
+             => Value a -> IO [Diff a]
+    getDiffs tip = do
+        vsns <- keyVersionsExn store key
+        -- @vsns@ contains at least the tip.
+        vs <- forM (tail vsns) (\vsn -> getExn store key vsn)
+        let (_, diffs) = foldl (\(v, ds) v' -> (v', diffFromTo v v' : ds))
+                               (tip, [])
+                               vs
+        return (reverse diffs)

@@ -58,7 +58,6 @@ Library
                         Ltc.Store.Diff,
                         Ltc.Store.Event,
                         Ltc.Store.Simple,
-                        Ltc.Store.Serialization,
                         Ltc.Store.Types,
                         Ltc.Store.VersionControl,
                         Ltc.Monkey,

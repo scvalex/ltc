@@ -11,8 +11,8 @@ import Data.List ( nub )
 import Data.Version ( showVersion )
 import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn, parse )
 import Ltc.Store
-import Ltc.Store.Serialization ( DiffPack, getDiffPack )
-import Ltc.Store.VersionControl ( insertChangesInto )
+import Ltc.Store.VersionControl ( DiffPack, getDiffPack
+                                , insertChangesInto )
 import qualified Ltc.Monkey as M
 import Network.BSD ( getHostName )
 import Paths_ltc ( version )
