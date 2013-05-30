@@ -1,4 +1,5 @@
-WS_URL = "ws://" + window.location.hostname + ":" + window.location.port + "/status"
+WS_URL = "ws://" + window.location.hostname + ":" + window.location.port + "/status";
+GRAPH_PERIOD = 1000;
 
 // Palette:
 //   - Mighty Slate     :: #556270
@@ -88,7 +89,7 @@ function AppViewModel() {
         }
         eventsGraph.render();
         eventsCurPeriod = {"get": 0, "set": 0};
-    }, 1000);
+    }, GRAPH_PERIOD);
 
     self.socket = new WebSocket(WS_URL, "status");
     self.socket.onopen = function() {
