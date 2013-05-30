@@ -52,12 +52,16 @@ Library
                         websockets-snap,
                         zlib
   Exposed-modules:
-                        Ltc.Store,
-                        Ltc.Store.Diff,
-                        Ltc.Store.Simple,
-                        Ltc.Store.VersionControl,
                         Ltc.Monkey,
+                        Ltc.Store,
+                        Ltc.Store.Class,
+                        Ltc.Store.Diff,
+                        Ltc.Store.Event,
+                        Ltc.Store.Simple,
+                        Ltc.Store.Types,
+                        Ltc.Store.VersionControl,
                         Network.Interface,
+                        Network.Interface.Class,
                         Network.Interface.UDP,
                         Network.Interface.Null,
                         Network.NodeProtocol,
@@ -67,10 +71,6 @@ Library
                         Network.StatusServer
   Other-modules:
                         Ltc.Adapter.RedisAdapter,
-                        Ltc.Store.Class,
-                        Ltc.Store.Event,
-                        Ltc.Store.Types,
-                        Network.Interface.Class,
                         Network.Types
 
 Executable ltc
