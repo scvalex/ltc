@@ -254,7 +254,7 @@ handleNodeEnvelope _store _intf envelope = do
 ----------------------
 
 sendEventToNeighbours :: (NetworkInterface a) => Node a -> Event -> IO ()
-sendEventToNeighbours node (SetEvent { eventTarget = key }) = do
+sendEventToNeighbours node (SetEvent { eventKey = key }) = do
     withMVar (getNodeData node) $ \nodeData -> do
         mapM_ sendEventToNeighbour (S.toList (getNeighbours nodeData))
   where

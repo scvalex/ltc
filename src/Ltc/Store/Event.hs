@@ -10,10 +10,9 @@ import Data.Aeson ( ToJSON )
 import GHC.Generics ( Generic )
 import Ltc.Store.Types ( Key )
 
--- FIXME Rename eventTarget to eventKey.
 -- | An event signals that something has happened inside an "Ltc.Store".
-data Event = SetEvent { eventTarget :: Key, keyDigest :: Int, valueDigest :: Int }
-           | GetEvent { eventTarget :: Key, keyDigest :: Int }
+data Event = SetEvent { eventKey :: Key, keyDigest :: Int, valueDigest :: Int }
+           | GetEvent { eventKey :: Key, keyDigest :: Int }
            | CloseEvent
            deriving ( Show, Generic )
 

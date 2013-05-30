@@ -12,6 +12,10 @@
 /*   - Cheery Pink      :: #FF6B6B */
 /*   - grandma's pillow :: #C44D58 */
 
+body {
+    overflow-x: hidden;
+}
+
 h3 {
     clear: both;
     margin-top: 1em;

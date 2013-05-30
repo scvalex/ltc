@@ -92,7 +92,7 @@
   ColourLovers to the rescue!
 
   http://www.colourlovers.com/palette/1930/cheer_up_emo_kid
-* DONE Draw DB tip
+* TODO Draw DB tip
   :LOGBOOK:
   CLOCK: [2013-05-30 Thu 17:11]--[2013-05-30 Thu 17:24] =>  0:13
   CLOCK: [2013-05-30 Thu 16:00]--[2013-05-30 Thu 17:06] =>  1:06
@@ -101,10 +101,10 @@
   :END:
   - [X] Keys tip
   - [X] Values tip
-  - [X] Send all keys initially
+  - [ ] Send all keys initially
 * TODO Components configuration
   Some way to chose what parts of LTc to start.
-* TODO Prettify events graph
+* DONE Prettify events graph
   :LOGBOOK:
   CLOCK: [2013-05-30 Thu 17:27]--[2013-05-30 Thu 17:59] =>  0:32
   :END:
@@ -122,5 +122,6 @@
 * TODO Check documentation
 * Code improvements
   :LOGBOOK:
+  CLOCK: [2013-05-30 Thu 22:29]--[2013-05-30 Thu 22:34] =>  0:05
   CLOCK: [2013-05-26 Sun 02:26]--[2013-05-26 Sun 02:30] =>  0:04
   :END:

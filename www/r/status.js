@@ -23,12 +23,12 @@ function Event(msg, handleEvent) {
     self.prettyTime = now.toTimeString();
     if (msg.hasOwnProperty("GetEvent")) {
         self.operation = "get";
-        self.key = msg["GetEvent"].eventTarget;
+        self.key = msg["GetEvent"].eventKey;
         self.keyDigest = msg["GetEvent"].keyDigest
         handleEvent("get", self);
     } else if (msg.hasOwnProperty("SetEvent")) {
         self.operation = "set";
-        self.key = msg["SetEvent"].eventTarget;
+        self.key = msg["SetEvent"].eventKey;
         self.keyDigest = msg["SetEvent"].keyDigest
         self.valueDigest = msg["SetEvent"].valueDigest
         handleEvent("set", self);

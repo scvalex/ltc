@@ -207,8 +207,8 @@ doGet store key version = do
   where
     getEvent =
         let Key k = key
-        in GetEvent { eventTarget = key
-                    , keyDigest   = fromInteger (integerDigest (sha1 k))
+        in GetEvent { eventKey  = key
+                    , keyDigest = fromInteger (integerDigest (sha1 k))
                     }
 
 doGetLatest :: (ValueString (Value a))
@@ -271,7 +271,7 @@ doSet store key value = do
     setEvent =
         let Key k = key
             v = valueString value
-        in SetEvent { eventTarget = key
+        in SetEvent { eventKey    = key
                     , keyDigest   = fromInteger (integerDigest (sha1 k))
                     , valueDigest = fromInteger (integerDigest (sha1 v))
                     }
