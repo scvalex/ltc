@@ -2,3 +2,8 @@
 cabal-dev/
 dist/
 *store*/
+www/r/rickshaw.min.css
+www/r/rickshaw.min.js
+www/r/d3.v3.min.js
+www/r/mootools-yui-compressed.js
+www/r/knockout-2.2.1.js

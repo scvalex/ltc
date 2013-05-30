@@ -1,6 +1,6 @@
 CABAL := $(shell cabal-dev --version > /dev/null && echo cabal-dev || echo cabal)
 
-all: build fasttest
+all: build resources fasttest
 
 .PHONY: all build dist install clean doc site p ghci stores
 
@@ -46,3 +46,20 @@ stores: build
 
 fasttest: build
 	$(cabal) test diff
+
+resources: www/r/rickshaw.min.css www/r/rickshaw.min.js www/r/d3.v3.min.js www/r/mootools-yui-compressed.js www/r/knockout-2.2.1.js
+
+www/r/rickshaw.min.css:
+	wget -O $@ https://raw.github.com/shutterstock/rickshaw/master/rickshaw.min.css
+
+www/r/rickshaw.min.js:
+	wget -O $@ https://raw.github.com/shutterstock/rickshaw/master/rickshaw.min.js
+
+www/r/d3.v3.min.js:
+	wget -O $@ http://d3js.org/d3.v3.min.js
+
+www/r/mootools-yui-compressed.js:
+	wget -O $@ http://ajax.googleapis.com/ajax/libs/mootools/1.4.5/mootools-yui-compressed.js
+
+www/r/knockout-2.2.1.js:
+	wget -O $@ http://ajax.aspnetcdn.com/ajax/knockout/knockout-2.2.1.js
