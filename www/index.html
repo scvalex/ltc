@@ -22,29 +22,31 @@
     <h1>LTc Status</h1>
 
     <h3>Events</h3>
-    <table id="eventCounts">
-      <thead>
-        <tr>
-          <th></th>
-          <th>Counts</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>Get</th>
-          <td class="getBackground" data-bind="text: countGets"></td>
-        </tr>
-        <tr>
-          <th>Set</th>
-          <td class="setBackground" data-bind="text: countSets"></td>
-        </tr>
-      </tbody>
-    </table>
+    <div id="eventsBox">
+      <table id="eventCounts">
+        <thead>
+          <tr>
+            <th>Total </th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Get</th>
+            <td class="getBackground" data-bind="text: countGets"></td>
+          </tr>
+          <tr>
+            <th>Set</th>
+            <td class="setBackground" data-bind="text: countSets"></td>
+          </tr>
+        </tbody>
+      </table>
 
-    <!-- <div id="eventsChartContainer"> -->
-    <!--     <div id="eventsYAxis"></div> -->
-        <div id="eventsChart"></div>
-    <!-- </div> -->
+      <!-- <div id="eventsChartContainer"> -->
+      <!--     <div id="eventsYAxis"></div> -->
+      <div id="eventsChart"></div>
+      <!-- </div> -->
+    </div>
 
     <h3>Log</h3>
     <ul id="log" data-bind="foreach: log">
