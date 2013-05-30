@@ -3,8 +3,6 @@
 
 module Main where
 
-import Ltc.Store
-
 import Common ( cleanEnvironment, cleanEnvironmentP, testParameters )
 import Control.Applicative
 import Control.Monad
@@ -12,6 +10,11 @@ import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Foldable ( foldlM )
 import Data.List ( find )
 import Data.Monoid
+import Ltc.Store ( Store(..)
+                 , Key(..), Value(..), Type(..), Single
+                 , Version
+                 , NodeNameMismatchError(..), TypeMismatchError(..) )
+import Ltc.Store.Simple ( Simple, OpenParameters(..) )
 import Ltc.Store.VersionControl ( getDiffPack, insertChangesInto )
 import Network.BSD ( getHostName )
 import qualified Control.Exception as CE

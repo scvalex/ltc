@@ -10,7 +10,10 @@ import Data.Char ( isAlphaNum )
 import Data.List ( nub )
 import Data.Version ( showVersion )
 import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn, parse )
-import Ltc.Store
+import Ltc.Store ( Store(..), withStore
+                 , Key(..), Value(..), Single
+                 , keyVersionsExn, getExn )
+import Ltc.Store.Simple ( OpenParameters(..), createIfMissing )
 import Ltc.Store.VersionControl ( DiffPack, getDiffPack
                                 , insertChangesInto )
 import qualified Ltc.Monkey as M

@@ -4,7 +4,8 @@ module Common (
 
 import Control.Monad ( when )
 import Data.ByteString.Lazy.Char8 ( pack )
-import Ltc.Store
+import Ltc.Store ( Store(..) )
+import Ltc.Store.Simple ( Simple, OpenParameters(..) )
 import Network.BSD ( getHostName )
 import System.Directory ( doesDirectoryExist, removeDirectoryRecursive
                         , doesFileExist, removeFile )

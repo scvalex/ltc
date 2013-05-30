@@ -11,7 +11,8 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Foldable ( foldlM )
 import qualified Data.Map as M
 import Data.Monoid ( mempty )
-import Ltc.Store
+import Ltc.Store ( Store(..) )
+import Ltc.Store.Simple ( OpenParameters(..) )
 import Network.Socket ( Socket, Family(..), SocketType(..)
                       , socket, sClose, connect, defaultProtocol
                       , AddrInfo(..), getAddrInfo, addrAddress, defaultHints )
