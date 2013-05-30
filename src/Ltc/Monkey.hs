@@ -65,12 +65,12 @@ start store = do
 
     writeStoreRandomly = do
         key <- randomKey
-        v <- randomRIO (1, 1000 :: Integer)
+        v <- randomRIO (1, 4 :: Integer)
         _ <- set store key (VaInt v)
         return ()
 
     randomKey = do
-        i <- randomRIO (1, 100 :: Int)
+        i <- randomRIO (1, 8 :: Int)
         return (fromString (printf "i%03d" i))
 
 -- | Shutdown the given monkey.
