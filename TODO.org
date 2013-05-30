@@ -93,6 +93,9 @@
 
   http://www.colourlovers.com/palette/1930/cheer_up_emo_kid
 * TODO Draw DB tip
+  :LOGBOOK:
+  CLOCK: [2013-05-30 Thu 13:04]
+  :END:
   - [ ] Keys tip
   - [ ] Values tip
 * TODO Components configuration

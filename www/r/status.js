@@ -1,5 +1,6 @@
 WS_URL = "ws://" + window.location.hostname + ":" + window.location.port + "/status";
 GRAPH_PERIOD = 1000;
+MAX_PERIODS = 30;
 
 // Palette:
 //   - Mighty Slate     :: #556270
@@ -46,10 +47,15 @@ function AppViewModel() {
 
     var eventsCurPeriod = {"get": 0, "set": 0};
 
-    var getsPerPeriod = [{x: 0, y: 0}];
-    var setsPerPeriod = [{x: 0, y: 0}];
-    var eventsGraph = new Rickshaw.Graph( {
-        element: document.querySelector("#eventsChart"),
+    var x = 0;
+    var getsPerPeriod = [];
+    var setsPerPeriod = [];
+    for (; x < MAX_PERIODS; x++) {
+        getsPerPeriod.push({x: x, y: 0});
+        setsPerPeriod.push({x: x, y: 0});
+    }
+    self.eventsGraph = new Rickshaw.Graph( {
+        element: document.querySelector("#eventsGraph"),
         width: 500,
         height: 200,
         stroke: true,
@@ -62,11 +68,11 @@ function AppViewModel() {
         }]
     });
     // new Rickshaw.Graph.Axis.Y({
-    //     graph: eventsGraph,
+    //     graph: self.eventsGraph,
     //     orientation: 'left',
     //     element: document.getElementById("eventsYAxis"),
     // });
-    eventsGraph.render();
+    self.eventsGraph.render();
 
     handleEvent = function(type) {
         if (type == "set") {
@@ -77,17 +83,20 @@ function AppViewModel() {
         eventsCurPeriod[type] = eventsCurPeriod[type] + 1;
     }
 
-    var x = 1;
     setInterval(function () {
+        // Add current counters to overall counters
         getsPerPeriod.push({x: x, y: eventsCurPeriod["get"]});
         setsPerPeriod.push({x: x, y: eventsCurPeriod["set"]});
+
         x = x + 1;
-        if (x > 10) {
-            // Only keep last 10 measurements
-            getsPerPeriod.shift();
-            setsPerPeriod.shift();
-        }
-        eventsGraph.render();
+        // Only keep last 10 measurements
+        getsPerPeriod.shift();
+        setsPerPeriod.shift();
+
+        // Render graph
+        self.eventsGraph.render();
+
+        // Reset event counters for next period
         eventsCurPeriod = {"get": 0, "set": 0};
     }, GRAPH_PERIOD);
 
@@ -108,9 +117,18 @@ function AppViewModel() {
     }
 }
 
+function setupLayout() {
+    var height = document.getSize().y - $$("header")[0].getSize().y - 20;
+    var width = document.getSize().x;
+    model.eventsGraph.configure({width: width});
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     // Model is global.
     model = new AppViewModel();
     ko.applyBindings(model);
     log("document loaded");
+
+    window.addEventListener("resize", setupLayout);
+    setupLayout();
 });

@@ -12,13 +12,17 @@
 /*   - Cheery Pink      :: #FF6B6B */
 /*   - grandma's pillow :: #C44D58 */
 
+h3 {
+    clear: both;
+    margin-top: 1em;
+}
+
 #eventsBox, #log {
-    border: 1px solid #999;
+    border-top: 1px solid #999;
 }
 
 #eventCounts {
     border-collapse: collapse;
-    float: left;
     text-align: center;
     padding: 0 .2em;
 }
