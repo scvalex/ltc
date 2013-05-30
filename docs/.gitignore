@@ -1,8 +1,8 @@
-interim.blg
-interim.bbl
-interim.tex
-interim.pdf
-interim.aux
-interim.log
-interim.out
-interim.toc
+*.blg
+*.bbl
+final.tex
+final.pdf
+*.aux
+*.log
+*.out
+*.toc

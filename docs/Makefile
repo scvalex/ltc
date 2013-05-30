@@ -1,17 +1,17 @@
-all: interim.pdf
+all: final.pdf
 
-.PHONY: interim.pdf interim.tex
+.PHONY: final.pdf final.tex
 
-interim.pdf: interim.tex
+final.pdf: final.tex
 	xelatex $< -o $@
-	bibtex interim
+	bibtex final
 	xelatex $< -o $@
 
-interim.tex: interim.md
+final.tex: final.md
 	pandoc --template template.tex --latex-engine=xelatex --toc $< -o $@
 
 clean:
-	rm -f {references,interim}.{tex,pdf,aux,bbl,blg,log,out,bcf}
+	rm -f {references,final}.{tex,pdf,aux,bbl,blg,log,out,bcf,toc}
 
 p:
-	permamake.sh template.tex references.bib interim.md Makefile
+	permamake.sh template.tex references.bib final.md Makefile
