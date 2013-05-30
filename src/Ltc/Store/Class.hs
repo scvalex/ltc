@@ -137,7 +137,7 @@ instance ValueType (Value (Collection Integer)) where
 instance ValueType (Value (Collection ByteString)) where
     valueType _ = CollectionString
 
--- FIXME ValueString is really weird.
+-- FIXME ValueString should be the Serialize instance for Sexpable
 class ValueString a where
     -- | Get the 'ByteString' representation of a value.
     valueString :: a -> ByteString

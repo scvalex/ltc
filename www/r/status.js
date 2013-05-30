@@ -22,10 +22,13 @@ function LogEntry(msg, handleEvent) {
     if (msg.hasOwnProperty("GetEvent")) {
         self.operation = "get";
         self.target = msg["GetEvent"].eventTarget;
+        self.keyDigest = msg["GetEvent"].keyDigest
         handleEvent("get");
     } else if (msg.hasOwnProperty("SetEvent")) {
         self.operation = "set";
         self.target = msg["SetEvent"].eventTarget;
+        self.keyDigest = msg["SetEvent"].keyDigest
+        self.valueDigest = msg["SetEvent"].valueDigest
         handleEvent("set");
     } else {
         log("got unknown message: ", msg);

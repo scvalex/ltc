@@ -51,7 +51,7 @@ import Control.Monad ( when, unless )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import GHC.Generics ( Generic )
-import Data.Digest.Pure.SHA ( sha1, showDigest )
+import Data.Digest.Pure.SHA ( sha1, showDigest, integerDigest )
 import Data.Foldable ( find, foldlM )
 import Data.Set ( Set )
 import qualified Data.Set as S
@@ -185,7 +185,7 @@ doGet :: (ValueString (Value a))
       => Simple -> Key -> Version -> IO (Maybe (Value a))
 doGet store key version = do
     debugM tag (printf "get %s" (show key))
-    writeEventChannels store (GetEvent key)
+    writeEventChannels store getEvent
     CE.handle (\(exn :: CE.IOException) -> do
                 CE.throw (CorruptKeyFileError { keyFilePath = locationKey store key
                                               , ckfReason   = show exn })) $ do
@@ -204,6 +204,12 @@ doGet store key version = do
                                                   valueFilePath = valueFile,
                                                   cvfReason     = "unparsable" })
                         Just v -> return (Just v)
+  where
+    getEvent =
+        let Key k = key
+        in GetEvent { eventTarget = key
+                    , keyDigest   = fromInteger (integerDigest (sha1 k))
+                    }
 
 doGetLatest :: (ValueString (Value a))
             => Simple -> Key -> IO (Maybe (Value a, Version))
@@ -236,7 +242,7 @@ doSet :: (ValueString (Value a), ValueType (Value a))
 doSet store key value = do
     assertIsOpen store
     debugM tag (printf "set %s" (show key))
-    writeEventChannels store (SetEvent key)
+    writeEventChannels store setEvent
     let vhash = valueHash value
     atomicWriteFile store (locationValueHash store vhash)
         ((if getUseCompression store then Z.compress else id) (valueString value))
@@ -261,6 +267,14 @@ doSet store key value = do
                                                      }
                                , getHistory = v : getHistory krOld
                                }
+  where
+    setEvent =
+        let Key k = key
+            v = valueString value
+        in SetEvent { eventTarget = key
+                    , keyDigest   = fromInteger (integerDigest (sha1 k))
+                    , valueDigest = fromInteger (integerDigest (sha1 v))
+                    }
 
 doKeys :: Simple -> IO (Set Key)
 doKeys store = do
