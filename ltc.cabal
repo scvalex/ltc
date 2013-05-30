@@ -54,11 +54,8 @@ Library
   Exposed-modules:
                         Ltc.Adapter.RedisAdapter,
                         Ltc.Store,
-                        Ltc.Store.Class,
                         Ltc.Store.Diff,
-                        Ltc.Store.Event,
                         Ltc.Store.Simple,
-                        Ltc.Store.Types,
                         Ltc.Store.VersionControl,
                         Ltc.Monkey,
                         Network.Interface,
@@ -69,6 +66,11 @@ Library
                         Network.Redis,
                         Network.RedisServer,
                         Network.StatusServer
+  Other-modules:
+                        Ltc.Store.Class,
+                        Ltc.Store.Event,
+                        Ltc.Store.Types,
+                        Network.Types
 
 Executable ltc
   Ghc-options:          -Wall
