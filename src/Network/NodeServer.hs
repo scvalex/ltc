@@ -22,8 +22,9 @@ import Control.Concurrent ( forkIO
                           , MVar, newMVar, withMVar, readMVar, modifyMVar_ )
 import Control.Concurrent.STM ( atomically, newTChanIO, readTChan )
 import Control.Exception ( Exception )
-import Control.Monad ( unless, forM_ )
-import Control.Proxy
+import Control.Monad ( unless, forM_, forever )
+import Control.Proxy ( Proxy, ProxyFast, Pipe, Producer, Consumer
+                     , runProxy, lift, runIdentityP, request, respond, (>->) )
 import Data.ByteString ( ByteString )
 import Data.Function ( on )
 import Data.Set ( Set )
@@ -34,7 +35,6 @@ import Network.BSD ( getHostName )
 import Network.Interface ( NetworkInterface, NetworkLocation )
 import Network.Interface.UDP ( UdpInterface )
 import Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
-import Network.Types ( Hostname, Port )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -43,6 +43,9 @@ import qualified Network.Interface as NI
 import qualified Network.Interface.UDP as U
 import System.Log.Logger ( debugM, warningM )
 import Text.Printf ( printf )
+
+-- Re-exported module
+import Network.Types
 
 ----------------------
 -- Debugging

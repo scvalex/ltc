@@ -6,27 +6,29 @@ module Network.RedisServer (
         serve, serveWithPort
     ) where
 
-import Ltc.Store ( Store )
-import Network.RedisProtocol
-import Ltc.Adapter.RedisAdapter ( redisProxyD )
-
 import Control.Concurrent ( forkIO )
-import qualified Control.Exception as CE
 import Control.Exception ( Exception )
-import Control.Monad ( unless )
-import qualified Data.ByteString.Char8 as BS
+import Control.Monad ( unless, forever )
+import Control.Proxy ( Proxy, ProxyFast, Producer, Consumer, Pipe
+                     , runProxy, lift, runIdentityP, request, respond, (>->) )
+import Control.Proxy.Attoparsec ( parserInputD, parserD )
 import Data.ByteString.Char8 ( ByteString )
 import Data.Data ( Data, Typeable )
-import Control.Proxy
-import Control.Proxy.Attoparsec ( parserInputD, parserD )
+import Ltc.Adapter.RedisAdapter ( redisProxyD )
+import Ltc.Store ( Store )
+import Network.RedisProtocol ( RedisMessage(..), redisParser, redisEncode )
 import Network.Socket ( Socket, socket, accept, sClose, bindSocket
-                      , listen, maxListenQueue, iNADDR_ANY
                       , Family(..), SocketType(..), SockAddr(..)
+                      , listen, maxListenQueue, iNADDR_ANY
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, recv )
-import Network.Types
+import qualified Control.Exception as CE
+import qualified Data.ByteString.Char8 as BS
 import System.Log.Logger ( debugM )
 import Text.Printf ( printf )
+
+-- Re-exported module
+import Network.Types
 
 ----------------------
 -- Debugging

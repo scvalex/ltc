@@ -16,7 +16,6 @@ import Data.Aeson ( encode )
 import Data.Monoid ( mempty )
 import Data.Typeable ( Typeable )
 import Ltc.Store ( Store(..), EventChannel )
-import Network.Types ( Hostname, Port )
 import Network.WebSockets ( WebSockets, Hybi00, textData, acceptRequest )
 import Network.WebSockets.Snap ( runWebSocketsSnap )
 import Network.WebSockets.Util.PubSub ( PubSub, newPubSub, subscribe, publish )
@@ -28,6 +27,9 @@ import Snap.Http.Server ( ConfigLog(..), setErrorLog, setAccessLog
 import Snap.Util.FileServe ( serveFile, serveDirectory )
 import System.Log.Logger ( debugM )
 import Text.Printf ( printf )
+
+-- Re-exported module
+import Network.Types
 
 ----------------------
 -- Debugging
