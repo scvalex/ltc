@@ -15,7 +15,7 @@ function log() {
     }
 }
 
-function LogEntry(msg, handleEvent) {
+function Event(msg, handleEvent) {
     var self = this;
 
     var now = new Date();
@@ -23,18 +23,26 @@ function LogEntry(msg, handleEvent) {
     self.prettyTime = now.toTimeString();
     if (msg.hasOwnProperty("GetEvent")) {
         self.operation = "get";
-        self.target = msg["GetEvent"].eventTarget;
+        self.key = msg["GetEvent"].eventTarget;
         self.keyDigest = msg["GetEvent"].keyDigest
-        handleEvent("get");
+        handleEvent("get", self);
     } else if (msg.hasOwnProperty("SetEvent")) {
         self.operation = "set";
-        self.target = msg["SetEvent"].eventTarget;
+        self.key = msg["SetEvent"].eventTarget;
         self.keyDigest = msg["SetEvent"].keyDigest
         self.valueDigest = msg["SetEvent"].valueDigest
-        handleEvent("set");
+        handleEvent("set", self);
     } else {
         log("got unknown message: ", msg);
     }
+}
+
+function KeyEntry(key, keyDigest, valueDigest) {
+    var self = this;
+
+    self.key = key;
+    self.keyColour = model.colourFromDigest(keyDigest);
+    self.valueColour = ko.observable(model.colourFromDigest(valueDigest));
 }
 
 function AppViewModel() {
@@ -44,6 +52,11 @@ function AppViewModel() {
 
     self.countGets = ko.observable(0);
     self.countSets = ko.observable(0);
+
+    // Tip boxes
+    self.keys = {};
+    self.tipBoxWidth = ko.observable(0);;
+    self.tipBoxes = ko.observableArray();
 
     var eventsCurPeriod = {"get": 0, "set": 0};
 
@@ -74,9 +87,32 @@ function AppViewModel() {
     // });
     self.eventsGraph.render();
 
-    var handleEvent = function(type) {
+    var handleEvent = function(type, event) {
         if (type == "set") {
             self.countSets(self.countSets() + 1);
+            if (!(event.key in self.keys)) {
+                // New key!
+                self.keys[event.key] = new KeyEntry(event.key, event.keyDigest, event.valueDigest);
+                self.keys[event.key].valueColour(self.colourFromDigest(event.valueDigest));
+                var width = document.getSize().x;
+                self.tipBoxWidth(Math.floor(width / Object.keys(self.keys).length));
+                self.tipBoxes.removeAll();
+                var i = 0;
+                for (k in self.keys) {
+                    self.tipBoxes.push({key : k,
+                                        x : i * self.tipBoxWidth(),
+                                        keyFill : self.keys[k].keyColour,
+                                        valueFill : self.keys[k].valueColour()
+                                       });
+                    i++;
+                }
+                self.tipBoxes.sort(function(x, y) {
+                    return x.key == y.key ? 0 : (x.key < y.key ? -1 : 1)
+                });
+            } else {
+                // Update existing key!
+                self.keys[event.key].valueColour(self.colourFromDigest(event.valueDigest));
+            }
         } else if (type == "get") {
             self.countGets(self.countGets() + 1);
         }
@@ -120,7 +156,7 @@ function AppViewModel() {
         log("websocket closed: ", event)
     }
     self.socket.onmessage = function(event) {
-        self.log.push(new LogEntry(JSON.parse(event.data), handleEvent));
+        self.log.push(new Event(JSON.parse(event.data), handleEvent));
         // Scroll to bottom
         $("log").scrollTop = $("log").scrollHeight;
     }
@@ -130,6 +166,7 @@ function setupLayout() {
     var height = document.getSize().y - $$("header")[0].getSize().y - 20;
     var width = document.getSize().x;
     model.eventsGraph.configure({width: width});
+    $("tipGraph").style.width = width + "px";
 }
 
 document.addEventListener("DOMContentLoaded", function() {

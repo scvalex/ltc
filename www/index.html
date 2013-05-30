@@ -23,6 +23,21 @@
       <h1>LTc Status</h1>
     </header>
 
+    <h3>Data-store tip</h3>
+    <div id="tipBox">
+      <svg id="tipGraph" width="0" height="200px" version="1.1"
+           xmlns="http://www.w3.org/2000/svg">
+        <g data-bind="foreach: tipBoxes">
+          <rect data-bind="attr: { x: x, width: $root.tipBoxWidth, fill: keyFill }"
+                y="0"
+                height="50%" />
+          <rect data-bind="attr: { x: x, width: $root.tipBoxWidth, fill: valueFill }"
+                y="50%"
+                height="50%" />
+        </g>
+      </svg>
+    </div>
+
     <h3>Events</h3>
     <div id="eventsBox">
       <table id="eventCounts">
@@ -56,7 +71,7 @@
         <span class="time"><time data-bind="text: prettyTime, attr: { datetime: time }"></time></span>
         <span class="operation" data-bind="text: operation, css: { getBackground: operation == 'get', setBackground: operation == 'set' }"></span>
         <span class="target">
-          <span data-bind="text: target"></span>
+          <span data-bind="text: key"></span>
           <span data-bind="if: operation == 'set'">
             →
             <span class="value" data-bind="style: { backgroundColor: $root.colourFromDigest(valueDigest) }">&nbsp;</span>
