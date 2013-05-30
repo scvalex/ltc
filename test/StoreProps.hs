@@ -4,12 +4,12 @@
 module Main where
 
 import Common ( cleanEnvironment, cleanEnvironmentP, testParameters )
-import Control.Applicative
-import Control.Monad
+import Control.Applicative ( (<$>), (<*>) )
+import Control.Monad ( forM_, replicateM, when )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Foldable ( foldlM )
 import Data.List ( find )
-import Data.Monoid
+import Data.Monoid ( mempty )
 import Ltc.Store ( Store(..)
                  , Key(..), Value(..), Type(..), Single
                  , Version

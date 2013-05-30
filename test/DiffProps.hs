@@ -7,14 +7,14 @@ import Control.Applicative ( (<$>) )
 import Control.Monad ( replicateM )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Monoid ( Monoid(..) )
+import Ltc.Store ( Value(..), Single, Collection )
 import Ltc.Store.Diff ( Diffable(..) )
-import Ltc.Store.Class
+import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.Set as S
+import System.Random ( Random )
 import Test.Framework
 import Test.Framework.Providers.QuickCheck2
 import Test.QuickCheck
-import System.Random ( Random )
-import qualified Data.Set as S
-import qualified Data.ByteString.Lazy.Char8 as BL
 
 main :: IO ()
 main = defaultMainWithOpts

@@ -4,22 +4,22 @@ module Main where
 
 import Common ( cleanEnvironment, cleanEnvironmentP, testParameters )
 import Control.Applicative ( (<$>), (<*>) )
-import qualified Control.Exception as CE
 import Control.Monad ( replicateM, when )
 import Data.ByteString.Char8 ( ByteString )
-import qualified Data.ByteString.Char8 as BS
 import Data.Foldable ( foldlM )
-import qualified Data.Map as M
 import Data.Monoid ( mempty )
 import Ltc.Store ( Store(..) )
 import Ltc.Store.Simple ( OpenParameters(..) )
+import Network.Redis ( RedisMessage, RedisMessage(..) )
+import Network.RedisServer ( Hostname, Port, serveWithPort )
 import Network.Socket ( Socket, Family(..), SocketType(..)
                       , socket, sClose, connect, defaultProtocol
                       , AddrInfo(..), getAddrInfo, addrAddress, defaultHints )
 import Network.Socket.ByteString ( sendAll, recv )
+import qualified Control.Exception as CE
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.Map as M
 import qualified Network.Redis as R
-import Network.Redis ( RedisMessage, RedisMessage(..) )
-import Network.RedisServer ( Hostname, Port, serveWithPort )
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
