@@ -7,7 +7,7 @@ module Network.RedisServer (
     ) where
 
 import Ltc.Store ( Store )
-import Network.Redis
+import Network.RedisProtocol
 import Ltc.Adapter.RedisAdapter ( redisProxyD )
 
 import Control.Concurrent ( forkIO )

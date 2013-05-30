@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Network.Redis (
+module Network.RedisProtocol (
         RedisMessage(..), redisParser, redisEncode,
         ParseException(..), parse, parseExn
     ) where

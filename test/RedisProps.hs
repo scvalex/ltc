@@ -10,7 +10,7 @@ import Data.Foldable ( foldlM )
 import Data.Monoid ( mempty )
 import Ltc.Store ( Store(..) )
 import Ltc.Store.Simple ( OpenParameters(..) )
-import Network.Redis ( RedisMessage, RedisMessage(..) )
+import Network.RedisProtocol ( RedisMessage, RedisMessage(..) )
 import Network.RedisServer ( Hostname, Port, serveWithPort )
 import Network.Socket ( Socket, Family(..), SocketType(..)
                       , socket, sClose, connect, defaultProtocol
@@ -19,7 +19,7 @@ import Network.Socket.ByteString ( sendAll, recv )
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as M
-import qualified Network.Redis as R
+import qualified Network.RedisProtocol as R
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2

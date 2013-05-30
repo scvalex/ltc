@@ -52,7 +52,6 @@ Library
                         websockets-snap,
                         zlib
   Exposed-modules:
-                        Ltc.Adapter.RedisAdapter,
                         Ltc.Store,
                         Ltc.Store.Diff,
                         Ltc.Store.Simple,
@@ -63,10 +62,11 @@ Library
                         Network.Interface.Null,
                         Network.NodeProtocol,
                         Network.NodeServer,
-                        Network.Redis,
+                        Network.RedisProtocol,
                         Network.RedisServer,
                         Network.StatusServer
   Other-modules:
+                        Ltc.Adapter.RedisAdapter,
                         Ltc.Store.Class,
                         Ltc.Store.Event,
                         Ltc.Store.Types,

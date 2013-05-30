@@ -13,7 +13,7 @@ import qualified Data.Set as S
 import Control.Monad ( unless )
 import Control.Proxy
 import Ltc.Store
-import Network.Redis ( RedisMessage(..) )
+import Network.RedisProtocol ( RedisMessage(..) )
 import System.Log.Logger ( debugM, warningM )
 import Text.Regex.TDFA
 import qualified Text.Regex.TDFA.ByteString as T
