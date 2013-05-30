@@ -70,6 +70,7 @@ Library
                         Ltc.Store.Class,
                         Ltc.Store.Event,
                         Ltc.Store.Types,
+                        Network.Interface.Class,
                         Network.Types
 
 Executable ltc

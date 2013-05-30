@@ -15,7 +15,7 @@ import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, recv )
 import Network.Types ( Hostname, Port )
-import Network.Interface ( NetworkInterface(..) )
+import Network.Interface.Class ( NetworkInterface(..) )
 import qualified Control.Exception as CE
 import qualified Network.Socket as NS
 import Text.Printf ( printf )
