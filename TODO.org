@@ -79,6 +79,9 @@
   - [X] Use abstract interface
   - [X] Null interface
 * TODO Report outline
+  :LOGBOOK:
+  CLOCK: [2013-05-30 Thu 09:30]
+  :END:
   - [ ] General outline
   - [ ] Assessment outline
 * DONE Pick a nice palette
