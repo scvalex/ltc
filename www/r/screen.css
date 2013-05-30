@@ -60,6 +60,11 @@ h3 {
     text-align: center;
 }
 
+.logItem .value {
+    display: inline-block;
+    width: 4em;
+}
+
 /* ******************** */
 /* Charts */
 /* ******************** */

@@ -74,7 +74,7 @@ function AppViewModel() {
     // });
     self.eventsGraph.render();
 
-    handleEvent = function(type) {
+    var handleEvent = function(type) {
         if (type == "set") {
             self.countSets(self.countSets() + 1);
         } else if (type == "get") {
@@ -99,6 +99,15 @@ function AppViewModel() {
         // Reset event counters for next period
         eventsCurPeriod = {"get": 0, "set": 0};
     }, GRAPH_PERIOD);
+
+    self.colourFromDigest = function(digest) {
+        function pad(width, string) {
+            return (width <= string.length) ? string : pad(width, "0" + string, "0");
+        }
+
+        var hex = (Math.abs(digest) % (1<<24)).toString(16);
+        return ("#" + pad(6, hex));
+    }
 
     self.socket = new WebSocket(WS_URL, "status");
     self.socket.onopen = function() {

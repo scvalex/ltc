@@ -59,7 +59,7 @@
           <span data-bind="text: target"></span>
           <span data-bind="if: operation == 'set'">
             →
-            <span data-bind="text: valueDigest"></span>
+            <span class="value" data-bind="style: { backgroundColor: $root.colourFromDigest(valueDigest) }">&nbsp;</span>
           </span>
         </span>
       </li>
