@@ -37,12 +37,12 @@ function Event(msg, handleEvent) {
     }
 }
 
-function KeyEntry(key, keyDigest, valueDigest) {
+function KeyEntry(event) {
     var self = this;
 
-    self.key = key;
-    self.keyColour = model.colourFromDigest(keyDigest);
-    self.valueColour = ko.observable(model.colourFromDigest(valueDigest));
+    self.key = event.key;
+    self.keyColour = model.colourFromDigest(event.keyDigest);
+    self.valueColour = ko.observable(model.colourFromDigest(event.valueDigest));
 }
 
 function AppViewModel() {
@@ -92,19 +92,19 @@ function AppViewModel() {
             self.countSets(self.countSets() + 1);
             if (!(event.key in self.keys)) {
                 // New key!
-                self.keys[event.key] = new KeyEntry(event.key, event.keyDigest, event.valueDigest);
+                self.keys[event.key] = new KeyEntry(event);
                 self.keys[event.key].valueColour(self.colourFromDigest(event.valueDigest));
                 var width = document.getSize().x - $("tipGraphLegend").getSize().x - 20;
                 self.tipBoxWidth(Math.floor(width / Object.keys(self.keys).length));
                 self.tipBoxes.removeAll();
-                var i = 0;
-                for (k in self.keys) {
+                var sortedKeys = Object.keys(self.keys).sort();
+                for (var i = 0; i < sortedKeys.length; i++) {
+                    var k = sortedKeys[i];
                     self.tipBoxes.push({key : k,
                                         x : i * self.tipBoxWidth(),
                                         keyFill : self.keys[k].keyColour,
                                         valueFill : self.keys[k].valueColour
                                        });
-                    i++;
                 }
                 self.tipBoxes.sort(function(x, y) {
                     return x.key == y.key ? 0 : (x.key < y.key ? -1 : 1)
