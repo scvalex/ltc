@@ -365,7 +365,6 @@ readKeyRecord path = do
                       CE.throw (mkErr "multiple sexps")
           else return Nothing
 
--- FIXME We should just use a global temp location.
 -- | Write the given 'ByteString' to the file atomically.  Overwrite
 -- any previous content.  The 'Simple' reference is needed in order to
 -- find the temporary directory.
@@ -375,9 +374,10 @@ atomicWriteFile store path content = do
     BL.hPut handle content `CE.finally` hClose handle
     renameFile tempFile path
 
--- | Write a version clock to disk.
-writeClock :: FilePath -> Version -> IO ()
-writeClock path clock = BL.writeFile path (printHum (toSexp clock))
+-- | Write a version clock to disk atomically.
+writeClock :: Simple -> FilePath -> Version -> IO ()
+writeClock store path clock =
+    atomicWriteFile store path (printHum (toSexp clock))
 
 -- | Read a version clock from disk.  Throw an exception if it is missing or if it is
 -- malformed.
@@ -393,7 +393,8 @@ initStore params = do
     createDirectory base
     writeFile (locationFormat base) formatString
     writeFile (locationVersion base) (show storeVsn)
-    writeClock (locationClock base) (VC.insert (nodeName params) 1 VC.empty)
+    let initialClock = VC.insert (nodeName params) (1 :: Int) VC.empty
+    BL.writeFile (locationClock base) (printHum (toSexp initialClock))
     BL.writeFile (locationNodeName base) (nodeName params)
     createDirectory (locationTemporary base)
     createDirectory (locationValues base)
