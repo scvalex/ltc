@@ -48,6 +48,8 @@ testParameters :: OpenParameters Simple
 testParameters = OpenParameters { location        = "test-store"
                                 , useCompression  = False
                                 , nodeName        = pack hostname
-                                , createIfMissing = True }
+                                , createIfMissing = True
+                                , forceOpen       = False
+                                }
   where
     hostname = unsafePerformIO getHostName
