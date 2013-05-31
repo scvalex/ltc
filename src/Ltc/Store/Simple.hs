@@ -175,10 +175,14 @@ doOpen params = do
         if createIfMissing params
             then initStore params
             else CE.throw (CorruptStoreError { csReason = "missing" })
+    -- After this point, the store exists on disk
     nn <- BL.readFile (locationNodeName (location params))
     when (not (forceOpen params) && nn /= nodeName params) $
         CE.throw (NodeNameMismatchError { requestedName = nodeName params
                                         , storeName     = nn })
+    vsn <- BL.readFile (locationVersion (location params))
+    when (vsn /= BL.pack (show storeVsn)) $
+        CE.throw (CorruptStoreError { csReason = "different version" })
     eventChannels <- newMVar []
     isOpen <- newMVar True
     return (Simple { getBase           = location params
