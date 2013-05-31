@@ -135,6 +135,7 @@ instance Store Simple where
         , useCompression  :: Bool
         , nodeName        :: ByteString
         , createIfMissing :: Bool
+        , forceOpen       :: Bool
         }
 
     open params = doOpen params
@@ -166,7 +167,7 @@ doOpen params = do
             then initStore params
             else CE.throw (CorruptStoreError { csReason = "missing" })
     nn <- BL.readFile (locationNodeName (location params))
-    when (nn /= nodeName params) $
+    when (not (forceOpen params) && nn /= nodeName params) $
         CE.throw (NodeNameMismatchError { requestedName = nodeName params
                                         , storeName     = nn })
     eventChannels <- newMVar []

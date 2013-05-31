@@ -164,6 +164,7 @@ main = do
                        , useCompression  = False
                        , nodeName        = (BL.pack (printf "%s-%d" hostname idx))
                        , createIfMissing = shouldCreate
+                       , forceOpen       = not shouldCreate
                        }
 
     -- | Run all shutdown actions in sequence.
