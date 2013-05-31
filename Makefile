@@ -1,4 +1,5 @@
 CABAL := $(shell cabal-dev --version > /dev/null && echo cabal-dev || echo cabal)
+RESOURCES := www/r/rickshaw.min.css www/r/rickshaw.min.js www/r/d3.v3.min.js www/r/mootools-yui-compressed.js www/r/knockout-2.2.1.js
 
 all: build resources fasttest
 
@@ -16,7 +17,7 @@ install: build
 
 clean:
 	$(CABAL) clean
-	rm -rf cabal-dev/ *store*/
+	rm -rf cabal-dev/ *store*/ $(RESOURCES)
 
 dist/setup-config: ltc.cabal
 # If you don't have all the necessary packages installed on the first
@@ -47,7 +48,7 @@ stores: build
 fasttest: build
 	$(cabal) test diff
 
-resources: www/r/rickshaw.min.css www/r/rickshaw.min.js www/r/d3.v3.min.js www/r/mootools-yui-compressed.js www/r/knockout-2.2.1.js
+resources: $(RESOURCES)
 
 www/r/rickshaw.min.css:
 	wget -O $@ https://raw.github.com/shutterstock/rickshaw/master/rickshaw.min.css
