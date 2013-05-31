@@ -101,7 +101,8 @@ main = do
                 (\_ -> return ())
         Info d lk -> do
             hostname <- getHostName
-            withStore (openParameters d hostname 0) (doInfo d lk hostname)
+            withStore (openParameters d hostname 0)
+                (doInfo d lk hostname)
         Export d fo -> do
             hostname <- getHostName
             withStore (openParameters d hostname 0) $ \store -> do

@@ -161,7 +161,10 @@ doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
     debugM tag (printf "open store '%s'" (location params))
     storeExists <- doesDirectoryExist (location params)
-    when (not storeExists && createIfMissing params) (initStore params)
+    when (not storeExists) $ do
+        if createIfMissing params
+            then initStore params
+            else CE.throw (CorruptStoreError { csReason = "missing" })
     nn <- BL.readFile (locationNodeName (location params))
     when (nn /= nodeName params) $
         CE.throw (NodeNameMismatchError { requestedName = nodeName params

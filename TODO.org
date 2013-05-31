@@ -61,6 +61,7 @@
   :END:
   Nodes should have a set of "neighbor" nodes which they propagate
   updates to, and request updates from.
+  - [ ] Version Clock held by the store
   - [ ] Propagate store changes to neighbours
   - [ ] Receive store changes from neighbours
   - [ ] Keep track of suspected neighbour version clock
