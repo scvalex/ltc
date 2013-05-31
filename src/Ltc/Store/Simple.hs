@@ -130,11 +130,20 @@ instance Sexpable KeyRecord
 ----------------------
 
 instance Store Simple where
+    -- | Store configuration.
     data OpenParameters Simple = OpenParameters
-        { location        :: FilePath
+        { -- | The store directory.
+          location        :: FilePath
+          -- | Whether files should be gzip'd.
         , useCompression  :: Bool
+          -- | The name of the node opening the store.  If the name stored on disk is
+          -- different from this, a 'NodeNameMismatchError' will be thrown (unless
+          -- 'forceOpen' is set).
         , nodeName        :: ByteString
+          -- | Create the store if it is missing.  If this is not set and the store is
+          -- missing, throw 'CorruptStoreError'.
         , createIfMissing :: Bool
+          -- | Open the store even if there is a node name mismatch.
         , forceOpen       :: Bool
         }
 
