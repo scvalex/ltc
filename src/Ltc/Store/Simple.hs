@@ -11,6 +11,7 @@
 -- DB_DIR/
 -- ├── format
 -- ├── version
+-- ├── clock
 -- ├── nodeName
 -- ├── tmp/
 -- ├── keys/
@@ -22,6 +23,9 @@
 --
 -- @DB_DIR/version@ contains the version of the key-value store.  This
 -- is used to upgrade on-disk files.
+--
+-- @DB_DIR/clock@ is the latest version clock seen by the store.  This is probably also
+-- the version of the latest value written to disk, but this is not necessary.
 --
 -- @DB_DIR/tmp@ is a directory used as a staging ground for creating
 -- new files.  On most file systems, /move/ is an atomic operation,
@@ -56,7 +60,7 @@ import Data.Foldable ( find, foldlM )
 import Data.Set ( Set )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
-import Language.Sexp ( Sexpable(..), parse, printHum )
+import Language.Sexp ( Sexpable(..), parse, parseExn, printHum )
 import Ltc.Store.Class ( Store(..), ValueType(..), ValueString(..), Type(..)
                        , Value, ValueHash, Version
                        , Key(..), KeyHash
@@ -87,7 +91,7 @@ formatString :: String
 formatString = "simple"
 
 storeVsn :: Int
-storeVsn = 4
+storeVsn = 5
 
 ----------------------
 -- Types
@@ -99,6 +103,7 @@ data Simple = Simple
     , getNodeName       :: NodeName
     , getEventChannels  :: MVar [EventChannel]
     , getIsOpen         :: MVar Bool
+    , getClock          :: Version
     }
 
 -- | There is one 'KeyVersion' record for each *value* stored for a
@@ -170,26 +175,36 @@ instance Store Simple where
 doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
     debugM tag (printf "open store '%s'" (location params))
+
+    -- Make sure that the store exists on disk.
     storeExists <- doesDirectoryExist (location params)
     when (not storeExists) $ do
         if createIfMissing params
             then initStore params
             else CE.throw (CorruptStoreError { csReason = "missing" })
-    -- After this point, the store exists on disk
+
+    -- Check that the requested node name is the same as the one on disk.
     nn <- BL.readFile (locationNodeName (location params))
     when (not (forceOpen params) && nn /= nodeName params) $
         CE.throw (NodeNameMismatchError { requestedName = nodeName params
                                         , storeName     = nn })
+
+    -- Check that the store's format version is the same as the one in this executable.
     vsn <- BL.readFile (locationVersion (location params))
     when (vsn /= BL.pack (show storeVsn)) $
         CE.throw (CorruptStoreError { csReason = "different version" })
+
+    clock <- readClockExn (locationClock (location params))
+
     eventChannels <- newMVar []
     isOpen <- newMVar True
+
     return (Simple { getBase           = location params
                    , getUseCompression = useCompression params
                    , getNodeName       = nodeName params
                    , getEventChannels  = eventChannels
                    , getIsOpen         = isOpen
+                   , getClock          = clock
                    })
 
 doClose :: Simple -> IO ()
@@ -350,6 +365,7 @@ readKeyRecord path = do
                       CE.throw (mkErr "multiple sexps")
           else return Nothing
 
+-- FIXME We should just use a global temp location.
 -- | Write the given 'ByteString' to the file atomically.  Overwrite
 -- any previous content.  The 'Simple' reference is needed in order to
 -- find the temporary directory.
@@ -358,6 +374,15 @@ atomicWriteFile store path content = do
     (tempFile, handle) <- openBinaryTempFile (locationTemporary (getBase store)) "ltc"
     BL.hPut handle content `CE.finally` hClose handle
     renameFile tempFile path
+
+-- | Write a version clock to disk.
+writeClock :: FilePath -> Version -> IO ()
+writeClock path clock = BL.writeFile path (printHum (toSexp clock))
+
+-- | Read a version clock from disk.  Throw an exception if it is missing or if it is
+-- malformed.
+readClockExn :: FilePath -> IO Version
+readClockExn path = fromSexp . head . parseExn =<< BL.readFile path
 
 -- | Create the initial layout for the store at the given directory
 -- base.
@@ -368,6 +393,7 @@ initStore params = do
     createDirectory base
     writeFile (locationFormat base) formatString
     writeFile (locationVersion base) (show storeVsn)
+    writeClock (locationClock base) (VC.insert (nodeName params) 1 VC.empty)
     BL.writeFile (locationNodeName base) (nodeName params)
     createDirectory (locationTemporary base)
     createDirectory (locationValues base)
@@ -416,6 +442,9 @@ locationFormat base = base </> "format"
 
 locationVersion :: FilePath -> FilePath
 locationVersion base = base </> "version"
+
+locationClock :: FilePath -> FilePath
+locationClock base = base </> "clock"
 
 locationTemporary :: FilePath -> FilePath
 locationTemporary base = base </> "tmp"
