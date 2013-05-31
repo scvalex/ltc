@@ -120,6 +120,7 @@
   properties the individual components should have to be able to prove
   the bigger thing.
 * TODO Check documentation
+* Final Report
 * Code improvements
   :LOGBOOK:
   CLOCK: [2013-05-30 Thu 22:29]--[2013-05-30 Thu 22:34] =>  0:05

@@ -13,7 +13,7 @@ import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn, parse )
 import Ltc.Store ( Store(..), withStore
                  , Key(..), Value(..), Single
                  , keyVersionsExn, getExn )
-import Ltc.Store.Simple ( OpenParameters(..), createIfMissing )
+import Ltc.Store.Simple ( Simple, OpenParameters(..), createIfMissing )
 import Ltc.Store.VersionControl ( DiffPack, getDiffPack
                                 , insertChangesInto )
 import qualified Ltc.Monkey as M
@@ -97,18 +97,19 @@ main = do
         Fsck d -> do
             _ <- printf "Checking %s...\n" d
             hostname <- getHostName
-            withStore ((openParameters d hostname) { createIfMissing = False }) (\_ -> return ())
+            withStore ((openParameters d hostname 0) { createIfMissing = False })
+                (\_ -> return ())
         Info d lk -> do
             hostname <- getHostName
-            withStore (openParameters d hostname) (doInfo d lk hostname)
+            withStore (openParameters d hostname 0) (doInfo d lk hostname)
         Export d fo -> do
             hostname <- getHostName
-            withStore (openParameters d hostname) $ \store -> do
+            withStore (openParameters d hostname 0) $ \store -> do
                 dp <- getDiffPack store
                 BL.writeFile fo (printHum (toSexp dp))
         Import d fi -> do
             hostname <- getHostName
-            withStore (openParameters d hostname) $ \store -> do
+            withStore (openParameters d hostname 0) $ \store -> do
                 (Just dp :: Maybe DiffPack) <- fromSexp . head . parseExn <$> BL.readFile fi
                 conflicts <- insertChangesInto store dp
                 case conflicts of
@@ -117,19 +118,19 @@ main = do
         Populate d cnt -> do
             _ <- printf "Populating %s\n" d
             hostname <- getHostName
-            withStore (openParameters d hostname) (doPopulate cnt)
+            withStore (openParameters d hostname 0) (doPopulate cnt)
         Redis d -> do
             -- when (null d) $ fail "Given directory cannot be empty"
             _ <- printf "Running Redis server with %s\n" d
             hostname <- getHostName
-            store <- open (openParameters d hostname)
+            store <- open (openParameters d hostname 0)
             shutdown <- R.serve store
             shutdownOnInt store [shutdown]
         Node mStoreDir idx -> do
             let myStoreDir = maybe (printf "node-store-%d" idx) id mStoreDir
             _ <- printf "Running Node on %d with %s\n" (N.nodePort + idx) myStoreDir
             hostname <- getHostName
-            store <- open (openParameters myStoreDir hostname)
+            store <- open (openParameters myStoreDir hostname idx)
             node <- N.serveFromLocation (U.NetworkLocation { U.host = hostname
                                                            , U.port = N.nodePort + idx })
                                         store
@@ -142,7 +143,7 @@ main = do
         WireClient h p -> do
             _ <- printf "Connecting wire client to %s:%d\n" h p
             hostname <- getHostName
-            store <- open (openParameters "wire-client-store" hostname)
+            store <- open (openParameters "wire-client-store" hostname 0)
             node <- N.serveFromLocation (U.NetworkLocation { U.host = hostname
                                                            , U.port = N.nodePort + 11 })
                                         store
@@ -155,11 +156,13 @@ main = do
                                           historyFile = Just (homeDir </> ".ltc_history") })
             shutdownNow [N.closeConnection conn, N.shutdown node, close store]
   where
-    openParameters d hostname =
+    openParameters :: String -> String -> Int -> OpenParameters Simple
+    openParameters d hostname idx =
         OpenParameters { location        = d
                        , useCompression  = False
-                       , nodeName        = (BL.pack hostname)
-                       , createIfMissing = True }
+                       , nodeName        = (BL.pack (printf "%s-%d" hostname idx))
+                       , createIfMissing = True
+                       }
 
     -- | Run all shutdown actions in sequence.
     shutdownNow :: [IO ()] -> IO ()
