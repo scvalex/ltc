@@ -48,7 +48,7 @@ module Ltc.Store.Simple (
 
 import qualified Codec.Compression.GZip as Z
 import Control.Applicative ( (<$>) )
-import Control.Concurrent.MVar ( MVar, newMVar, modifyMVar_, readMVar )
+import Control.Concurrent ( MVar, newMVar, modifyMVar, modifyMVar_, readMVar )
 import Control.Concurrent.STM ( atomically, writeTChan )
 import qualified Control.Exception as CE
 import Control.Monad ( when, unless )
@@ -103,7 +103,7 @@ data Simple = Simple
     , getNodeName       :: NodeName
     , getEventChannels  :: MVar [EventChannel]
     , getIsOpen         :: MVar Bool
-    , getClock          :: Version
+    , getClock          :: MVar Version
     }
 
 -- | There is one 'KeyVersion' record for each *value* stored for a
@@ -194,7 +194,7 @@ doOpen params = do
     when (vsn /= BL.pack (show storeVsn)) $
         CE.throw (CorruptStoreError { csReason = "different version" })
 
-    clock <- readClockExn (locationClock (location params))
+    clock <- newMVar =<< readClockExn (locationClock (location params))
 
     eventChannels <- newMVar []
     isOpen <- newMVar True
@@ -273,31 +273,42 @@ doSet :: (ValueString (Value a), ValueType (Value a))
       => Simple -> Key -> Value a -> IO Version
 doSet store key value = do
     assertIsOpen store
+
+    -- Log the set everywhere.
     debugM tag (printf "set %s" (show key))
     writeEventChannels store setEvent
+
+    -- Increment and save the version clock.  It's ok to increment the clock
+    -- superfluously, so we can be interrupted here.
+    let nn = getNodeName store
+    clock' <- modifyMVar (getClock store) $ \clock -> do
+        let Just incrementedClock = VC.inc nn clock
+        return (incrementedClock, incrementedClock)
+    atomicWriteClock store (locationClock (getBase store)) clock'
+
+    -- Write the value.  It's ok to write extra values, so we can be interrupted here.
     let vhash = valueHash value
     atomicWriteFile store (locationValueHash store vhash)
         ((if getUseCompression store then Z.compress else id) (valueString value))
+
+    -- Finally, write the actual key record.  This completes the transaction of "set"".
     setKeyRecord store (locationKey store key) $ \mkrOld -> do
-        let nn = getNodeName store
+        let tip = KeyVersion { getVersion   = clock'
+                             , getValueHash = vhash
+                             }
         case mkrOld of
             Nothing -> return $
-                KR { getKeyName = key
+                KR { getKeyName   = key
                    , getValueType = valueType value
-                   , getTip     = KeyVersion { getVersion   = VC.insert nn 1 VC.empty
-                                             , getValueHash = vhash }
-                   , getHistory = []
+                   , getTip       = tip
+                   , getHistory   = []
                    }
             Just krOld -> do
                 when (getValueType krOld /= valueType value) $ do
                     CE.throw (TypeMismatchError { expectedType = getValueType krOld
                                                 , foundType    = valueType value })
-                let v = getTip krOld
-                return $ krOld { getTip = KeyVersion { getVersion   = VC.incWithDefault
-                                                                          nn (getVersion v) 0
-                                                     , getValueHash = vhash
-                                                     }
-                               , getHistory = v : getHistory krOld
+                return $ krOld { getTip     = tip
+                               , getHistory = getTip krOld : getHistory krOld
                                }
   where
     setEvent =
@@ -375,8 +386,8 @@ atomicWriteFile store path content = do
     renameFile tempFile path
 
 -- | Write a version clock to disk atomically.
-writeClock :: Simple -> FilePath -> Version -> IO ()
-writeClock store path clock =
+atomicWriteClock :: Simple -> FilePath -> Version -> IO ()
+atomicWriteClock store path clock =
     atomicWriteFile store path (printHum (toSexp clock))
 
 -- | Read a version clock from disk.  Throw an exception if it is missing or if it is
@@ -393,7 +404,7 @@ initStore params = do
     createDirectory base
     writeFile (locationFormat base) formatString
     writeFile (locationVersion base) (show storeVsn)
-    let initialClock = VC.insert (nodeName params) (1 :: Int) VC.empty
+    let initialClock = VC.insert (nodeName params) (0 :: Int) VC.empty
     BL.writeFile (locationClock base) (printHum (toSexp initialClock))
     BL.writeFile (locationNodeName base) (nodeName params)
     createDirectory (locationTemporary base)
