@@ -134,11 +134,10 @@ instance Arbitrary Commands where
         ks <- replicateM kn arbitrary
         Commands <$> replicateM n (makeCommand ks)
 
--- | For any store @store@, and any key @k@, the value of @getLatest
--- store k@ should either be 'Nothing', if @key@ was never set in this
--- store, or @Just (v, vsn)@, where @v@ is parameter to the most
--- recent @set store k v@, and @vsn@ is the returned value of the same
--- command.
+-- | For any store @store@, and any key @k@, the value of @getLatest store k@ should
+-- either be 'Nothing', if @key@ was never set in this store, or @Just (v, vsn)@, where
+-- @v@ is parameter to the most recent @set store k v@, and @vsn@ is the returned value of
+-- the same command.
 propSetGetLatest :: Commands -> Property
 propSetGetLatest = propWithCommands (\store cmds -> foldlM (runCmd store) M.empty cmds)
   where
@@ -153,8 +152,8 @@ propSetGetLatest = propWithCommands (\store cmds -> foldlM (runCmd store) M.empt
             Just (_, vsnOld) -> QCM.assert (vsnOld `VC.causes` vsn)
         return (M.insert key (value, vsn) kvs)
 
--- | For a non-forgetful @store@, /all/ keys @k@ inserted by @set
--- store k v@ should be returned by subsequent @keys store@.
+-- | For a non-forgetful @store@, /all/ keys @k@ inserted by @set store k v@ should be
+-- returned by subsequent @keys store@.
 propKeysPresent :: Commands -> Property
 propKeysPresent = propWithCommands (\store cmds -> foldlM (runCmd store) S.empty cmds)
   where
@@ -168,9 +167,9 @@ propKeysPresent = propWithCommands (\store cmds -> foldlM (runCmd store) S.empty
         QCM.assert (ks == s')
         return s'
 
--- | For a non-forgetful @store@, /all/ values @v@ inserted by @set
--- store k v$ should still be available to @get store k vsn@, where
--- @vsn@ is the value returned by the corresponding @set@.
+-- | For a non-forgetful @store@, /all/ values @v@ inserted by @set store k v$ should
+-- still be available to @get store k vsn@, where @vsn@ is the value returned by the
+-- corresponding @set@.
 propFullHistory :: Commands -> Property
 propFullHistory = propWithCommands (\store cmds -> foldlM (runCmd store) (M.empty, []) cmds)
   where
@@ -180,9 +179,8 @@ propFullHistory = propWithCommands (\store cmds -> foldlM (runCmd store) (M.empt
         case mvsns of
             Nothing -> return ()
             Just vsns ->
-                -- Theoretically, getting the versions above, and
-                -- iterating through them below is a race.
-                -- Practically, meh.
+                -- Theoretically, getting the versions above, and iterating through them
+                -- below is a race.  Practically, meh.
                 forM_ vsns $ \vsn -> do
                     res <- run $ get store key vsn
                     QCM.assert (res == ((\(_, _, v) -> v)
@@ -221,8 +219,8 @@ propExportImportId cmds = monadicIO $ cleanEnvironmentP ["test-store", "test-sto
 -- Helpers
 --------------------------------
 
--- | Given a set of keys, generate an arbitrary command.  @Get@s and
--- @Set@s have equal probability.
+-- | Given a set of keys, generate an arbitrary command.  @Get@s and @Set@s have equal
+-- probability.
 makeCommand :: [Key] -> Gen Command
 makeCommand ks = do
     n <- choose (1, 2 :: Int)
