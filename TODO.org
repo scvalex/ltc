@@ -69,8 +69,11 @@
   - [X] Version Clock held by the store
   - [X] Check that vector-clock has the right semantics
   - [X] Key history "from VC to VC"
-  - [ ] Propagate store changes to neighbours
+  - [ ] Node update messages should include a version clock and a
+    multi-set
+  - [ ] Get rid of the Ltc.Adapter hierarchy
   - [ ] Receive store changes from neighbours
+  - [ ] Propagate store changes to neighbours
   - [ ] Keep track of suspected neighbour version clock
   - [ ] Initial synchronization with neighbours
   - [ ] Configurable update frequency
