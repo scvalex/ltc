@@ -10,6 +10,7 @@ import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Foldable ( foldlM )
 import Data.List ( find )
 import Data.Monoid ( mempty )
+import Data.VectorClock ( causes )
 import Ltc.Store ( Store(..)
                  , Key(..), Value(..), Type(..), Single
                  , Version
@@ -37,6 +38,7 @@ main = defaultMainWithOpts
        , testCase "simpleFieldType" testSimpleFieldType
        , testProperty "setGetLatest" propSetGetLatest
        , testProperty "keysPresent" propKeysPresent
+       , testProperty "ascendingHistory" propAscendingHistory
        , testProperty "fullHistory" propFullHistory
        -- FIXME Re-thing export/import-id test
        -- , testProperty "exportImportId" propExportImportId
@@ -116,7 +118,8 @@ instance Arbitrary ByteString where
     arbitrary = sized $ \n -> do
         BL.pack <$> sequence [ choose (' ', '~') | _ <- [1..n] ]
 
-data Command = GetLatest Key | Set Key (Value (Single ByteString))
+data Command = GetLatest Key
+             | Set Key (Value (Single ByteString))
              deriving ( Show )
 
 newtype Commands = Commands { unCommands :: [Command] }
@@ -167,6 +170,23 @@ propKeysPresent = propWithCommands (\store cmds -> foldlM (runCmd store) S.empty
         QCM.assert (ks == s')
         return s'
 
+-- | The key versions for any key should always be returned in most-recent-first order.
+propAscendingHistory :: Commands -> Property
+propAscendingHistory = propWithCommands (\store cmds -> foldlM (runCmd store) () cmds)
+  where
+    runCmd store () (GetLatest key) = do
+        -- We'll actually check the versions here.
+        mvsns <- run $ keyVersions store key
+        case mvsns of
+            Nothing ->
+                return ()
+            Just vsns ->
+                QCM.assert (all (uncurry (flip causes)) (zip vsns (tail vsns)))
+        return ()
+    runCmd store () (Set key value) = do
+        _ <- run $ set store key value
+        return ()
+
 -- | For a non-forgetful @store@, /all/ values @v@ inserted by @set store k v$ should
 -- still be available to @get store k vsn@, where @vsn@ is the value returned by the
 -- corresponding @set@.
@@ -177,7 +197,8 @@ propFullHistory = propWithCommands (\store cmds -> foldlM (runCmd store) (M.empt
         mvsns <- run $ keyVersions store key
         QCM.assert (mvsns == M.lookup key kvsns)
         case mvsns of
-            Nothing -> return ()
+            Nothing ->
+                return ()
             Just vsns ->
                 -- Theoretically, getting the versions above, and iterating through them
                 -- below is a race.  Practically, meh.
