@@ -68,7 +68,7 @@ import Ltc.Store.Class ( Store(..), SetCmd(..)
                        , NodeName
                        , TypeMismatchError(..), CorruptStoreError(..), CorruptKeyFileError(..)
                        , StoreClosed(..), CorruptValueFileError(..), NodeNameMismatchError(..) )
-import Ltc.Store.Event ( EventChannel, Event(..) )
+import Ltc.Store.Event ( EventChannel, Event(..), SetEvent(..) )
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents )
 import System.FilePath ( (</>) )
@@ -169,7 +169,7 @@ instance Store Simple where
 
     set store key value = doSet store key value
 
-    mset store kvs = doMset store kvs
+    mset store kvs = doMSet store kvs
 
     keys store = doKeys store
 
@@ -279,7 +279,6 @@ doSet store key value = do
 
     -- Log the set everywhere.
     debugM tag (printf "set %s" (show key))
-    writeEventChannels store setEvent
 
     -- Increment and save the version clock.  It's ok to increment the clock
     -- superfluously, so we can be interrupted here.
@@ -295,7 +294,7 @@ doSet store key value = do
         ((if getUseCompression store then Z.compress else id) (valueString value))
 
     -- Finally, write the actual key record.  This completes the transaction of "set"".
-    setKeyRecord store (locationKey store key) $ \mkrOld -> do
+    vsn <- setKeyRecord store (locationKey store key) $ \mkrOld -> do
         let tip = KeyVersion { getVersion   = clock'
                              , getValueHash = vhash
                              }
@@ -313,20 +312,38 @@ doSet store key value = do
                 return $ krOld { getTip     = tip
                                , getHistory = getTip krOld : getHistory krOld
                                }
+    writeEventChannels store (MSetEvent [setEvent])
+    return vsn
   where
     setEvent =
         let Key k = key
             v = valueString value
-        in SetEvent { eventKey    = key
-                    , keyDigest   = fromInteger (integerDigest (sha1 k))
-                    , valueDigest = fromInteger (integerDigest (sha1 v))
+        in SetEvent { setKey       = key
+                    , setKeyDigest = fromInteger (integerDigest (sha1 k))
+                    , valueDigest  = fromInteger (integerDigest (sha1 v))
                     }
 
-doMset :: Simple -> [SetCmd] -> IO Version
-doMset store cmds = do
+doMSet :: Simple -> [SetCmd] -> IO Version
+doMSet store cmds = do
+    assertIsOpen store
+
+    -- Log the set everywhere
+    debugM tag (printf "mset %s" (show (map (\(SetCmd k _) -> k) cmds)))
+
     forM_ cmds $ \(SetCmd k v) ->
         doSet store k v
+
+    writeEventChannels store msetEvent
     return undefined
+  where
+    msetEvent =
+        MSetEvent (flip map cmds $ \(SetCmd key value) ->
+                    let Key k = key
+                        v = valueString value
+                    in SetEvent { setKey       = key
+                                , setKeyDigest = fromInteger (integerDigest (sha1 k))
+                                , valueDigest  = fromInteger (integerDigest (sha1 v))
+                                })
 
 doKeys :: Simple -> IO (Set Key)
 doKeys store = do

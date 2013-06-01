@@ -30,7 +30,7 @@ import Data.Function ( on )
 import Data.Set ( Set )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
-import Ltc.Store ( Store(..), Event(..) )
+import Ltc.Store ( Store(..), Event(..), SetEvent(..) )
 import Network.BSD ( getHostName )
 import Network.Interface ( NetworkInterface, NetworkLocation )
 import Network.Interface.UDP ( UdpInterface )
@@ -254,13 +254,13 @@ handleNodeEnvelope _store _intf envelope = do
 ----------------------
 
 sendEventToNeighbours :: (NetworkInterface a) => Node a -> Event -> IO ()
-sendEventToNeighbours node (SetEvent { eventKey = key }) = do
+sendEventToNeighbours node (MSetEvent setEvents) = do
     withMVar (getNodeData node) $ \nodeData -> do
         mapM_ sendEventToNeighbour (S.toList (getNeighbours nodeData))
   where
     sendEventToNeighbour remoteNode = do
         debugM tag (printf "sending update for %s to neighbour %s"
-                           (show key)
+                           (show (map setKey setEvents))
                            (show (getRemoteLocation remoteNode)))
         return ()
 sendEventToNeighbours _node _event = do

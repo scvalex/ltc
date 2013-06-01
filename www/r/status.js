@@ -28,8 +28,8 @@ function Event(msg, handleEvent) {
         handleEvent("get", self);
     } else if (msg.hasOwnProperty("SetEvent")) {
         self.operation = "set";
-        self.key = msg["SetEvent"].eventKey;
-        self.keyDigest = msg["SetEvent"].keyDigest
+        self.key = msg["SetEvent"].setKey;
+        self.keyDigest = msg["SetEvent"].setKeyDigest
         self.valueDigest = msg["SetEvent"].valueDigest
         handleEvent("set", self);
     } else {
@@ -157,7 +157,19 @@ function AppViewModel() {
         log("websocket closed: ", event)
     }
     self.socket.onmessage = function(event) {
-        self.log.push(new Event(JSON.parse(event.data), handleEvent));
+        var data = JSON.parse(event.data);
+        if (data.hasOwnProperty("GetEvent")) {
+            self.log.push(new Event(data, handleEvent));
+        } else if (data.hasOwnProperty("MSetEvent")) {
+            // For simplicity, we just split msets into individual
+            // sets.  So, the web UI has no knowledge of msets.
+            var events = data["MSetEvent"];
+            for (var i = 0; i < events.length; i++) {
+                self.log.push(new Event({"SetEvent" : events[i]}, handleEvent));
+            }
+        } else {
+            log("unknown event: ", event);
+        }
         // Scroll to bottom
         $("log").scrollTop = $("log").scrollHeight;
     }
