@@ -6,6 +6,9 @@ module Ltc.Store.VersionControl (
         DiffPack(..),
         KeyHistory(..), getDiffPack, getKeyHistory,
 
+        -- * Selecting history
+        versionsFromToIncluding,
+
         -- * Applying history
         insertChangesInto, Reason
     ) where
@@ -15,14 +18,26 @@ import Control.Monad ( forM )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Foldable ( foldlM )
 import Data.Map ( Map )
+import Data.VectorClock ( causes )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..) )
 import Ltc.Store.Class ( Store(..)
                        , Value(..), ValueString, Single, Collection
                        , Type(..), ValueType
-                       , Key, keyVersionsExn, getExn, getLatestExn )
+                       , Key, getExn, getLatestExn
+                       , Version, keyVersionsExn )
 import Ltc.Store.Diff ( Diff, Diffable(..) )
 import qualified Data.Map as M
+import System.Log.Logger ( debugM )
+import Text.Printf ( printf )
+
+----------------------
+-- Debugging
+----------------------
+
+-- | Debugging tag for this module
+tag :: String
+tag = "Simple"
 
 ----------------------
 -- Wrappers around values and diffs
@@ -126,6 +141,21 @@ diffsToValues :: (Diffable a) => Value a -> [Diff a] -> [Value a]
 diffsToValues tip diffs = tip : reverse (snd (foldl diffToValue (tip, []) diffs))
   where
     diffToValue (v, vs) diff = let v' = applyDiff v diff in (v', v' : vs)
+
+----------------------
+-- Selecting history
+----------------------
+
+-- | We often need to select changes /after/ one version clock, but before and including
+-- another version clock.  The list of versions is in oldest-to-newest order.
+versionsFromToIncluding :: (Store s) => s -> Key -> Version -> Version -> IO [Version]
+versionsFromToIncluding store key from toInc = do
+    debugM tag (printf "selecting VCs from %s to (including) %s"
+                       (show from) (show toInc))
+    vsns <- reverse <$> keyVersionsExn store key
+    return $
+        takeWhile (\vsn -> vsn `causes` toInc) $
+        dropWhile (\vsn -> not (from `causes` vsn) || from == vsn) vsns
 
 ----------------------
 -- Getting history

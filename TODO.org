@@ -47,6 +47,9 @@
   - [X] Graph sets/gets
 * TODO UDP Connections
   :LOGBOOK:
+  CLOCK: [2013-06-01 Sat 17:35]--[2013-06-01 Sat 17:43] =>  0:08
+  CLOCK: [2013-06-01 Sat 16:46]--[2013-06-01 Sat 17:12] =>  0:26
+  CLOCK: [2013-06-01 Sat 16:04]--[2013-06-01 Sat 16:45] =>  0:41
   CLOCK: [2013-05-31 Fri 20:13]--[2013-05-31 Fri 21:31] =>  1:18
   CLOCK: [2013-05-31 Fri 15:43]--[2013-05-31 Fri 16:13] =>  0:30
   CLOCK: [2013-05-30 Thu 01:37]--[2013-05-30 Thu 02:17] =>  0:40
@@ -65,7 +68,7 @@
   updates to, and request updates from.
   - [X] Version Clock held by the store
   - [X] Check that vector-clock has the right semantics
-  - [ ] Key history "from VC to VC"
+  - [X] Key history "from VC to VC"
   - [ ] Propagate store changes to neighbours
   - [ ] Receive store changes from neighbours
   - [ ] Keep track of suspected neighbour version clock
