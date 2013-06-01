@@ -48,7 +48,8 @@ module Ltc.Store.Simple (
 
 import qualified Codec.Compression.GZip as Z
 import Control.Applicative ( (<$>) )
-import Control.Concurrent ( MVar, newMVar, modifyMVar, modifyMVar_, readMVar )
+import Control.Concurrent ( MVar, newMVar
+                          , modifyMVar, modifyMVar_, readMVar, withMVar )
 import Control.Concurrent.STM ( atomically, writeTChan )
 import qualified Control.Exception as CE
 import Control.Monad ( when, unless, forM_ )
@@ -105,6 +106,7 @@ data Simple = Simple
     , getEventChannels  :: MVar [EventChannel]
     , getIsOpen         :: MVar Bool
     , getClock          :: MVar Version
+    , getLock           :: MVar ()
     }
 
 -- | There is one 'KeyVersion' record for each *value* stored for a
@@ -201,6 +203,7 @@ doOpen params = do
 
     eventChannels <- newMVar []
     isOpen <- newMVar True
+    lock <- newMVar ()
 
     return (Simple { getBase           = location params
                    , getUseCompression = useCompression params
@@ -208,6 +211,7 @@ doOpen params = do
                    , getEventChannels  = eventChannels
                    , getIsOpen         = isOpen
                    , getClock          = clock
+                   , getLock           = lock
                    })
 
 doClose :: Simple -> IO ()
@@ -274,7 +278,7 @@ doKeyType store key = do
 
 doSet :: (ValueString (Value a), ValueType (Value a))
       => Simple -> Key -> Value a -> IO Version
-doSet store key value = do
+doSet store key value = lockStore store $ do
     assertIsOpen store
 
     -- Log the set everywhere.
@@ -462,6 +466,11 @@ assertIsOpen :: Simple -> IO ()
 assertIsOpen store = do
     isOpen <- readMVar (getIsOpen store)
     unless isOpen $ CE.throw StoreClosed
+
+-- | Lock the store for the duration of the given action: only one such action can execute
+-- at any time.
+lockStore :: Simple -> IO a -> IO a
+lockStore store act = withMVar (getLock store) (const act)
 
 ----------------------
 -- Locations
