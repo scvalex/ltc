@@ -123,6 +123,10 @@
 * TODO SQL Store Backend
   It's going to be SQLite, but it should work on any SQL database.
 * TODO Multi-entry changes
+  :LOGBOOK:
+  CLOCK: [2013-06-01 Sat 22:44]--[2013-06-01 Sat 22:54] =>  0:10
+  CLOCK: [2013-06-01 Sat 20:41]--[2013-06-01 Sat 21:42] =>  1:01
+  :END:
 * TODO Better merging
 * TODO Artificial delay network interface
 * TODO Test network interfaces

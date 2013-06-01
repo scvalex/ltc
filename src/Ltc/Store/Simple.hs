@@ -52,7 +52,7 @@ import Control.Concurrent ( MVar, newMVar
                           , modifyMVar, modifyMVar_, readMVar, withMVar )
 import Control.Concurrent.STM ( atomically, writeTChan )
 import qualified Control.Exception as CE
-import Control.Monad ( when, unless, forM_ )
+import Control.Monad ( when, unless, forM, forM_ )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import GHC.Generics ( Generic )
@@ -278,11 +278,14 @@ doKeyType store key = do
 
 doSet :: (ValueString (Value a), ValueType (Value a))
       => Simple -> Key -> Value a -> IO Version
-doSet store key value = lockStore store $ do
+doSet store key value = doMSet store [SetCmd key value]
+
+doMSet :: Simple -> [SetCmd] -> IO Version
+doMSet store cmds = lockStore store $ do
     assertIsOpen store
 
-    -- Log the set everywhere.
-    debugM tag (printf "set %s" (show key))
+    -- Log the set everywhere
+    debugM tag (printf "mset %s" (show (map (\(SetCmd key _) -> key) cmds)))
 
     -- Increment and save the version clock.  It's ok to increment the clock
     -- superfluously, so we can be interrupted here.
@@ -292,53 +295,45 @@ doSet store key value = lockStore store $ do
         return (incrementedClock, incrementedClock)
     atomicWriteClock store (locationClock (getBase store)) clock'
 
-    -- Write the value.  It's ok to write extra values, so we can be interrupted here.
-    let vhash = valueHash value
-    atomicWriteFile store (locationValueHash store vhash)
-        ((if getUseCompression store then Z.compress else id) (valueString value))
+    -- Write the values.  It's ok to write extra values, so we can be interrupted here.
+    forM_ cmds $ \(SetCmd _ value) -> do
+        let vhash = valueHash value
+        atomicWriteFile store (locationValueHash store vhash)
+            ((if getUseCompression store then Z.compress else id) (valueString value))
 
-    -- Finally, write the actual key record.  This completes the transaction of "set"".
-    vsn <- setKeyRecord store (locationKey store key) $ \mkrOld -> do
+    -- Read the key records (the store is locked so there's no risk of them being updated
+    -- by something else).  We'll also need the corresponding commands later.
+    mkrs <- forM cmds $ \cmd@(SetCmd key _) -> do
+        mkr <- readKeyRecord (locationKey store key)
+        return (cmd, mkr)
+
+    -- Update the key records, or create new ones if they are missing.  Again, we'll also
+    -- need the corresponding commands later.
+    krs' <- forM mkrs $ \(cmd@(SetCmd key value), mkrOld) -> do
+        let vhash = valueHash value
         let tip = KeyVersion { getVersion   = clock'
                              , getValueHash = vhash
                              }
         case mkrOld of
             Nothing -> return $
-                KR { getKeyName   = key
-                   , getValueType = valueType value
-                   , getTip       = tip
-                   , getHistory   = []
-                   }
+                (cmd, KR { getKeyName   = key
+                         , getValueType = valueType value
+                         , getTip       = tip
+                         , getHistory   = []
+                         })
             Just krOld -> do
                 when (getValueType krOld /= valueType value) $ do
                     CE.throw (TypeMismatchError { expectedType = getValueType krOld
                                                 , foundType    = valueType value })
-                return $ krOld { getTip     = tip
-                               , getHistory = getTip krOld : getHistory krOld
-                               }
-    writeEventChannels store (MSetEvent [setEvent])
-    return vsn
-  where
-    setEvent =
-        let Key k = key
-            v = valueString value
-        in SetEvent { setKey       = key
-                    , setKeyDigest = fromInteger (integerDigest (sha1 k))
-                    , valueDigest  = fromInteger (integerDigest (sha1 v))
-                    }
-
-doMSet :: Simple -> [SetCmd] -> IO Version
-doMSet store cmds = do
-    assertIsOpen store
-
-    -- Log the set everywhere
-    debugM tag (printf "mset %s" (show (map (\(SetCmd k _) -> k) cmds)))
-
-    forM_ cmds $ \(SetCmd k v) ->
-        doSet store k v
+                return $ (cmd, krOld { getTip     = tip
+                                     , getHistory = getTip krOld : getHistory krOld
+                                     })
+    atomicWriteFiles store $
+        flip map krs' $ \(SetCmd key _, kr) ->
+            (locationKey store key, printHum (toSexp kr))
 
     writeEventChannels store msetEvent
-    return undefined
+    return clock'
   where
     msetEvent =
         MSetEvent (flip map cmds $ \(SetCmd key value) ->
@@ -370,13 +365,6 @@ doAddEventChannel store eventChannel = do
 -- Helpers
 ----------------------
 
-setKeyRecord :: Simple -> FilePath -> (Maybe KeyRecord -> IO KeyRecord) -> IO Version
-setKeyRecord store path update = do
-    mkr <- readKeyRecord path
-    kr' <- update mkr
-    atomicWriteFile store path (printHum (toSexp kr'))
-    return (getVersion (getTip kr'))
-
 -- | Wrapper around 'readKeyRecord'.
 withKeyRecord :: FilePath -> (KeyRecord -> IO (Maybe a)) -> IO (Maybe a)
 withKeyRecord path f = do
@@ -406,9 +394,10 @@ readKeyRecord path = do
                       CE.throw (mkErr "multiple sexps")
           else return Nothing
 
--- | Write the given 'ByteString' to the file atomically.  Overwrite
--- any previous content.  The 'Simple' reference is needed in order to
--- find the temporary directory.
+-- | Write the given 'ByteString' to the file atomically.  Overwrite any previous content.
+-- The 'Simple' reference is needed in order to find the temporary directory (we can't use
+-- @/tmp@ because that may be on a different partition and 'renameFile' doesn't work in
+-- that case).
 atomicWriteFile :: Simple -> FilePath -> ByteString -> IO ()
 atomicWriteFile store path content = do
     (tempFile, handle) <- openBinaryTempFile (locationTemporary (getBase store)) "ltc"
@@ -419,6 +408,13 @@ atomicWriteFile store path content = do
 atomicWriteClock :: Simple -> FilePath -> Version -> IO ()
 atomicWriteClock store path clock =
     atomicWriteFile store path (printHum (toSexp clock))
+
+-- | Write the given 'ByteString's to the given files atomically.  See 'atomicWriteFile'
+-- for details.
+atomicWriteFiles :: Simple -> [(FilePath, ByteString)] -> IO ()
+atomicWriteFiles store pcs = do
+    -- FIXME Make 'atomicWriteFiles' atomic.
+    mapM_ (uncurry (atomicWriteFile store)) pcs
 
 -- | Read a version clock from disk.  Throw an exception if it is missing or if it is
 -- malformed.
