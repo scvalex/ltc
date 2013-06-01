@@ -64,6 +64,7 @@
   Nodes should have a set of "neighbor" nodes which they propagate
   updates to, and request updates from.
   - [X] Version Clock held by the store
+  - [X] Check that vector-clock has the right semantics
   - [ ] Key history "from VC to VC"
   - [ ] Propagate store changes to neighbours
   - [ ] Receive store changes from neighbours

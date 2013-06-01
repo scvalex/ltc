@@ -11,6 +11,7 @@ module Ltc.Store.Class (
         TypeMismatchError(..), NodeNameMismatchError(..),
         CorruptKeyFileError(..), CorruptValueFileError(..),
         CorruptStoreError(..), StoreClosed(..),
+        NoVersionsFor(..), NoValueFor(..), NoValueForLatest(..),
 
         -- * Value helpers
         Type(..), ValueString(..), ValueType(..),
@@ -88,6 +89,8 @@ withStore params act = do
                     CE.throw e)
         (act store)
 
+-- | Get all versions of the values associated with the given key, most-recent-first.  If
+-- the key does not exist, throw 'NoVersionsFor'.
 keyVersionsExn :: (Store s) => s -> Key -> IO [Version]
 keyVersionsExn store key = do
     mvsns <- keyVersions store key
@@ -95,6 +98,8 @@ keyVersionsExn store key = do
         Nothing   -> CE.throw (NoVersionsFor key)
         Just vsns -> return vsns
 
+-- | Get the value associated with the given key at the given version.  If the key does
+-- not exist, throw 'NoValueFor'.
 getExn :: (Store s, ValueString (Value a)) => s -> Key -> Version -> IO (Value a)
 getExn store key vsn = do
     mv <- get store key vsn
@@ -102,6 +107,8 @@ getExn store key vsn = do
         Nothing -> CE.throw (NoValueFor key vsn)
         Just v  -> return v
 
+-- | Get the latest value associated with the given key.  If the key does not exist, throw
+-- 'NoValueForLatest'.
 getLatestExn :: (Store s, ValueString (Value a)) => s -> Key -> IO (Value a, Version)
 getLatestExn store key = do
     mvv <- getLatest store key
