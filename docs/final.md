@@ -958,10 +958,29 @@ the total size of the entries that needed synchronization.
 
 \clearpage
 
-Conclusions and Future Work
-===========================
+Conclusions
+===========
 
+<!-- What I achieved. -->
+<!-- What I learned. -->
+<!-- What I found easy. -->
+<!-- What I found hard. -->
+
+\clearpage
+
+Future Work
+===========
+
+<!-- What future does this program have? -->
+<!-- Will I continue working on it? -->
+<!-- Will anyone use it? -->
+<!-- What future research opportunities there are? -->
+
+\clearpage
 \appendix
 
 User Guide
 ==========
+
+<!-- README: How to setup and run? -->
+<!-- Haddock docs -->
