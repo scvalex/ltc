@@ -8,6 +8,8 @@ import Data.ByteString ( ByteString )
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable )
+import Ltc.Store ( Version )
+import Ltc.Store.VersionControl ( DiffPack )
 import Network.Interface ( NetworkInterface(..) )
 import qualified Data.Serialize as S
 
@@ -37,7 +39,9 @@ instance Sexpable SerializedNodeEnvelope
 
 data NodeMessage = Ping String
                  | Pong String
-                 | Patch String
+                 | Changes { getVersionClock :: Version
+                           , getChanges      :: DiffPack
+                           }
                  deriving ( Generic, Show )
 
 instance Serialize NodeMessage

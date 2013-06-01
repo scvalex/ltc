@@ -18,6 +18,7 @@ import Control.Monad ( forM )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Foldable ( foldlM )
 import Data.Map ( Map )
+import Data.Serialize ( Serialize )
 import Data.VectorClock ( causes )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..) )
@@ -59,11 +60,15 @@ data KeyHistory = IntKeyHistory (Value (Single Integer)) [Diff (Single Integer)]
 
 instance Sexpable KeyHistory
 
+instance Serialize KeyHistory
+
 -- | 'DiffPack' is just a map of 'Key's to 'KeyHistory's.
 data DiffPack = DiffPack (Map Key KeyHistory)
               deriving ( Eq, Generic, Show )
 
 instance Sexpable DiffPack
+
+instance Serialize DiffPack
 
 type Reason = String
 

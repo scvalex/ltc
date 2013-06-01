@@ -14,9 +14,11 @@ module Ltc.Store.Diff (
 import Control.Applicative ( (<$>), (<*>) )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.List ( groupBy )
+import Data.Maybe ( fromJust )
+import Data.Serialize ( Serialize(..) )
 import Data.Set ( Set )
 import GHC.Generics ( Generic )
-import Language.Sexp ( Sexpable(..), Sexp(..), printMach )
+import Language.Sexp ( Sexpable(..), Sexp(..), printMach, parseExn )
 import Ltc.Store.Class ( Value(..), Single, Collection )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
@@ -59,6 +61,11 @@ instance (Sexpable (Value (Single a)), Ord (Value (Single a)))
 
     fromSexp (List ["DiffSet", s1, s2]) = DiffSet <$> fromSexp s1 <*> fromSexp s2
     fromSexp _                          = fail "fromSexp Diff (Collection Integer)"
+
+instance (Sexpable (Diff a)) => Serialize (Diff a) where
+    put d = put (printMach (toSexp d))
+
+    get = fromJust . fromSexp . head . parseExn <$> get
 
 -- | 'Diffable' is a way of creating, manipulating, and applying 'Diff's.  The 'Diff's
 -- created here have the properties mentioned in the documentation for the class

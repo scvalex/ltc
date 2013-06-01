@@ -47,6 +47,7 @@
   - [X] Graph sets/gets
 * TODO UDP Connections
   :LOGBOOK:
+  CLOCK: [2013-06-01 Sat 23:44]--[2013-06-02 Sun 00:12] =>  0:28
   CLOCK: [2013-06-01 Sat 17:35]--[2013-06-01 Sat 17:43] =>  0:08
   CLOCK: [2013-06-01 Sat 16:46]--[2013-06-01 Sat 17:12] =>  0:26
   CLOCK: [2013-06-01 Sat 16:04]--[2013-06-01 Sat 16:45] =>  0:41
@@ -69,9 +70,10 @@
   - [X] Version Clock held by the store
   - [X] Check that vector-clock has the right semantics
   - [X] Key history "from VC to VC"
-  - [ ] Node update messages should include a version clock and a
+  - [X] Node update messages should include a version clock and a
     multi-set
   - [ ] Get rid of the Ltc.Adapter hierarchy
+  - [ ] SmallCheck tests for NodeProtocol
   - [ ] Receive store changes from neighbours
   - [ ] Propagate store changes to neighbours
   - [ ] Keep track of suspected neighbour version clock
@@ -124,9 +126,13 @@
   It's going to be SQLite, but it should work on any SQL database.
 * TODO Multi-entry changes
   :LOGBOOK:
+  CLOCK: [2013-06-01 Sat 23:42]--[2013-06-01 Sat 23:43] =>  0:01
+  CLOCK: [2013-06-01 Sat 23:39]--[2013-06-01 Sat 23:42] =>  0:03
   CLOCK: [2013-06-01 Sat 22:44]--[2013-06-01 Sat 22:54] =>  0:10
   CLOCK: [2013-06-01 Sat 20:41]--[2013-06-01 Sat 21:42] =>  1:01
   :END:
+  - [X] mset
+  - [ ] mget
 * TODO Better merging
 * TODO Artificial delay network interface
 * TODO Test network interfaces

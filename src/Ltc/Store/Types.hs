@@ -19,11 +19,13 @@ module Ltc.Store.Types (
 import Control.Applicative ( (<$>) )
 import Data.Aeson ( ToJSON )
 import Data.ByteString.Lazy.Char8 ( ByteString, pack )
+import Data.Maybe ( fromJust )
+import Data.Serialize ( Serialize(..) )
 import Data.Set ( Set )
 import Data.String ( IsString(..) )
 import Data.VectorClock ( VectorClock )
 import GHC.Generics ( Generic )
-import Language.Sexp ( Sexp(..), Sexpable(..) )
+import Language.Sexp ( Sexp(..), Sexpable(..), printMach, parseExn )
 import Text.Printf ( printf )
 
 ----------------------
@@ -37,14 +39,19 @@ instance Sexpable Key
 
 instance ToJSON Key
 
+instance Serialize Key
+
 instance IsString Key where
     fromString = Key . pack
 
--- FIXME Make KeyHash, ValueHash, NodeName, and Version abstract types
+-- FIXME Make KeyHash, ValueHjash, NodeName, and Version abstract types
 type KeyHash = ByteString
 type ValueHash = ByteString
 type NodeName = ByteString
+
 type Version = VectorClock NodeName Int
+
+instance Serialize Version
 
 instance (Sexpable a, Sexpable b) => Sexpable (VectorClock a b)
 
@@ -92,3 +99,8 @@ instance (Sexpable (Value (Single a)), Ord (Value (Single a)))
     toSexp (VaSet s) = List ["VaSet", toSexp s]
     fromSexp (List ["VaSet", s]) = VaSet <$> fromSexp s
     fromSexp _                   = fail "fromSexp Value (Collection a)"
+
+instance (Sexpable (Value a)) => Serialize (Value a) where
+    put d = put (printMach (toSexp d))
+
+    get = fromJust . fromSexp . head . parseExn <$> get
