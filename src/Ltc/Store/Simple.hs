@@ -51,7 +51,7 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent ( MVar, newMVar, modifyMVar, modifyMVar_, readMVar )
 import Control.Concurrent.STM ( atomically, writeTChan )
 import qualified Control.Exception as CE
-import Control.Monad ( when, unless )
+import Control.Monad ( when, unless, forM_ )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import GHC.Generics ( Generic )
@@ -61,8 +61,9 @@ import Data.Set ( Set )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, parseExn, printHum )
-import Ltc.Store.Class ( Store(..), ValueType(..), ValueString(..), Type(..)
-                       , Value, ValueHash, Version
+import Ltc.Store.Class ( Store(..), SetCmd(..)
+                       , Value, ValueType(..), ValueString(..), Type(..), ValueHash
+                       , Version
                        , Key(..), KeyHash
                        , NodeName
                        , TypeMismatchError(..), CorruptStoreError(..), CorruptKeyFileError(..)
@@ -167,6 +168,8 @@ instance Store Simple where
     keyType store key = doKeyType store key
 
     set store key value = doSet store key value
+
+    mset store kvs = doMset store kvs
 
     keys store = doKeys store
 
@@ -318,6 +321,12 @@ doSet store key value = do
                     , keyDigest   = fromInteger (integerDigest (sha1 k))
                     , valueDigest = fromInteger (integerDigest (sha1 v))
                     }
+
+doMset :: Simple -> [SetCmd] -> IO Version
+doMset store cmds = do
+    forM_ cmds $ \(SetCmd k v) ->
+        doSet store k v
+    return undefined
 
 doKeys :: Simple -> IO (Set Key)
 doKeys store = do

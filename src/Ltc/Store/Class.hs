@@ -1,11 +1,11 @@
 {-# LANGUAGE TypeFamilies, DeriveDataTypeable, GADTs, FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, ExistentialQuantification #-}
 {-# LANGUAGE UndecidableInstances, DeriveGeneric #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Ltc.Store.Class (
         -- * Store interface
-        Store(..), withStore, keyVersionsExn, getExn, getLatestExn,
+        Store(..), SetCmd(..), withStore, keyVersionsExn, getExn, getLatestExn,
 
         -- * Errors
         TypeMismatchError(..), NodeNameMismatchError(..),
@@ -71,6 +71,12 @@ class Store a where
     -- store, throw 'StoreClosed'.
     set :: (ValueString (Value b), ValueType (Value b)) => a -> Key -> Value b -> IO Version
 
+    -- | Atomically set the values associated with the keys.  By atomic we mean that
+    -- either all the values are set, or none other.  This function is called 'mset'
+    -- because it's a multi-set.  If 'close' was already called on this store, throw
+    -- 'StoreClosed'.
+    mset :: a -> [SetCmd] -> IO Version
+
     -- | Get all the keys stored in the store.  Note that using this is probably racey
     -- because the set of keys may change before it is used.
     keys :: a -> IO (Set Key)
@@ -78,6 +84,9 @@ class Store a where
     -- | Add an event channel to the store.  Events will be written are written to it as
     -- they happen.
     addEventChannel :: a -> EventChannel -> IO ()
+
+data SetCmd = forall a. (ValueString (Value a), ValueType (Value a))
+            => SetCmd Key (Value a)
 
 -- | Open a store, run the given action, and close the store.  The store is cleanly closed
 -- even if the action throws an exception; the exception is rethrown afterwards.
