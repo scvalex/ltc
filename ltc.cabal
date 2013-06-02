@@ -70,7 +70,7 @@ Library
                         Network.RedisServer,
                         Network.StatusServer
   Other-modules:
-                        Ltc.Adapter.RedisAdapter,
+                        Network.RedisAdapter,
                         Network.Types
 
 Executable ltc

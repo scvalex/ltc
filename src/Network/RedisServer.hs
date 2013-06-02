@@ -14,8 +14,8 @@ import Control.Proxy ( Proxy, ProxyFast, Producer, Consumer, Pipe
 import Control.Proxy.Attoparsec ( parserInputD, parserD )
 import Data.ByteString.Char8 ( ByteString )
 import Data.Data ( Data, Typeable )
-import Ltc.Adapter.RedisAdapter ( redisProxyD )
 import Ltc.Store ( Store )
+import Network.RedisAdapter ( redisProxyD )
 import Network.RedisProtocol ( RedisMessage(..), redisParser, redisEncode )
 import Network.Socket ( Socket, socket, accept, sClose, bindSocket
                       , Family(..), SocketType(..), SockAddr(..)

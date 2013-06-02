@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts, GADTs #-}
 
-module Ltc.Adapter.RedisAdapter (
+-- | This module is the processor for 'RedisMessage's.
+module Network.RedisAdapter (
         redisProxyD
     ) where
 
@@ -31,6 +32,8 @@ tag = "RedisAdapter"
 -- Redis proxy
 ----------------------
 
+-- | Process 'RedisMessage's in a synchronous fashion.  Note that not all Redis messages
+-- are supported, and will "not supported" return errors.
 redisProxyD :: (Proxy p, Store s) => s -> () -> Pipe p RedisMessage RedisMessage IO ()
 redisProxyD store () = runIdentityP loop
   where
@@ -249,7 +252,6 @@ redisProxyD store () = runIdentityP loop
 -- | Make a strict 'ByteString' lazy.
 lazy :: BS.ByteString -> BL.ByteString
 lazy s = BL.fromChunks [s]
-
 
 mkKey :: BS.ByteString -> Key
 mkKey = Key . lazy
