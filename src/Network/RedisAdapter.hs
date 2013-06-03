@@ -11,7 +11,7 @@ import Control.Monad ( forM, unless )
 import Control.Proxy ( Proxy, Pipe, runIdentityP, request, respond, lift )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Set ( Set )
-import Ltc.Store ( Store(..), Storable, Key(..), Version
+import Ltc.Store ( Store(..), Storable, SetCmd(..), Key(..), Version
                  , TypeMismatchError(..) )
 import Network.RedisProtocol ( RedisMessage(..) )
 import qualified Data.ByteString.Char8 as BS
@@ -80,7 +80,8 @@ redisProxyD store () = runIdentityP loop
                     -- SETRANGE is not supported because Francesco is a pedant.
                     MultiBulk ("MGET" : ks) -> do
                         messagesToKeys ks handleMGet
-                    -- FIXME Support Redis's MSET
+                    MultiBulk ("MSET" : ks) -> do
+                        messagesToKeyValues ks handleMSet
                     MultiBulk ["SADD", Bulk key, Bulk s] -> do
                         handleSAdd key (lazy s)
                     MultiBulk ["SADD", Bulk key, Integer n] -> do
@@ -152,6 +153,10 @@ redisProxyD store () = runIdentityP loop
                 _           -> Nil
         resply (MultiBulk values)
 
+    handleMSet kvs = do
+        _ <- mset store (map (uncurry SetCmd) kvs)
+        resply (Status "OK")
+
     handleSAdd key s = do
         ss <- getWithDefault (mkKey key) (S.empty :: Set ByteString)
         let size = S.size ss
@@ -187,14 +192,27 @@ redisProxyD store () = runIdentityP loop
         handle (\(TypeMismatchError {}) -> return Nothing ) $
             Just . map (maybe S.empty fst) <$> forM ks (getLatest store)
 
-    -- | Convert a list of 'RedisMessage's to a list of 'Key's.  This
-    -- is useful for commands with variable numbers of arguments.
-    messagesToKeys :: [RedisMessage] -> ([Key] -> IO (RedisMessage, Bool)) -> IO (RedisMessage, Bool)
+    -- | Convert a list of 'RedisMessage's to a list of 'Key's.  This is useful for
+    -- commands with variable numbers of arguments.
+    messagesToKeys :: [RedisMessage]
+                   -> ([Key] -> IO (RedisMessage, Bool))
+                   -> IO (RedisMessage, Bool)
     messagesToKeys ks act = go [] ks
       where
         go acc []            = act (reverse acc)
         go acc (Bulk k : kt) = go (mkKey k : acc) kt
         go _ _               = resply (toError "WRONGTYPE some arguments are not keys")
+
+    messagesToKeyValues :: [RedisMessage]
+                        -> ([(Key, ByteString)] -> IO (RedisMessage, Bool))
+                        -> IO (RedisMessage, Bool)
+    messagesToKeyValues ks act = go [] ks
+      where
+        go acc []                        = act (reverse acc)
+        go _ [_]                         = resply (toError "ERR last key had no value")
+        go acc (Bulk k : Bulk v : kt)    = go ((mkKey k, lazy v) : acc) kt
+        go acc (Bulk k : Integer v : kt) = go ((mkKey k, BL.pack (show v)) : acc) kt
+        go _ _                           = resply (toError "WRONGTYPE some arguments where not keys")
 
     -- | Because, usually, we want to not stop the loop.
     resply :: (Monad m) => RedisMessage -> m (RedisMessage, Bool)

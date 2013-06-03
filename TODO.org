@@ -111,7 +111,10 @@
   :LOGBOOK:
   CLOCK: [2013-06-03 Mon 12:26]--[2013-06-03 Mon 15:00] =>  2:34
   :END:
-* TODO Stringly typed Redis interface
+* DONE Stringly typed Redis interface
+  :LOGBOOK:
+  CLOCK: [2013-06-03 Mon 15:04]--[2013-06-03 Mon 16:00] =>  0:56
+  :END:
 * TODO Draw DB tip
   :LOGBOOK:
   CLOCK: [2013-05-30 Thu 17:11]--[2013-05-30 Thu 17:24] =>  0:13

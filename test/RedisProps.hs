@@ -120,7 +120,6 @@ endToEndMessages =
        [ MultiBulk ["GET", "mykey"]
        , MultiBulk ["INCR", "mykey"]
        , MultiBulk ["GET", "mykey"] ],
-       -- FIXME GET on an int key should fail with WRONGTYPE
        [ Nil, Integer 1, "1" ])
     , ("append",
        [ MultiBulk ["APPEND", "mykey", "Hello"]
@@ -144,6 +143,11 @@ endToEndMessages =
        , MultiBulk ["SET", "key2", "World"]
        , MultiBulk ["MGET", "key1", "key2", "nonexisting"] ],
        [ Status "OK", Status "OK", MultiBulk [ "Hello", "World", Nil ] ])
+    , ("mset",
+       [ MultiBulk ["MSET", "key1", "Hello", "key2", "World"]
+       , MultiBulk ["GET", "key1"]
+       , MultiBulk ["GET", "key2"] ],
+       [ Status "OK", "Hello", "World" ])
     , ("sadd/smembers",
        [ MultiBulk ["SADD", "myset", "Hello"]
        , MultiBulk ["SADD", "myset", "World"]
