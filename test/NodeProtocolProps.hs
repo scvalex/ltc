@@ -5,31 +5,41 @@ module Main where
 
 import Control.Applicative ( (<$>) )
 import Data.ByteString.Lazy.Char8 ( ByteString )
+import Data.Function ( on )
 import Data.Map ( Map )
 import Data.Monoid ( mempty )
 import Data.Set ( Set )
 import Data.String ( fromString )
-import Network.NodeProtocol ( NodeMessage(..) )
+import Network.Interface.Null ( NullInterface, NetworkLocation(..) )
+import Network.NodeProtocol ( NodeEnvelope(..), NodeMessage(..) )
 import Ltc.Diff ( Diff, EditScript, EditAction )
 import Ltc.Store ( Version, Key )
 import Ltc.Store.VersionControl ( DiffPack, KeyHistory )
 import qualified Data.Map as M
 import qualified Data.Set as S
+import qualified Network.NodeProtocol as P
 import Test.Framework
 import Test.Framework.Providers.SmallCheck
 import Test.SmallCheck
-import Test.SmallCheck.Series
+import Test.SmallCheck.Series ( Serial(..), cons2 )
+import Test.SmallCheck.Drivers ( test )
 
 main :: IO ()
 main = defaultMainWithOpts
-       [ -- testProperty "encode-decode-node-message/id" encodeDecodeNodeMessageId
+       [ testProperty "encode-decode-node-envelope/id" encodeDecodeNodeEnvelopeId
        ] options
   where
-    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 10000000) }) }
+    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 1000000) }) }
 
 --------------------------------
 -- SmallCheck
 --------------------------------
+
+instance (Monad m) => Serial m (NodeEnvelope NullInterface) where
+    series = cons2 NodeEnvelope
+
+instance (Monad m) => Serial m (NetworkLocation NullInterface) where
+    series = return NullLocation
 
 instance (Monad m) => Serial m NodeMessage
 
@@ -64,5 +74,12 @@ instance (Monad m) => Serial m (Diff (Set ByteString))
 instance (Monad m, Serial m a, Ord a) => Serial m (Set a) where
     series = S.fromList <$> series
 
-encodeDecodeNodeMessageId :: NodeMessage -> Property IO
-encodeDecodeNodeMessageId _ = undefined
+instance Eq (NodeEnvelope NullInterface) where
+    (==) = (==) `on` getEnvelopeMessage
+
+encodeDecodeNodeEnvelopeId :: NodeEnvelope NullInterface -> Property IO
+encodeDecodeNodeEnvelopeId envelope =
+    let s = P.encode envelope in
+    -- WARNING: This seems to hang if envelope is weird (if it has undefined fields,
+    -- etc.).
+    test (P.decode s == Just envelope)

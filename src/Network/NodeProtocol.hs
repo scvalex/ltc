@@ -42,7 +42,7 @@ data NodeMessage = Ping String
                  | Changes { getVersionClock :: Version
                            , getChanges      :: DiffPack
                            }
-                 deriving ( Generic, Show )
+                 deriving ( Generic, Eq, Show )
 
 instance Serialize NodeMessage
 
