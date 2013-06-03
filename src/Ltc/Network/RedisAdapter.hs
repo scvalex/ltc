@@ -1,4 +1,5 @@
--- | This module is the processor for 'RedisMessage's.
+-- | This module is the processor for 'RedisMessage's.  It bridges the Redis interface
+-- created by "RedisServer" and a 'Store'.
 module Ltc.Network.RedisAdapter (
         redisProxyD
     ) where
@@ -31,8 +32,6 @@ tag = "RedisAdapter"
 ----------------------
 -- Redis proxy
 ----------------------
-
--- FIXME Redis interface should be stringly-typed
 
 -- | Process 'RedisMessage's in a synchronous fashion.  Note that not all Redis messages
 -- are supported, and will "not supported" return errors.
