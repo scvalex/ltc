@@ -47,7 +47,7 @@ stores: build
 
 fasttest: build
 	$(CABAL) test diff
-	$(CABAL) test nodeprotocol
+	$(CABAL) test protocols
 
 resources: $(RESOURCES)
 

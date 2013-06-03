@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
 
 module Ltc.Network.RedisProtocol (
         RedisMessage(..), redisParser, redisEncode,
@@ -13,6 +13,7 @@ import Data.Attoparsec.Combinator ( choice )
 import Data.ByteString.Char8 ( ByteString )
 import Data.String ( IsString(..) )
 import Data.Typeable ( Typeable )
+import GHC.Generics ( Generic )
 import qualified Control.Exception as CE
 import qualified Data.Attoparsec.ByteString.Char8 as AC
 import qualified Data.ByteString.Char8 as BS
@@ -30,7 +31,7 @@ data RedisMessage = Status ByteString
                   | Bulk ByteString
                   | Nil
                   | MultiBulk [RedisMessage]
-                  deriving ( Eq, Show )
+                  deriving ( Eq, Show, Generic )
 
 instance IsString RedisMessage where
     fromString = Bulk . BS.pack

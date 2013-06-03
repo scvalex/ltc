@@ -32,8 +32,7 @@ main :: IO ()
 main = defaultMainWithOpts (concat [ msgStructureTests
                                    , endToEndBinaryTests
                                    , endToEndTests
-                                   , [ testProperty "encodeParse" propEncodeParse
-                                     , testProperty "numericDance" propNumericDance ]
+                                   , [ testProperty "numericDance" propNumericDance ]
                                    ]) options
   where
     options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 20000000) }) }
@@ -220,9 +219,6 @@ instance Arbitrary NumericRedisMessages where
                 3 -> Decr <$> key
                 4 -> DecrBy <$> key <*> arbitrary
                 _ -> fail "unknown case in 'Arbitrary Command'"
-
-propEncodeParse :: RedisMessage -> Bool
-propEncodeParse msg = msg == R.parseExn (R.redisEncode msg)
 
 propNumericDance :: NumericRedisMessages -> Property
 propNumericDance (NRMs msgs) = monadicIO $ cleanEnvironmentP ["redis-store"] $ do

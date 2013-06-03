@@ -144,9 +144,9 @@ Test-suite redis
                         test-framework-hunit,
                         test-framework-quickcheck2
 
-Test-suite nodeprotocol
+Test-suite protocols
   Hs-Source-Dirs:       test
-  Main-Is:              NodeProtocolProps.hs
+  Main-Is:              Protocols.hs
   Type:                 exitcode-stdio-1.0
   Build-depends:        random
   Ghc-Options:          -Wall
