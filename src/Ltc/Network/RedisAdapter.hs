@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleContexts, GADTs #-}
-
 -- | This module is the processor for 'RedisMessage's.
 module Ltc.Network.RedisAdapter (
         redisProxyD
