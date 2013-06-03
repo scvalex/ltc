@@ -76,8 +76,8 @@
   - [X] Get rid of the Ltc.Adapter hierarchy
   - [ ] SmallCheck tests for NodeProtocol
   - [ ] Receive store changes from neighbours
-  - [ ] Propagate store changes to neighbours
   - [ ] Keep track of suspected neighbour version clock
+  - [ ] Propagate store changes to neighbours
   - [ ] Initial synchronization with neighbours
   - [ ] Configurable update frequency
 * DONE Abstract network interface

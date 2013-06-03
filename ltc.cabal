@@ -60,6 +60,7 @@ Library
                         Ltc.Store.Simple,
                         Ltc.Store.Types,
                         Ltc.Store.VersionControl,
+                        -- FIXME The Network.* modules should be under Ltc.*
                         Network.Interface,
                         Network.Interface.Class,
                         Network.Interface.UDP,
@@ -144,3 +145,16 @@ Test-suite redis
                         test-framework,
                         test-framework-hunit,
                         test-framework-quickcheck2
+
+Test-suite nodeprotocol
+  Hs-Source-Dirs:       test
+  Main-Is:              NodeProtocolProps.hs
+  Type:                 exitcode-stdio-1.0
+  Build-depends:        random
+  Ghc-Options:          -Wall
+  Extensions:           ScopedTypeVariables, OverloadedStrings
+  Build-Depends:        base >= 4 && < 5,
+                        ltc,
+                        test-framework,
+                        test-framework-smallcheck,
+                        smallcheck
