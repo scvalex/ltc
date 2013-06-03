@@ -52,18 +52,19 @@ import Control.Concurrent ( MVar, newMVar
                           , modifyMVar, modifyMVar_, readMVar, withMVar )
 import Control.Concurrent.STM ( atomically, writeTChan )
 import qualified Control.Exception as CE
-import Control.Monad ( when, unless, forM, forM_ )
+import Control.Monad ( when, unless, forM )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
-import GHC.Generics ( Generic )
 import Data.Digest.Pure.SHA ( sha1, showDigest, integerDigest )
 import Data.Foldable ( find, foldlM )
 import Data.Set ( Set )
+import Data.Typeable ( TypeRep, typeOf )
+import GHC.Generics ( Generic )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, parseExn, printHum )
 import Ltc.Store.Class ( Store(..), SetCmd(..)
-                       , Value, ValueType(..), ValueString(..), Type(..), ValueHash
+                       , Storable, ValueHash
                        , Version
                        , Key(..), KeyHash
                        , NodeName
@@ -126,7 +127,7 @@ instance Sexpable KeyVersion
 -- and cannot be later changed.
 data KeyRecord = KR
     { getKeyName   :: Key
-    , getValueType :: Type
+    , getValueType :: TypeRep
     , getTip       :: KeyVersion
     , getHistory   :: [KeyVersion]
     } deriving ( Generic )
@@ -220,8 +221,7 @@ doClose store = do
     modifyMVar_ (getIsOpen store) (const (return False))
     writeEventChannels store CloseEvent
 
-doGet :: (ValueString (Value a))
-      => Simple -> Key -> Version -> IO (Maybe (Value a))
+doGet :: forall a. (Storable a) => Simple -> Key -> Version -> IO (Maybe a)
 doGet store key version = do
     debugM tag (printf "get %s" (show key))
     writeEventChannels store getEvent
@@ -238,7 +238,7 @@ doGet store key version = do
                          <$> BL.readFile valueFile
                     -- FIXME It's not enough to parse the value; we should also check its
                     -- recorded type.
-                    case unValueString s of
+                    case valueFromBinary s of
                         Nothing -> CE.throw (CorruptValueFileError {
                                                   valueFilePath = valueFile,
                                                   cvfReason     = "unparsable" })
@@ -250,8 +250,14 @@ doGet store key version = do
                     , keyDigest = fromInteger (integerDigest (sha1 k))
                     }
 
-doGetLatest :: (ValueString (Value a))
-            => Simple -> Key -> IO (Maybe (Value a, Version))
+    valueFromBinary :: ByteString -> Maybe a
+    valueFromBinary s = do
+        case parse s of
+            Left (err, _) -> fail err
+            Right [sexp]  -> fromSexp sexp
+            Right _       -> fail "wrong number of sexps"
+
+doGetLatest :: (Storable a) => Simple -> Key -> IO (Maybe (a, Version))
 doGetLatest store key = do
     debugM tag (printf "getLatest %s" (show key))
     withKeyRecord (locationKey store key) $ \kr -> do
@@ -270,14 +276,13 @@ doKeyVersions store key = do
     withKeyRecord (locationKey store key) $ \kr -> do
         return . Just . map getVersion $ getTip kr : getHistory kr
 
-doKeyType :: Simple -> Key -> IO (Maybe Type)
+doKeyType :: Simple -> Key -> IO (Maybe TypeRep)
 doKeyType store key = do
     debugM tag (printf "keyType %s" (show key))
     withKeyRecord (locationKey store key) $ \kr -> do
         return (Just (getValueType kr))
 
-doSet :: (ValueString (Value a), ValueType (Value a))
-      => Simple -> Key -> Value a -> IO Version
+doSet :: (Storable a) => Simple -> Key -> a -> IO Version
 doSet store key value = doMSet store [SetCmd key value]
 
 doMSet :: Simple -> [SetCmd] -> IO Version
@@ -296,35 +301,35 @@ doMSet store cmds = lockStore store $ do
     atomicWriteClock store (locationClock (getBase store)) clock'
 
     -- Write the values.  It's ok to write extra values, so we can be interrupted here.
-    forM_ cmds $ \(SetCmd _ value) -> do
+    (vals, vhashes) <- unzip <$> forM cmds (\(SetCmd _ value) -> do
         let vhash = valueHash value
+            val = valueToString value
         atomicWriteFile store (locationValueHash store vhash)
-            ((if getUseCompression store then Z.compress else id) (valueString value))
+            ((if getUseCompression store then Z.compress else id) val)
+        return (val, vhash))
 
     -- Read the key records (the store is locked so there's no risk of them being updated
-    -- by something else).  We'll also need the corresponding commands later.
-    mkrs <- forM cmds $ \cmd@(SetCmd key _) -> do
+    -- by something else).
+    mkrs <- forM (zip cmds vhashes) $ \(cmd@(SetCmd key _), vhash) -> do
         mkr <- readKeyRecord (locationKey store key)
-        return (cmd, mkr)
+        return (mkr, cmd, vhash)
 
-    -- Update the key records, or create new ones if they are missing.  Again, we'll also
-    -- need the corresponding commands later.
-    krs' <- forM mkrs $ \(cmd@(SetCmd key value), mkrOld) -> do
-        let vhash = valueHash value
+    -- Update the key records, or create new ones if they are missing.
+    krs' <- forM mkrs $ \(mkrOld, cmd@(SetCmd key value), vhash) -> do
         let tip = KeyVersion { getVersion   = clock'
                              , getValueHash = vhash
                              }
         case mkrOld of
             Nothing -> return $
                 (cmd, KR { getKeyName   = key
-                         , getValueType = valueType value
+                         , getValueType = typeOf value
                          , getTip       = tip
                          , getHistory   = []
                          })
             Just krOld -> do
-                when (getValueType krOld /= valueType value) $ do
+                when (getValueType krOld /= typeOf value) $ do
                     CE.throw (TypeMismatchError { expectedType = getValueType krOld
-                                                , foundType    = valueType value })
+                                                , foundType    = typeOf value })
                 return $ (cmd, krOld { getTip     = tip
                                      , getHistory = getTip krOld : getHistory krOld
                                      })
@@ -332,17 +337,24 @@ doMSet store cmds = lockStore store $ do
         flip map krs' $ \(SetCmd key _, kr) ->
             (locationKey store key, printHum (toSexp kr))
 
-    writeEventChannels store msetEvent
+    writeEventChannels store (msetEvent vals)
     return clock'
   where
-    msetEvent =
-        MSetEvent (flip map cmds $ \(SetCmd key value) ->
+    msetEvent vals =
+        MSetEvent (flip map (zip cmds vals) $ \(SetCmd key _, val) ->
                     let Key k = key
-                        v = valueString value
                     in SetEvent { setKey       = key
                                 , setKeyDigest = fromInteger (integerDigest (sha1 k))
-                                , valueDigest  = fromInteger (integerDigest (sha1 v))
+                                , valueDigest  = fromInteger (integerDigest (sha1 val))
                                 })
+
+    -- | The hash of a value.  This hash is used as the filename under which the value is
+    -- stored in the @values/@ folder.
+    valueHash :: (Storable a) => a -> ValueHash
+    valueHash = BL.pack . showDigest . sha1 . valueToString
+
+    valueToString :: (Storable a) => a -> ByteString
+    valueToString = printHum . toSexp
 
 doKeys :: Simple -> IO (Set Key)
 doKeys store = do
@@ -441,11 +453,6 @@ initStore params = do
 -- the key is stored in the @keys/@ folder.
 keyHash :: Key -> KeyHash
 keyHash (Key k) = BL.pack (showDigest (sha1 k))
-
--- | The hash of a value.  This hash is used as the filename under
--- which the value is stored in the @values/@ folder.
-valueHash :: (ValueString (Value a)) => Value a -> ValueHash
-valueHash = BL.pack . showDigest . sha1 . valueString
 
 -- | Find the 'KeyVersion' with the given 'Version'.
 findVersion :: Version -> KeyRecord -> Maybe KeyVersion

@@ -52,10 +52,10 @@ Library
                         websockets-snap,
                         zlib
   Exposed-modules:
+                        Ltc.Diff,
                         Ltc.Monkey,
                         Ltc.Store,
                         Ltc.Store.Class,
-                        Ltc.Store.Diff,
                         Ltc.Store.Event,
                         Ltc.Store.Simple,
                         Ltc.Store.Types,
@@ -154,6 +154,8 @@ Test-suite nodeprotocol
   Ghc-Options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
   Build-Depends:        base >= 4 && < 5,
+                        bytestring,
+                        containers,
                         ltc,
                         test-framework,
                         test-framework-smallcheck,

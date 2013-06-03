@@ -10,7 +10,7 @@ import Control.Exception ( Exception )
 import Control.Monad ( forever )
 import Data.String ( fromString )
 import Data.Typeable ( Typeable )
-import Ltc.Store ( Store(..), Value(..), Single, Version )
+import Ltc.Store ( Store(..), Version )
 import qualified Control.Exception as CE
 import System.Log.Logger ( debugM )
 import System.Random ( randomRIO )
@@ -60,13 +60,13 @@ start store = do
 
     readStoreRandomly = do
         key <- randomKey
-        (_ :: Maybe (Value (Single Integer), Version)) <- getLatest store key
+        (_ :: Maybe (Integer, Version)) <- getLatest store key
         return ()
 
     writeStoreRandomly = do
         key <- randomKey
         v <- randomRIO (1, 4 :: Integer)
-        _ <- set store key (VaInt v)
+        _ <- set store key v
         return ()
 
     randomKey = do

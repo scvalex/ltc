@@ -597,6 +597,8 @@ Type Safety
 
 ## A Strongly Typed Database Interface
 
+<!-- Mention Redis's stringly typed interface -->
+
 ### GADTs
 
 ### Phantom Types

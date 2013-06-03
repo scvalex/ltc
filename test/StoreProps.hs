@@ -12,8 +12,7 @@ import Data.List ( find )
 import Data.Monoid ( mempty )
 import Data.VectorClock ( causes )
 import Ltc.Store ( Store(..)
-                 , Key(..), Value(..), Type(..), Single
-                 , Version
+                 , Key(..), typeOf, Version
                  , NodeNameMismatchError(..), TypeMismatchError(..) )
 import Ltc.Store.Simple ( Simple, OpenParameters(..) )
 import Ltc.Store.VersionControl ( getDiffPack, insertChangesInto )
@@ -72,7 +71,7 @@ testSimpleSetGet = cleanEnvironment ["test-store"] $ do
     res1 <- getLatest store "foo"
     res1 @?= Just (vs "bar", VC.fromList [(hostname, 1)])
     res2 <- getLatest store "bar"
-    res2 @?= (Nothing :: Maybe (Value (Single ByteString), Version))
+    res2 @?= (Nothing :: Maybe (ByteString, Version))
     _ <- set store "bar" (vs "baz")
     res3 <- getLatest store "bar"
     res3 @?= Just (vs "baz", VC.fromList [(hostname, 2)])
@@ -99,12 +98,12 @@ testSimpleHistory = cleanEnvironment ["test-store"] $ do
 testSimpleFieldType :: Assertion
 testSimpleFieldType = cleanEnvironment ["test-store"] $ do
     store <- open testParameters
-    v1 <- set store "foo" (VaInt 23)
+    v1 <- set store "foo" (23 :: Integer)
     res1 <- getLatest store "foo"
-    res1 @?= Just (VaInt 23, v1)
+    res1 @?= Just (23 :: Integer, v1)
     done <- CE.handle (\(exn :: TypeMismatchError) ->
-                          return (not (expectedType exn == SingleInteger
-                                       && foundType exn == SingleString))) $ do
+                          return (not (expectedType exn == typeOf (undefined :: Integer))
+                                       && foundType exn == typeOf (undefined :: ByteString))) $ do
         _ <- set store "foo" (vs "bar")
         return True
     when done $ assertFailure "set a key with a different type"
@@ -119,14 +118,11 @@ instance Arbitrary ByteString where
         BL.pack <$> sequence [ choose (' ', '~') | _ <- [1..n] ]
 
 data Command = GetLatest Key
-             | Set Key (Value (Single ByteString))
+             | Set Key ByteString
              deriving ( Show )
 
 newtype Commands = Commands { unCommands :: [Command] }
                  deriving ( Show )
-
-instance Arbitrary (Value (Single ByteString)) where
-    arbitrary = VaString <$> arbitrary
 
 instance Arbitrary Key where
     arbitrary = Key <$> arbitrary
@@ -161,7 +157,7 @@ propKeysPresent :: Commands -> Property
 propKeysPresent = propWithCommands (\store cmds -> foldlM (runCmd store) S.empty cmds)
   where
     runCmd store s (GetLatest key) = do
-        (_ :: Maybe (Value (Single ByteString), Version)) <- run $ getLatest store key
+        (_ :: Maybe (ByteString, Version)) <- run $ getLatest store key
         return s
     runCmd store s (Set key value) = do
         _ <- run $ set store key value
@@ -258,5 +254,5 @@ propWithCommands prop cmds = monadicIO $ do
         _ <- prop store (unCommands cmds)
         run $ close store
 
-vs :: String -> Value (Single ByteString)
-vs = VaString . BL.pack
+vs :: String -> ByteString
+vs = BL.pack

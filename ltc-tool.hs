@@ -11,8 +11,7 @@ import Data.List ( nub )
 import Data.Version ( showVersion )
 import Language.Sexp ( Sexpable(..), printHum, printMach, parseExn, parse )
 import Ltc.Store ( Store(..), withStore
-                 , Key(..), Value(..), Single
-                 , keyVersionsExn, getExn )
+                 , Key(..), keyVersionsExn, getExn )
 import Ltc.Store.Simple ( Simple, OpenParameters(..), createIfMissing )
 import Ltc.Store.VersionControl ( DiffPack, getDiffPack
                                 , insertChangesInto )
@@ -194,13 +193,14 @@ main = do
                     _ <- printf "    %s:\n" (show key)
                     forM_ vsns $ \vsn -> do
                         _ <- printf "      %s\n" (BL.unpack (printMach (toSexp vsn)))
+                        -- FIXME We should be able to get any values from the store, not just strings and ints.
                         CE.handle (\(_ :: CE.SomeException) -> do
                                         CE.handle (\(_ :: CE.SomeException) -> do
                                                         putStrLn "        non string value") (do
-                                            (v :: Value (Single BL.ByteString)) <- getExn store key vsn
+                                            (v :: BL.ByteString) <- getExn store key vsn
                                             _ <- printf "        %s\n" (BL.unpack (printMach (toSexp v)))
                                             return ())) $ do
-                            (v :: Value (Single Integer)) <- getExn store key vsn
+                            (v :: Integer) <- getExn store key vsn
                             _ <- printf "        %s\n" (BL.unpack (printMach (toSexp v)))
                             return ()
                 return ()
@@ -216,11 +216,11 @@ main = do
             t <- randomRIO (1, 2 :: Int)
             case t of
                 1 -> forM_ [1..5 :: Int] $ \_ -> do
-                    v <- VaInt <$> randomRIO (0, 100)
+                    v <- randomRIO (0, 100 :: Integer)
                     _ <- set store key v
                     return ()
                 2 -> forM_ [1..5 :: Int] $ \_ -> do
-                    v <- VaString <$> someWord
+                    v <- someWord
                     _ <- set store key v
                     return ()
                 _ -> do

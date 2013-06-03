@@ -1,7 +1,4 @@
-{-# LANGUAGE TypeFamilies, DeriveDataTypeable, GADTs, FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts, ExistentialQuantification #-}
-{-# LANGUAGE UndecidableInstances, DeriveGeneric #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, TypeFamilies #-}
 
 module Ltc.Store.Class (
         -- * Store interface
@@ -13,25 +10,18 @@ module Ltc.Store.Class (
         CorruptStoreError(..), StoreClosed(..),
         NoVersionsFor(..), NoValueFor(..), NoValueForLatest(..),
 
-        -- * Value helpers
-        Type(..), ValueString(..), ValueType(..),
-
         module Ltc.Store.Types
     ) where
 
 -- Re-exported module
 import Ltc.Store.Types
 
-import Control.Applicative ( (<$>) )
 import Control.Exception ( Exception )
-import Data.ByteString.Lazy.Char8 ( ByteString, pack, unpack )
+import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Set ( Set )
-import Data.Typeable ( Typeable )
-import GHC.Generics ( Generic )
-import Language.Sexp ( Sexpable(..), printHum, parseMaybe )
+import Data.Typeable ( Typeable, TypeRep )
 import Ltc.Store.Event ( EventChannel )
 import qualified Control.Exception as CE
-import qualified Data.Set as S
 
 ----------------------
 -- Classes
@@ -54,22 +44,22 @@ class Store a where
 
     -- | Get the value associated with the given key at the given version.  Note that you
     -- should know the type of the value before in order to use this function.
-    get :: (ValueString (Value b)) => a -> Key ->  Version -> IO (Maybe (Value b))
+    get :: (Storable b) => a -> Key ->  Version -> IO (Maybe b)
 
     -- | Get the latest value associated with the given key.  Note that you should know
     -- the type of the value in order to use this function.
-    getLatest :: (ValueString (Value b)) => a -> Key -> IO (Maybe (Value b, Version))
+    getLatest :: (Storable b) => a -> Key -> IO (Maybe (b, Version))
 
     -- | Get all versions of the values associated with the given key, most-recent-first.
     keyVersions :: a -> Key -> IO (Maybe [Version])
 
     -- | Get the type of the values associated with a key.  A key cannot be associated
     -- with values of different types.
-    keyType :: a -> Key -> IO (Maybe Type)
+    keyType :: a -> Key -> IO (Maybe TypeRep)
 
     -- | Set the value associated with a key.  If 'close' was already called on this
     -- store, throw 'StoreClosed'.
-    set :: (ValueString (Value b), ValueType (Value b)) => a -> Key -> Value b -> IO Version
+    set :: (Storable b) => a -> Key -> b -> IO Version
 
     -- | Atomically set the values associated with the keys.  By atomic we mean that
     -- either all the values are set, or none other.  This function is called 'mset'
@@ -85,8 +75,7 @@ class Store a where
     -- they happen.
     addEventChannel :: a -> EventChannel -> IO ()
 
-data SetCmd = forall a. (ValueString (Value a), ValueType (Value a))
-            => SetCmd Key (Value a)
+data SetCmd = forall a. (Storable a) => SetCmd Key a
 
 -- | Open a store, run the given action, and close the store.  The store is cleanly closed
 -- even if the action throws an exception; the exception is rethrown afterwards.
@@ -109,7 +98,7 @@ keyVersionsExn store key = do
 
 -- | Get the value associated with the given key at the given version.  If the key does
 -- not exist, throw 'NoValueFor'.
-getExn :: (Store s, ValueString (Value a)) => s -> Key -> Version -> IO (Value a)
+getExn :: (Store s, Storable a) => s -> Key -> Version -> IO a
 getExn store key vsn = do
     mv <- get store key vsn
     case mv of
@@ -118,7 +107,7 @@ getExn store key vsn = do
 
 -- | Get the latest value associated with the given key.  If the key does not exist, throw
 -- 'NoValueForLatest'.
-getLatestExn :: (Store s, ValueString (Value a)) => s -> Key -> IO (Value a, Version)
+getLatestExn :: (Store s, Storable a) => s -> Key -> IO (a, Version)
 getLatestExn store key = do
     mvv <- getLatest store key
     case mvv of
@@ -126,80 +115,12 @@ getLatestExn store key = do
         Just vv -> return vv
 
 ----------------------
--- Value Helpers
-----------------------
-
--- | A concrete representation of the types supported by LTc.
-data Type = SingleString
-          | SingleInteger
-          | CollectionString
-          | CollectionInteger
-          deriving ( Eq, Generic, Show )
-
-instance Sexpable Type
-
-class ValueType a where
-    valueType :: a -> Type
-
-instance ValueType (Value (Single Integer)) where
-    valueType _ = SingleInteger
-
-instance ValueType (Value (Single ByteString)) where
-    valueType _ = SingleString
-
-instance ValueType (Value (Collection Integer)) where
-    valueType _ = CollectionInteger
-
-instance ValueType (Value (Collection ByteString)) where
-    valueType _ = CollectionString
-
--- FIXME ValueString should be the Serialize instance for Sexpable
-class ValueString a where
-    -- | Get the 'ByteString' representation of a value.
-    valueString :: a -> ByteString
-
-    -- | Get a value from its 'ByteString' representation.
-    unValueString :: ByteString -> Maybe a
-
-instance ValueString (Value (Single Integer)) where
-    valueString (VaInt n) = pack (show n)
-
-    unValueString s =
-        case readsPrec 1 (unpack s) of
-            [(n, _)] -> Just (VaInt n)
-            _        -> Nothing
-
-instance ValueString (Value (Single ByteString)) where
-    valueString (VaString s) = s
-
-    unValueString = Just . VaString
-
-instance (ValueString (Value (Single a)), Ord (Value (Single a)))
-         => ValueString (Value (Collection a)) where
-    valueString (VaSet ss) =
-        printHum (toSexp (S.map valueString ss))
-
-    unValueString s =
-        case parseMaybe s of
-            Nothing ->
-                Nothing         -- no sexp
-            Just [sexp] -> do
-                case fromSexp sexp of
-                    Nothing ->
-                        Nothing -- invalid sexp
-                    Just (ss :: [ByteString]) ->
-                        VaSet . S.fromList <$>
-                        (mapM unValueString ss :: Maybe [Value (Single a)])
-            Just _ ->
-                Nothing         -- more than one sexp
-
-----------------------
 -- Exceptions
 ----------------------
 
 data TypeMismatchError = TypeMismatchError
-    { expectedType :: Type
-    , foundType    :: Type
+    { expectedType :: TypeRep
+    , foundType    :: TypeRep
     } deriving ( Show, Typeable )
 
 instance Exception TypeMismatchError

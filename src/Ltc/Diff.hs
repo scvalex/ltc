@@ -1,87 +1,45 @@
-{-# LANGUAGE GADTs, DeriveDataTypeable, FlexibleInstances, FlexibleContexts #-}
-{-# LANGUAGE UndecidableInstances, DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE StandaloneDeriving, FlexibleInstances #-}
 
 -- | This module provides the types and functions for working with changes to values.  See
--- the documentation for 'Diff' and 'Diffable' for more information.
---
--- The only reason this module is in the "Ltc.Store" hierarchy is because all the diffing
--- is done on 'Value's, and so it wouldn't be of any use outside of LTc.  See
--- "Ltc.Store.VersionControl" for the code that actually works with LTc stores.
-module Ltc.Store.Diff (
-        Diffable(..), Diff
+-- the documentation for 'Diffable' for more information.
+module Ltc.Diff (
+        Diffable(..),
+
+        -- * Internal types (useful for testing)
+        EditScript, EditAction
     ) where
 
-import Control.Applicative ( (<$>), (<*>) )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.List ( groupBy )
-import Data.Maybe ( fromJust )
 import Data.Serialize ( Serialize(..) )
 import Data.Set ( Set )
 import GHC.Generics ( Generic )
-import Language.Sexp ( Sexpable(..), Sexp(..), printMach, parseExn )
-import Ltc.Store.Class ( Value(..), Single, Collection )
+import Language.Sexp ( Sexpable(..) )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
 
--- | A 'Diff' is a description of how to change one 'Value' into another (of the same
--- type).  For instance, in the case of 'Integer's, a diff is simply the difference
--- between the new value and the old.
---
--- For a reasonable way to create and use 'Diff's, see 'Diffable'.
-data Diff a where
-    DiffInt :: Integer -> Diff (Single Integer)
-    DiffString :: EditScript -> Diff (Single ByteString)
-    DiffSet :: Set (Value (Single b)) -> Set (Value (Single b)) -> Diff (Collection b)
+--------------------------------
+-- Diffable
+--------------------------------
 
-instance Eq (Diff (Single Integer)) where
-    (DiffInt n1) == (DiffInt n2) = n1 == n2
+-- | 'Diffable' is a way of creating, manipulating, and applying diffs.  The diffs created
+-- here have the properties mentioned in the documentation for the class functions.
+class (Eq (Diff a), Show (Diff a), Sexpable (Diff a), Serialize (Diff a))
+      => Diffable a where
+    data Diff a :: *
 
-instance Eq (Diff (Single ByteString)) where
-    (DiffString es1) == (DiffString es2) = es1 == es2
-
-instance (Eq (Value (Single a))) => Eq (Diff (Collection a)) where
-    (DiffSet rem1 add1) == (DiffSet rem2 add2) = rem1 == rem2 && add1 == add2
-
-instance (Sexpable (Diff a)) => Show (Diff a) where
-    show d = BL.unpack (printMach (toSexp d))
-
-instance Sexpable (Diff (Single Integer)) where
-    toSexp (DiffInt n) = List ["DiffInt", toSexp n]
-    fromSexp (List ["DiffInt", s]) = DiffInt <$> fromSexp s
-    fromSexp _                     = fail "fromSexp Diff (Single Integer)"
-
-instance Sexpable (Diff (Single ByteString)) where
-    toSexp (DiffString es) = List ["DiffString", toSexp es]
-    fromSexp (List ["DiffString", s]) = DiffString <$> fromSexp s
-    fromSexp _                        = fail "fromSexp Diff (Single ByteString)"
-
-instance (Sexpable (Value (Single a)), Ord (Value (Single a)))
-         => Sexpable (Diff (Collection a)) where
-    toSexp (DiffSet toRemove toAdd) = List ["DiffSet", toSexp toRemove, toSexp toAdd]
-
-    fromSexp (List ["DiffSet", s1, s2]) = DiffSet <$> fromSexp s1 <*> fromSexp s2
-    fromSexp _                          = fail "fromSexp Diff (Collection Integer)"
-
-instance (Sexpable (Diff a)) => Serialize (Diff a) where
-    put d = put (printMach (toSexp d))
-
-    get = fromJust . fromSexp . head . parseExn <$> get
-
--- | 'Diffable' is a way of creating, manipulating, and applying 'Diff's.  The 'Diff's
--- created here have the properties mentioned in the documentation for the class
--- functions.
-class Diffable a where
     -- | Generate the 'Diff' from the first value to the second.  In other words, this is
     -- the 'Diff' that applied to the first value, yields the second.
     --
     -- @
     --     applyDiff v1 (diffFromTo v1 v2) == v2
     -- @
-    diffFromTo :: Value a -> Value a -> Diff a
+    diffFromTo :: a -> a -> Diff a
 
     -- | Apply the given 'Diff' to the given value.  Note that applying a 'Diff' to a
     -- value other than the one it was generated from may give unexpected results.
-    applyDiff :: Value a -> Diff a -> Value a
+    applyDiff :: a -> Diff a -> a
 
     -- | Reverse a 'Diff'.  In other words, if you have a 'Diff' that turns one value into
     -- another, its reverse is the 'Diff' that turns the second value into the first.
@@ -91,28 +49,77 @@ class Diffable a where
     -- @
     reverseDiff :: Diff a -> Diff a
 
-instance Diffable (Single Integer) where
-    diffFromTo (VaInt n1) (VaInt n2) = DiffInt (n2 - n1)
+--------------------------------
+-- Diffable Integer
+--------------------------------
 
-    applyDiff (VaInt n) (DiffInt d) = VaInt (n + d)
+instance Diffable Integer where
+    data Diff Integer = DiffInt Integer
+
+    diffFromTo n1 n2 = DiffInt (n2 - n1)
+
+    applyDiff n (DiffInt d) = n + d
 
     reverseDiff (DiffInt d) = DiffInt (-d)
 
-instance Diffable (Single ByteString) where
-    diffFromTo (VaString s1) (VaString s2) = DiffString (editsFromTo s1 s2)
+deriving instance Eq (Diff Integer)
 
-    applyDiff (VaString s) (DiffString d) = VaString (applyEdits s d)
+deriving instance Show (Diff Integer)
+
+deriving instance Generic (Diff Integer)
+
+instance Serialize (Diff Integer)
+
+instance Sexpable (Diff Integer)
+
+--------------------------------
+-- Diffable ByteString
+--------------------------------
+
+instance Diffable ByteString where
+    data Diff ByteString = DiffString EditScript
+
+    diffFromTo s1 s2 = DiffString (editsFromTo s1 s2)
+
+    applyDiff s (DiffString d) = applyEdits s d
 
     reverseDiff (DiffString d) = DiffString (reverseEdits d)
 
-instance (Ord (Value (Single b))) => Diffable (Collection b) where
-    diffFromTo (VaSet s1) (VaSet s2) =
+deriving instance Eq (Diff ByteString)
+
+deriving instance Show (Diff ByteString)
+
+deriving instance Generic (Diff ByteString)
+
+instance Serialize (Diff ByteString)
+
+instance Sexpable (Diff ByteString)
+
+--------------------------------
+-- Diffable Set
+--------------------------------
+
+instance (Ord a, Show a, Serialize a, Sexpable a) => Diffable (Set a) where
+    data Diff (Set a) = DiffSet (Set a) (Set a)
+
+    diffFromTo s1 s2 =
         DiffSet (S.difference s1 s2) (S.difference s2 s1)
 
-    applyDiff (VaSet s) (DiffSet toRemove toAdd) =
-        VaSet (S.union (S.difference s toRemove) toAdd)
+    applyDiff s (DiffSet toRemove toAdd) =
+        S.union (S.difference s toRemove) toAdd
 
-    reverseDiff (DiffSet toRemove toAdd) = DiffSet toAdd toRemove
+    reverseDiff (DiffSet toRemove toAdd) =
+        DiffSet toAdd toRemove
+
+deriving instance (Eq a) => Eq (Diff (Set a))
+
+deriving instance (Show a) => Show (Diff (Set a))
+
+deriving instance Generic (Diff (Set a))
+
+instance (Serialize a, Ord a) => Serialize (Diff (Set a))
+
+instance (Sexpable a, Ord a) => Sexpable (Diff (Set a))
 
 --------------------------------
 -- Edit scripts
@@ -122,12 +129,16 @@ instance (Ord (Value (Single b))) => Diffable (Collection b) where
 newtype EditScript = EditScript [EditAction]
                    deriving ( Eq, Generic, Show )
 
+instance Serialize EditScript
+
 instance Sexpable EditScript
 
 data EditAction = Skip Int
                 | Insert ByteString
                 | Delete ByteString
                 deriving ( Eq, Generic, Show )
+
+instance Serialize EditAction
 
 instance Sexpable EditAction
 

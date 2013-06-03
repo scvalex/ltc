@@ -6,6 +6,7 @@ module Network.RedisAdapter (
     ) where
 
 import Control.Applicative ( (<$>) )
+import Control.Exception ( handle )
 import Control.Monad ( forM )
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -13,7 +14,8 @@ import Data.Set ( Set )
 import qualified Data.Set as S
 import Control.Monad ( unless )
 import Control.Proxy
-import Ltc.Store
+import Ltc.Store ( Store(..), Storable, Key(..), Version
+                 , TypeMismatchError(..) )
 import Network.RedisProtocol ( RedisMessage(..) )
 import System.Log.Logger ( debugM, warningM )
 import Text.Regex.TDFA
@@ -32,6 +34,8 @@ tag = "RedisAdapter"
 -- Redis proxy
 ----------------------
 
+-- FIXME Redis interface should be stringly-typed
+
 -- | Process 'RedisMessage's in a synchronous fashion.  Note that not all Redis messages
 -- are supported, and will "not supported" return errors.
 redisProxyD :: (Proxy p, Store s) => s -> () -> Pipe p RedisMessage RedisMessage IO ()
@@ -46,13 +50,13 @@ redisProxyD store () = runIdentityP loop
             MultiBulk ["QUIT"] ->
                 return (Status "OK", True)
             MultiBulk ["SET", Bulk key, Bulk value] -> do
-                _ <- set store (mkKey key) (VaString (lazy value))
+                _ <- set store (mkKey key) (lazy value)
                 resply (Status "OK")
             MultiBulk ["GET", Bulk key] -> do
-                (mv :: Maybe (Value (Single BL.ByteString), Version)) <- getLatest store (mkKey key)
+                (mv :: Maybe (BL.ByteString, Version)) <- getLatest store (mkKey key)
                 case mv of
-                    Nothing              -> resply Nil
-                    Just (VaString s, _) -> resply (Bulk (strict s))
+                    Nothing     -> resply Nil
+                    Just (s, _) -> resply (Bulk (strict s))
                     -- _                    -> notAStringReply key
             MultiBulk ["KEYS", Bulk pat] ->
                 handleKeys pat
@@ -67,28 +71,28 @@ redisProxyD store () = runIdentityP loop
             MultiBulk ["APPEND", Bulk key, Bulk value] -> do
                 handleAppend key value
             MultiBulk ["STRLEN", Bulk key] -> do
-                mv <- getWithDefault (mkKey key) (VaString "")
+                mv <- getWithDefault (mkKey key) ""
                 case mv of
-                    VaString s -> resply (Integer (fromIntegral (BL.length s)))
-                    -- _          -> notAStringReply key
+                    s -> resply (Integer (fromIntegral (BL.length s)))
+                    -- _ -> notAStringReply key
             MultiBulk ["GETRANGE", Bulk key, Integer start, Integer end] -> do
                 handleGetRange key start end
             -- SETRANGE is not supported because Francesco is a pedant.
             MultiBulk ("MGET" : ks) -> do
                 messagesToKeys ks handleMGet
             MultiBulk ["SADD", Bulk key, Bulk s] -> do
-                handleSAdd key (VaString (lazy s))
+                handleSAdd key (lazy s)
             -- MultiBulk ["SADD", Bulk key, Integer n] -> do
-            --     handleSAdd key (VaInt s)
+            --     handleSAdd key s
             MultiBulk ("SINTER" : ks) ->
                 messagesToKeys ks handleSInter
             MultiBulk ["SMEMBERS", key] ->
                 messagesToKeys [key] handleSInter
             MultiBulk ["SISMEMBER", Bulk key, Bulk value] -> do
-                vs <- getWithDefault (mkKey key) (VaSet S.empty :: Value (Collection BL.ByteString))
+                vs <- getWithDefault (mkKey key) (S.empty :: Set BL.ByteString)
                 case vs of
-                    VaSet s ->
-                        resply (toRedisBool (VaString (lazy value) `S.member` s))
+                    s ->
+                        resply (toRedisBool (lazy value `S.member` s))
                     -- _ ->
                     --     resply (toError (printf "WRONGTYPE key %s is not a string set" (show key)))
             -- MultiBulk ["SISMEMBER", Bulk key, Integer value] -> do
@@ -99,11 +103,11 @@ redisProxyD store () = runIdentityP loop
             --         _ ->
             --             resply (toError (printf "WRONGTYPE key %s is not an int set" (show key)))
             MultiBulk ["SCARD", Bulk key] -> do
-                (vs :: Maybe (Value (Collection BL.ByteString), Version)) <- getLatest store (mkKey key)
+                (vs :: Maybe (Set BL.ByteString, Version)) <- getLatest store (mkKey key)
                 case vs of
                     Nothing ->
                         resply (Integer 0)
-                    Just (VaSet s, _) ->
+                    Just (s, _) ->
                         resply (Integer (fromIntegral (S.size s)))
                     -- Just _ ->
                     --     resply (toError (printf "WRONGTYPE key %s is not a set" (show key)))
@@ -129,27 +133,27 @@ redisProxyD store () = runIdentityP loop
                         resply (MultiBulk (map Bulk ks'))
 
     handleIncr key delta = do
-        mv <- getWithDefault (mkKey key) (VaInt 0)
+        mv <- getWithDefault (mkKey key) (0 :: Integer)
         case mv of
-            VaInt n -> do
-                _ <- set store (mkKey key) (VaInt (n + delta))
+            n -> do
+                _ <- set store (mkKey key) (n + delta)
                 resply (Integer (n + delta))
             -- _ -> do
             --     resply (toError (printf "WRONGTYPE key %s does not hold a number" (show key)))
 
     handleAppend key value = do
-        mv <- getWithDefault (mkKey key) (VaString "")
+        mv <- getWithDefault (mkKey key) ""
         case mv of
-            VaString s -> do
-                _ <- set store (mkKey key) (VaString (BL.append s (lazy value)))
+            s -> do
+                _ <- set store (mkKey key) (BL.append s (lazy value))
                 resply (Integer (fromIntegral (BL.length s + fromIntegral (BS.length value))))
             -- _ -> do
             --     notAStringReply key
 
     handleGetRange key start end = do
-        mv <- getWithDefault (mkKey key) (VaString "")
+        mv <- getWithDefault (mkKey key) ""
         case mv of
-            VaString s -> do
+            s -> do
                 let normalize n = if n < 0 then fromIntegral (BL.length s) + n else n
                     start' = fromIntegral (normalize start)
                     end' = fromIntegral (normalize end)
@@ -159,19 +163,19 @@ redisProxyD store () = runIdentityP loop
 
     handleMGet ks = do
         values <- forM ks $ \key -> do
-            (mv :: Maybe (Value (Single BL.ByteString), Version)) <- getLatest store key
+            (mv :: Maybe (BL.ByteString, Version)) <- getLatest store key
             return $ case mv of
-                Just (VaString s, _) -> Bulk (strict s)
-                _                    -> Nil
+                Just (s, _) -> Bulk (strict s)
+                _           -> Nil
         resply (MultiBulk values)
 
     handleSAdd key s = do
-        mv <- getWithDefault (mkKey key) (VaSet S.empty :: Value (Collection BL.ByteString))
+        mv <- getWithDefault (mkKey key) (S.empty :: Set BL.ByteString)
         case mv of
-            VaSet ss -> do
+            ss -> do
                 let size = S.size ss
                     ss' = S.insert s ss
-                _ <- set store (mkKey key) (VaSet ss')
+                _ <- set store (mkKey key) ss'
                 let size' = S.size ss'
                 resply (Integer (fromIntegral (size' - size)))
             -- _ -> do
@@ -181,18 +185,18 @@ redisProxyD store () = runIdentityP loop
     handleSInter [] =
         resply (MultiBulk [])
     handleSInter (k:ks) = do
-        (mv :: Maybe (Value (Collection BL.ByteString), Version)) <- getLatest store k
+        (mv :: Maybe (Set BL.ByteString, Version)) <- getLatest store k
         case mv of
             Nothing ->
                 resply (MultiBulk [])
-            Just (VaSet s, _) -> do
-                mss <- getTypedSets fromVaStringSet ks
+            Just (s, _) -> do
+                mss <- getStringSets ks
                 case mss of
                     Nothing ->
                         resply (toError "WRONGTYPE some arguments are not string sets")
                     Just ss -> do
                         let isct = foldl S.intersection s ss
-                        resply (MultiBulk (map (Bulk . strict . valueString) (S.toList isct :: [Value (Single BL.ByteString)])))
+                        resply (MultiBulk (map (Bulk . strict) (S.toList isct :: [BL.ByteString])))
             -- Just (VaIntSet s, _) -> do
             --     mss <- getTypedSets VaIntSet fromVaIntSet ks
             --     case mss of
@@ -202,25 +206,13 @@ redisProxyD store () = runIdentityP loop
             --             resply (MultiBulk (map Integer (S.toList isct)))
             -- _ ->
             --     resply (toError "WRONGTYPE some arguments are not sets")
-      where
-        fromVaStringSet :: Value (Collection BL.ByteString)
-                        -> Maybe (Set (Value (Single BL.ByteString)))
-        fromVaStringSet (VaSet s) = Just s
-        -- fromVaStringSet _         = Nothing
 
-        -- fromVaIntSet (VaIntSet s) = Just s
-        -- fromVaIntSet _            = Nothing
-
-    -- | Get all the sets associated with the given keys.  Any missing
-    -- values default to empty sets.  If any of the sets are not
-    -- sets of the right type, return 'Nothing'.
-    getTypedSets :: (ValueString (Value (Single a)), Ord (Value (Single a)))
-                 => (Value (Collection a) -> Maybe (Set (Value (Single a))))
-                 -> [Key]
-                 -> IO (Maybe [Set (Value (Single a))])
-    getTypedSets ex ks = do
-        sets <- map (maybe (VaSet S.empty) fst) <$> forM ks (getLatest store)
-        return $ foldl (\mss vs -> ex vs >>= \s -> (s:) <$> mss) (Just []) sets
+    -- | Get all the sets associated with the given keys.  Any missing values default to
+    -- empty sets.  If any of the sets are not sets of strings, return 'Nothing'.
+    getStringSets :: [Key] -> IO (Maybe [Set BL.ByteString])
+    getStringSets ks = do
+        handle (\(TypeMismatchError {}) -> return Nothing ) $
+            Just . map (maybe S.empty fst) <$> forM ks (getLatest store)
 
     -- | Convert a list of 'RedisMessage's to a list of 'Key's.  This
     -- is useful for commands with variable numbers of arguments.
@@ -241,7 +233,7 @@ redisProxyD store () = runIdentityP loop
     toError :: String -> RedisMessage
     toError = Error . strict . BL.pack
 
-    getWithDefault :: (ValueString (Value a)) => Key -> Value a -> IO (Value a)
+    getWithDefault :: (Storable a) => Key -> a -> IO a
     getWithDefault key def = do
         mv <- getLatest store key
         return (maybe def fst mv)
