@@ -1,11 +1,11 @@
 CABAL := $(shell cabal-dev --version > /dev/null && echo cabal-dev || echo cabal)
 RESOURCES := www/r/rickshaw.min.css www/r/rickshaw.min.js www/r/d3.v3.min.js www/r/mootools-yui-compressed.js www/r/knockout-2.2.1.js
 
-all: build resources fasttest
+all: build fasttest
 
 .PHONY: all build dist install clean doc site p ghci stores
 
-build: dist/setup-config
+build: dist/setup-config resources
 	rm -rf _site _cache
 	$(CABAL) build
 
