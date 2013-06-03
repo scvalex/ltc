@@ -46,8 +46,8 @@ stores: build
 	./ltc info some-store
 
 fasttest: build
-	$(cabal) test diff
-	$(cabal) test nodeprotocol
+	$(CABAL) test diff
+	$(CABAL) test nodeprotocol
 
 resources: $(RESOURCES)
 
