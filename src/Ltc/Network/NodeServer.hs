@@ -22,12 +22,12 @@ import Control.Concurrent ( forkIO
                           , MVar, newMVar, withMVar, readMVar, modifyMVar_ )
 import Control.Concurrent.STM ( atomically, newTChanIO, readTChan )
 import Control.Exception ( Exception )
-import Control.Monad ( unless, forM_, forever )
+import Control.Monad ( unless, forever )
 import Control.Proxy ( Proxy, ProxyFast, Pipe, Producer, Consumer
                      , runProxy, lift, runIdentityP, request, respond, (>->) )
 import Data.ByteString ( ByteString )
 import Data.Function ( on )
-import Data.Set ( Set )
+import Data.Map ( Map )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
 import Ltc.Network.Interface ( NetworkInterface, NetworkLocation )
@@ -38,7 +38,7 @@ import Network.BSD ( getHostName )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
-import qualified Data.Set as S
+import qualified Data.Map as M
 import qualified Ltc.Network.Interface as NI
 import qualified Ltc.Network.Interface.UDP as U
 import System.Log.Logger ( debugM, warningM )
@@ -95,9 +95,9 @@ instance (NetworkInterface a) => Ord (RemoteNode a) where
 
 -- | The node's mutable state.
 data NodeData a = NodeData
-    { getShutdown         :: IO ()
-    , getLocation         :: NetworkLocation a
-    , getNeighbours       :: Set (RemoteNode a)
+    { getShutdown   :: IO ()
+    , getLocation   :: NetworkLocation a
+    , getNeighbours :: Map (NetworkLocation a) (RemoteNode a)
     }
 
 -- | Start the node interface on the default port.
@@ -116,7 +116,7 @@ serveFromLocation location store = do
     -- Make the node data-structure
     let nodeData = NodeData { getShutdown   = error "shutdown not yet defined"
                             , getLocation   = location
-                            , getNeighbours = S.empty
+                            , getNeighbours = M.empty
                             }
     node <- Node <$> newMVar nodeData
 
@@ -192,7 +192,8 @@ addNeighbour node location = do
         let remoteNode = RemoteNode { getRemoteLocation  = location
                                     , getRemoteInterface = intf
                                     }
-        return (nodeData { getNeighbours = S.insert remoteNode (getNeighbours nodeData) })
+            neighbours' = M.insert location remoteNode (getNeighbours nodeData)
+        return (nodeData { getNeighbours = neighbours' })
 
 -- | Tell the given node to not consider the node at the given location its neighbour
 -- anymore.  Idempotent.
@@ -200,11 +201,11 @@ removeNeighbour :: (NetworkInterface a) => Node a -> NetworkLocation a -> IO ()
 removeNeighbour node location = do
     modifyMVar_ (getNodeData node) $ \nodeData -> do
         let neighbours = getNeighbours nodeData
-            (neighbours', rms) = S.partition (\r -> getRemoteLocation r /= location) neighbours
-        -- There should be only one removed node, but we can't express this in the logic
-        -- of Set.
-        forM_ (S.toList rms) $ \removedNode ->
-            NI.close (getRemoteInterface removedNode)
+            mremoved = M.lookup location neighbours
+            neighbours' = M.delete location neighbours
+        case mremoved of
+             Nothing      -> return ()
+             Just removed -> NI.close (getRemoteInterface removed)
         return (nodeData { getNeighbours = neighbours' })
 
 ----------------------
@@ -256,7 +257,7 @@ handleNodeEnvelope _node _store _intf envelope = do
 sendEventToNeighbours :: (NetworkInterface a) => Node a -> Event -> IO ()
 sendEventToNeighbours node (MSetEvent setEvents) = do
     withMVar (getNodeData node) $ \nodeData -> do
-        mapM_ sendEventToNeighbour (S.toList (getNeighbours nodeData))
+        mapM_ sendEventToNeighbour (M.elems (getNeighbours nodeData))
   where
     sendEventToNeighbour remoteNode = do
         debugM tag (printf "sending update for %s to neighbour %s"
