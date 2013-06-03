@@ -42,8 +42,10 @@ class Store a where
     -- | The current version of the files in the format.
     storeVersion :: a -> Int
 
-    -- | Get the value associated with the given key at the given version.  Note that you
-    -- should know the type of the value before in order to use this function.
+    -- | Get the value associated with the given key at the given version.  If the
+    -- requested version does not exist, return 'Nothing'.  Note that you should know the
+    -- type of the value before in order to use this function; if the type on disk is not
+    -- the same as the requested type, throw 'TypeMismatchError'.
     get :: (Storable b) => a -> Key ->  Version -> IO (Maybe b)
 
     -- | Get the latest value associated with the given key.  Note that you should know

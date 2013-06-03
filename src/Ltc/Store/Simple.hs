@@ -229,6 +229,9 @@ doGet store key version = do
                 CE.throw (CorruptKeyFileError { keyFilePath = locationKey store key
                                               , ckfReason   = show exn })) $ do
         withKeyRecord (locationKey store key) $ \kr -> do
+            when (getValueType kr /= typeOf (undefined :: a)) $
+                CE.throw (TypeMismatchError { expectedType = typeOf (undefined :: a)
+                                            , foundType    = getValueType kr })
             case findVersion version kr of
                 Nothing -> do
                     return Nothing
@@ -236,8 +239,6 @@ doGet store key version = do
                     let valueFile = locationValueHash store (getValueHash kvsn)
                     s <- (if getUseCompression store then Z.decompress else id)
                          <$> BL.readFile valueFile
-                    -- FIXME It's not enough to parse the value; we should also check its
-                    -- recorded type.
                     case valueFromBinary s of
                         Nothing -> CE.throw (CorruptValueFileError {
                                                   valueFilePath = valueFile,
