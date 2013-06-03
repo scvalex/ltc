@@ -225,7 +225,7 @@ removeNeighbour node nodeName = do
 nodeHandler :: (NetworkInterface a, Store s)
             => Node a -> s -> a -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
 nodeHandler node store intf p =
-    runProxy $ p >-> envelopeDecoderD intf >-> handleNodeEnvelopeC node store intf
+    runProxy $ p >-> envelopeDecoderD intf >-> handleNodeEnvelopeC node store
 
 -- | Stream data from the network interface..
 interfaceReader :: (Proxy p, NetworkInterface a) => a -> () -> Producer p ByteString IO ()
@@ -244,21 +244,19 @@ envelopeDecoderD _intf () = runIdentityP $ forever $ do
         Just envelope -> respond envelope
 
 -- | Handle incoming node envelopes.
-handleNodeEnvelopeC :: (NetworkInterface a, Proxy p, Store s)
-                    => Node a -> s -> a -> () -> Consumer p (NodeEnvelope a) IO ()
-handleNodeEnvelopeC node store intf () = runIdentityP $ forever $ do
+handleNodeEnvelopeC :: (Proxy p, Store s)
+                    => Node a -> s -> () -> Consumer p (NodeEnvelope a) IO ()
+handleNodeEnvelopeC node store () = runIdentityP $ forever $ do
     envelope <- request ()
     lift $ debugM tag (printf "handling %s"
                               (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
-    lift $ handleNodeEnvelope node store intf envelope
-
--- FIXME I don't think we need to pass the network interface anymore.
+    lift $ handleNodeEnvelope node store envelope
 
 -- | Handle a single node envelope.
-handleNodeEnvelope :: (NetworkInterface a, Store s) => Node a -> s -> a -> NodeEnvelope a -> IO ()
-handleNodeEnvelope _node _store _intf (NodeEnvelope {getEnvelopeMessage = Ping _}) = do
+handleNodeEnvelope :: (Store s) => Node a -> s -> NodeEnvelope a -> IO ()
+handleNodeEnvelope _node _store (NodeEnvelope {getEnvelopeMessage = Ping _}) = do
     debugM tag "ping handled"
-handleNodeEnvelope node _store _intf envelope@(NodeEnvelope {getEnvelopeMessage = changes@(Changes {})}) = do
+handleNodeEnvelope node _store envelope@(NodeEnvelope {getEnvelopeMessage = changes@(Changes {})}) = do
     modifyMVar_ (getNodeData node) $ \nodeData -> do
         let neighbours' = M.adjust (\remoteNode -> remoteNode { getRemoteClock =
                                                                      getVersionClock changes})
