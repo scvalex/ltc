@@ -9,7 +9,7 @@ import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable )
 import Ltc.Network.Interface ( NetworkInterface(..) )
-import Ltc.Store ( Version )
+import Ltc.Store ( Version, NodeName )
 import Ltc.Store.VersionControl ( DiffPack )
 import qualified Data.Serialize as S
 
@@ -18,8 +18,9 @@ import qualified Data.Serialize as S
 ----------------------
 
 data NodeEnvelope a = NetworkInterface a => NodeEnvelope
-    { getEnvelopeSender  :: NetworkLocation a
-    , getEnvelopeMessage :: NodeMessage
+    { getEnvelopeLocation :: NetworkLocation a
+    , getEnvelopeNode     :: NodeName
+    , getEnvelopeMessage  :: NodeMessage
     }
 
 deriving instance Show (NodeEnvelope a)
@@ -29,6 +30,7 @@ deriving instance Show (NodeEnvelope a)
 data SerializedNodeEnvelope
     = V0
     | V1 { getSender  :: ByteString
+         , getNode    :: NodeName
          , getMessage :: NodeMessage
          }
     deriving ( Generic, Show )
@@ -54,7 +56,8 @@ instance Sexpable NodeMessage
 -- | Encode a 'NodeEnvelope' as a strict 'ByteString'.
 encode :: (NetworkInterface a) => NodeEnvelope a -> ByteString
 encode env =
-    let serEnv = V1 { getSender  = S.encode (getEnvelopeSender env)
+    let serEnv = V1 { getSender  = S.encode (getEnvelopeLocation env)
+                    , getNode    = getEnvelopeNode env
                     , getMessage = getEnvelopeMessage env
                     }
     in S.encode serEnv
@@ -73,6 +76,7 @@ decode bin =
                 Left _ ->
                     Nothing
                 Right location ->
-                    Just (NodeEnvelope { getEnvelopeSender  = location
-                                       , getEnvelopeMessage = getMessage serEnv
+                    Just (NodeEnvelope { getEnvelopeLocation = location
+                                       , getEnvelopeNode     = getNode serEnv
+                                       , getEnvelopeMessage  = getMessage serEnv
                                        })

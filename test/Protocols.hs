@@ -24,7 +24,7 @@ import qualified Ltc.Network.RedisProtocol as R
 import Test.Framework
 import Test.Framework.Providers.SmallCheck
 import Test.SmallCheck
-import Test.SmallCheck.Series ( Serial(..), cons2 )
+import Test.SmallCheck.Series ( Serial(..), cons3 )
 import Test.SmallCheck.Drivers ( test )
 
 main :: IO ()
@@ -40,7 +40,7 @@ main = defaultMainWithOpts
 --------------------------------
 
 instance (Monad m) => Serial m (NodeEnvelope NullInterface) where
-    series = cons2 NodeEnvelope
+    series = cons3 NodeEnvelope
 
 instance (Monad m) => Serial m (NetworkLocation NullInterface) where
     series = return NullLocation

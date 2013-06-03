@@ -33,7 +33,7 @@ import Language.Sexp ( printMach, toSexp )
 import Ltc.Network.Interface ( NetworkInterface, NetworkLocation )
 import Ltc.Network.Interface.UDP ( UdpInterface )
 import Ltc.Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
-import Ltc.Store ( Store(..), Event(..), SetEvent(..), Version )
+import Ltc.Store ( Store(..), Event(..), SetEvent(..), Version, NodeName )
 import Network.BSD ( getHostName )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
@@ -85,6 +85,7 @@ newtype Node a = Node { getNodeData :: MVar (NodeData a) }
 -- | The local node's view of a remote node.
 data RemoteNode a = NetworkInterface a => RemoteNode
     { getRemoteLocation  :: NetworkLocation a
+    , getRemoteName      :: NodeName
     , getRemoteInterface :: a
     , getRemoteClock     :: Version
     }
@@ -99,25 +100,28 @@ instance (NetworkInterface a) => Ord (RemoteNode a) where
 data NodeData a = NodeData
     { getShutdown   :: IO ()
     , getLocation   :: NetworkLocation a
-    , getNeighbours :: Map (NetworkLocation a) (RemoteNode a)
+    , getNodeName   :: NodeName
+    , getNeighbours :: Map NodeName (RemoteNode a)
     }
 
 -- | Start the node interface on the default port.
-serve :: (Store s) => s -> IO (Node UdpInterface)
-serve store = do
+serve :: (Store s) => s -> NodeName -> IO (Node UdpInterface)
+serve store nodeName = do
     hostname <- getHostName
     let location = U.NetworkLocation { U.host = hostname
                                      , U.port = nodePort }
-    serveFromLocation location store
+    serveFromLocation location store nodeName
 
 -- | Start the node interface on the given port.
-serveFromLocation :: (NetworkInterface a, Store s) => NetworkLocation a -> s -> IO (Node a)
-serveFromLocation location store = do
+serveFromLocation :: (NetworkInterface a, Store s)
+                  => NetworkLocation a -> s -> NodeName -> IO (Node a)
+serveFromLocation location store nodeName = do
     debugM tag (printf "serveFromLocation %s" (show location))
 
     -- Make the node data-structure
     let nodeData = NodeData { getShutdown   = error "shutdown not yet defined"
                             , getLocation   = location
+                            , getNodeName   = nodeName
                             , getNeighbours = M.empty
                             }
     node <- Node <$> newMVar nodeData
@@ -175,8 +179,9 @@ sendMessage :: (NetworkInterface a) => Node a -> Connection a -> NodeMessage -> 
 sendMessage node conn msg = do
     debugM tag (printf "sending message to %s" (show (getConnectionLocation conn)))
     nodeData <- readMVar (getNodeData node)
-    let envelope = NodeEnvelope { getEnvelopeSender  = getLocation nodeData
-                                , getEnvelopeMessage = msg
+    let envelope = NodeEnvelope { getEnvelopeLocation = getLocation nodeData
+                                , getEnvelopeNode     = getNodeName nodeData
+                                , getEnvelopeMessage  = msg
                                 }
     NI.send (getConnectionInterface conn) (encode envelope)
     debugM tag "message sent"
@@ -187,25 +192,26 @@ sendMessage node conn msg = do
 
 -- | Tell the given node that it has a neighbour at the given location.  Adding the same
 -- location twice is a bad idea (which will probably lead to fd leaks).
-addNeighbour :: (NetworkInterface a) => Node a -> NetworkLocation a -> IO ()
-addNeighbour node location = do
+addNeighbour :: (NetworkInterface a) => Node a -> NodeName -> NetworkLocation a -> IO ()
+addNeighbour node nodeName location = do
     modifyMVar_ (getNodeData node) $ \nodeData -> do
         intf <- NI.connect location
         let remoteNode = RemoteNode { getRemoteLocation  = location
+                                    , getRemoteName      = nodeName
                                     , getRemoteInterface = intf
                                     , getRemoteClock     = VC.empty
                                     }
-            neighbours' = M.insert location remoteNode (getNeighbours nodeData)
+            neighbours' = M.insert nodeName remoteNode (getNeighbours nodeData)
         return (nodeData { getNeighbours = neighbours' })
 
 -- | Tell the given node to not consider the node at the given location its neighbour
 -- anymore.  Idempotent.
-removeNeighbour :: (NetworkInterface a) => Node a -> NetworkLocation a -> IO ()
-removeNeighbour node location = do
+removeNeighbour :: (NetworkInterface a) => Node a -> NodeName -> IO ()
+removeNeighbour node nodeName = do
     modifyMVar_ (getNodeData node) $ \nodeData -> do
         let neighbours = getNeighbours nodeData
-            mremoved = M.lookup location neighbours
-            neighbours' = M.delete location neighbours
+            mremoved = M.lookup nodeName neighbours
+            neighbours' = M.delete nodeName neighbours
         case mremoved of
              Nothing      -> return ()
              Just removed -> NI.close (getRemoteInterface removed)
@@ -246,6 +252,8 @@ handleNodeEnvelopeC node store intf () = runIdentityP $ forever $ do
                               (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
     lift $ handleNodeEnvelope node store intf envelope
 
+-- FIXME I don't think we need to pass the network interface anymore.
+
 -- | Handle a single node envelope.
 handleNodeEnvelope :: (NetworkInterface a, Store s) => Node a -> s -> a -> NodeEnvelope a -> IO ()
 handleNodeEnvelope _node _store _intf (NodeEnvelope {getEnvelopeMessage = Ping _}) = do
@@ -254,7 +262,7 @@ handleNodeEnvelope node _store _intf envelope@(NodeEnvelope {getEnvelopeMessage 
     modifyMVar_ (getNodeData node) $ \nodeData -> do
         let neighbours' = M.adjust (\remoteNode -> remoteNode { getRemoteClock =
                                                                      getVersionClock changes})
-                                   (getEnvelopeSender envelope)
+                                   (getEnvelopeNode envelope)
                                    (getNeighbours nodeData)
         return (nodeData { getNeighbours = neighbours' })
     debugM tag "changes handled"

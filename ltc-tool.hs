@@ -135,9 +135,12 @@ main = do
             node <- N.serveFromLocation (U.NetworkLocation { U.host = hostname
                                                            , U.port = N.nodePort + idx })
                                         store
+                                        (makeNodeName hostname idx)
             -- FIXME Remove hacky "connect to next node in the ring"
-            N.addNeighbour node (U.NetworkLocation { U.host = hostname
-                                                   , U.port = N.nodePort + idx + 1 })
+            N.addNeighbour node
+                           (makeNodeName hostname (idx + 1))
+                           (U.NetworkLocation { U.host = hostname
+                                              , U.port = N.nodePort + idx + 1 })
             status <- S.serveWithPort (S.statusPort + idx) store
             monkey <- M.start store
             shutdownOnInt store [N.shutdown node, S.shutdown status, M.shutdown monkey]
@@ -148,6 +151,7 @@ main = do
             node <- N.serveFromLocation (U.NetworkLocation { U.host = hostname
                                                            , U.port = N.nodePort + 11 })
                                         store
+                                        (makeNodeName hostname 11)
             conn <- N.connect node (U.NetworkLocation { U.host = h
                                                       , U.port = p })
             homeDir <- getHomeDirectory
@@ -161,10 +165,13 @@ main = do
     openParameters d hostname idx shouldCreate =
         OpenParameters { location        = d
                        , useCompression  = False
-                       , nodeName        = (BL.pack (printf "%s-%d" hostname idx))
+                       , nodeName        = makeNodeName hostname idx
                        , createIfMissing = shouldCreate
                        , forceOpen       = not shouldCreate
                        }
+
+    makeNodeName :: String -> Int -> BL.ByteString
+    makeNodeName hostname idx = BL.pack (printf "%s-%d" hostname idx)
 
     -- | Run all shutdown actions in sequence.
     shutdownNow :: [IO ()] -> IO ()
