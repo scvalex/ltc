@@ -38,6 +38,9 @@ tag = "RedisAdapter"
 
 -- | Process 'RedisMessage's in a synchronous fashion.  Note that not all Redis messages
 -- are supported, and will "not supported" return errors.
+--
+-- All Redis entries in a 'Store' will have type 'ByteString', or @Set ByteString@; this
+-- matches Redis' own stringly-typed interface.
 redisProxyD :: (Proxy p, Store s) => s -> () -> Pipe p RedisMessage RedisMessage IO ()
 redisProxyD store () = runIdentityP loop
   where

@@ -36,7 +36,7 @@ main = defaultMainWithOpts (concat [ msgStructureTests
                                      , testProperty "numericDance" propNumericDance ]
                                    ]) options
   where
-    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 15000000) }) }
+    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 20000000) }) }
 
 --------------------------------
 -- Unit tests
@@ -281,4 +281,5 @@ sendMessage sock msg = sendAll sock (R.redisEncode msg)
 -- | Receive a Redis message from a server in a stupid way.
 receiveMessage :: Socket -> IO RedisMessage
 receiveMessage sock = do
-    R.parseExn <$> recv sock 4096 -- FIXME We should handle leftovers somehow.
+     -- FIXME We should handle leftovers somehow.
+    R.parseExn <$> recv sock 4096
