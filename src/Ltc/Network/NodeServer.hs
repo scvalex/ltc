@@ -126,7 +126,7 @@ serveFromLocation location store = do
             (NI.serve location)
             (\intf -> NI.close intf)
             (\intf -> CE.handle (\(_ :: Shutdown) -> return ())
-                                (nodeHandler store intf (interfaceReader intf)))
+                                (nodeHandler node store intf (interfaceReader intf)))
 
     -- Start the store event listener
     eventChannel <- newTChanIO
@@ -213,9 +213,9 @@ removeNeighbour node location = do
 
 -- | Handle incoming node envelopes.
 nodeHandler :: (NetworkInterface a, Store s)
-            => s -> a -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
-nodeHandler store intf p =
-    runProxy $ p >-> envelopeDecoderD intf >-> handleNodeEnvelopeC store intf
+            => Node a -> s -> a -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
+nodeHandler node store intf p =
+    runProxy $ p >-> envelopeDecoderD intf >-> handleNodeEnvelopeC node store intf
 
 -- | Stream data from the network interface..
 interfaceReader :: (Proxy p, NetworkInterface a) => a -> () -> Producer p ByteString IO ()
@@ -235,18 +235,18 @@ envelopeDecoderD _intf () = runIdentityP $ forever $ do
 
 -- | Handle incoming node envelopes.
 handleNodeEnvelopeC :: (NetworkInterface a, Proxy p, Store s)
-                    => s -> a -> () -> Consumer p (NodeEnvelope a) IO ()
-handleNodeEnvelopeC store intf () = runIdentityP $ forever $ do
+                    => Node a -> s -> a -> () -> Consumer p (NodeEnvelope a) IO ()
+handleNodeEnvelopeC node store intf () = runIdentityP $ forever $ do
     envelope <- request ()
     lift $ debugM tag "handling envelope"
-    lift $ handleNodeEnvelope store intf envelope
+    lift $ handleNodeEnvelope node store intf envelope
 
 -- | Handle a single node envelope.
-handleNodeEnvelope :: (NetworkInterface a, Store s) => s -> a -> NodeEnvelope a -> IO ()
-handleNodeEnvelope _store _intf envelope@NodeEnvelope {getEnvelopeMessage = Ping _} = do
+handleNodeEnvelope :: (NetworkInterface a, Store s) => Node a -> s -> a -> NodeEnvelope a -> IO ()
+handleNodeEnvelope _node _store _intf envelope@NodeEnvelope {getEnvelopeMessage = Ping _} = do
     debugM tag (printf "handling %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
     debugM tag "envelope handled"
-handleNodeEnvelope _store _intf envelope = do
+handleNodeEnvelope _node _store _intf envelope = do
     warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
 
 ----------------------
