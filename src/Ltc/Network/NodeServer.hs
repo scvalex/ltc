@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, StandaloneDeriving #-}
 
-module Network.NodeServer (
-        module Network.Types,
+module Ltc.Network.NodeServer (
+        module Ltc.Network.Types,
 
         nodePort,
 
@@ -30,22 +30,22 @@ import Data.Function ( on )
 import Data.Set ( Set )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
+import Ltc.Network.Interface ( NetworkInterface, NetworkLocation )
+import Ltc.Network.Interface.UDP ( UdpInterface )
+import Ltc.Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
 import Ltc.Store ( Store(..), Event(..), SetEvent(..) )
 import Network.BSD ( getHostName )
-import Network.Interface ( NetworkInterface, NetworkLocation )
-import Network.Interface.UDP ( UdpInterface )
-import Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
-import qualified Network.Interface as NI
-import qualified Network.Interface.UDP as U
+import qualified Ltc.Network.Interface as NI
+import qualified Ltc.Network.Interface.UDP as U
 import System.Log.Logger ( debugM, warningM )
 import Text.Printf ( printf )
 
 -- Re-exported module
-import Network.Types
+import Ltc.Network.Types
 
 ----------------------
 -- Debugging

@@ -10,14 +10,14 @@ import Data.Map ( Map )
 import Data.Monoid ( mempty )
 import Data.Set ( Set )
 import Data.String ( fromString )
-import Network.Interface.Null ( NullInterface, NetworkLocation(..) )
-import Network.NodeProtocol ( NodeEnvelope(..), NodeMessage(..) )
 import Ltc.Diff ( Diff, EditScript, EditAction )
+import Ltc.Network.Interface.Null ( NullInterface, NetworkLocation(..) )
+import Ltc.Network.NodeProtocol ( NodeEnvelope(..), NodeMessage(..) )
 import Ltc.Store ( Version, Key )
 import Ltc.Store.VersionControl ( DiffPack, KeyHistory )
 import qualified Data.Map as M
 import qualified Data.Set as S
-import qualified Network.NodeProtocol as P
+import qualified Ltc.Network.NodeProtocol as P
 import Test.Framework
 import Test.Framework.Providers.SmallCheck
 import Test.SmallCheck

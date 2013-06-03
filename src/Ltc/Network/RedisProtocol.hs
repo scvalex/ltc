@@ -1,21 +1,21 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Network.RedisProtocol (
+module Ltc.Network.RedisProtocol (
         RedisMessage(..), redisParser, redisEncode,
         ParseException(..), parse, parseExn
     ) where
 
 import Control.Applicative ( (<$>), (<*), many )
-import Control.Monad ( replicateM )
 import Control.Exception ( Exception )
-import qualified Control.Exception as CE
+import Control.Monad ( replicateM )
 import Data.Attoparsec.ByteString.Char8 ( Parser, IResult(..), char, notChar, (<?>) )
-import qualified Data.Attoparsec.ByteString.Char8 as AC
 import Data.Attoparsec.Combinator ( choice )
 import Data.ByteString.Char8 ( ByteString )
-import qualified Data.ByteString.Char8 as BS
 import Data.String ( IsString(..) )
 import Data.Typeable ( Typeable )
+import qualified Control.Exception as CE
+import qualified Data.Attoparsec.ByteString.Char8 as AC
+import qualified Data.ByteString.Char8 as BS
 
 data ParseException = ParseException String ByteString
                     deriving ( Show, Typeable )

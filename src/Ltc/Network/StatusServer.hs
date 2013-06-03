@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Network.StatusServer (
-        module Network.Types,
+module Ltc.Network.StatusServer (
+        module Ltc.Network.Types,
 
         Status, shutdown,
         serve, serveWithPort, statusPort
@@ -29,7 +29,7 @@ import System.Log.Logger ( debugM )
 import Text.Printf ( printf )
 
 -- Re-exported module
-import Network.Types
+import Ltc.Network.Types
 
 ----------------------
 -- Debugging

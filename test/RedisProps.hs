@@ -8,10 +8,10 @@ import Control.Monad ( replicateM, when )
 import Data.ByteString.Char8 ( ByteString )
 import Data.Foldable ( foldlM )
 import Data.Monoid ( mempty )
+import Ltc.Network.RedisProtocol ( RedisMessage, RedisMessage(..) )
+import Ltc.Network.RedisServer ( Hostname, Port, serveWithPort )
 import Ltc.Store ( Store(..) )
 import Ltc.Store.Simple ( OpenParameters(..) )
-import Network.RedisProtocol ( RedisMessage, RedisMessage(..) )
-import Network.RedisServer ( Hostname, Port, serveWithPort )
 import Network.Socket ( Socket, Family(..), SocketType(..)
                       , socket, sClose, connect, defaultProtocol
                       , AddrInfo(..), getAddrInfo, addrAddress, defaultHints )
@@ -19,7 +19,7 @@ import Network.Socket.ByteString ( sendAll, recv )
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as M
-import qualified Network.RedisProtocol as R
+import qualified Ltc.Network.RedisProtocol as R
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2

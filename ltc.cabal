@@ -54,25 +54,23 @@ Library
   Exposed-modules:
                         Ltc.Diff,
                         Ltc.Monkey,
+                        Ltc.Network.Interface,
+                        Ltc.Network.Interface.Class,
+                        Ltc.Network.Interface.Null,
+                        Ltc.Network.Interface.UDP,
+                        Ltc.Network.NodeProtocol,
+                        Ltc.Network.NodeServer,
+                        Ltc.Network.RedisAdapter,
+                        Ltc.Network.RedisProtocol,
+                        Ltc.Network.RedisServer,
+                        Ltc.Network.StatusServer,
+                        Ltc.Network.Types,
                         Ltc.Store,
                         Ltc.Store.Class,
                         Ltc.Store.Event,
                         Ltc.Store.Simple,
                         Ltc.Store.Types,
-                        Ltc.Store.VersionControl,
-                        -- FIXME The Network.* modules should be under Ltc.*
-                        Network.Interface,
-                        Network.Interface.Class,
-                        Network.Interface.UDP,
-                        Network.Interface.Null,
-                        Network.NodeProtocol,
-                        Network.NodeServer,
-                        Network.RedisProtocol,
-                        Network.RedisServer,
-                        Network.StatusServer
-  Other-modules:
-                        Network.RedisAdapter,
-                        Network.Types
+                        Ltc.Store.VersionControl
 
 Executable ltc
   Ghc-options:          -Wall

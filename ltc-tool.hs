@@ -21,11 +21,11 @@ import Paths_ltc ( version )
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
-import qualified Network.Interface.UDP as U
-import qualified Network.NodeServer as N
-import qualified Network.StatusServer as S
-import qualified Network.NodeProtocol as P
-import qualified Network.RedisServer as R
+import qualified Ltc.Network.Interface.UDP as U
+import qualified Ltc.Network.NodeServer as N
+import qualified Ltc.Network.StatusServer as S
+import qualified Ltc.Network.NodeProtocol as P
+import qualified Ltc.Network.RedisServer as R
 import System.Console.CmdArgs
 import System.Console.Haskeline ( InputT, runInputT
                                 , Settings(..), defaultSettings

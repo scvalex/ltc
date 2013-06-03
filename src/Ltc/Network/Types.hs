@@ -1,4 +1,4 @@
-module Network.Types (
+module Ltc.Network.Types (
         Hostname, Port
     ) where
 

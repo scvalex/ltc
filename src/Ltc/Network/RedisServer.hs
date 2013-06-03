@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Network.RedisServer (
-        module Network.Types,
+module Ltc.Network.RedisServer (
+        module Ltc.Network.Types,
 
         serve, serveWithPort
     ) where
@@ -15,8 +15,8 @@ import Control.Proxy.Attoparsec ( parserInputD, parserD )
 import Data.ByteString.Char8 ( ByteString )
 import Data.Data ( Data, Typeable )
 import Ltc.Store ( Store )
-import Network.RedisAdapter ( redisProxyD )
-import Network.RedisProtocol ( RedisMessage(..), redisParser, redisEncode )
+import Ltc.Network.RedisAdapter ( redisProxyD )
+import Ltc.Network.RedisProtocol ( RedisMessage(..), redisParser, redisEncode )
 import Network.Socket ( Socket, socket, accept, sClose, bindSocket
                       , Family(..), SocketType(..), SockAddr(..)
                       , listen, maxListenQueue, iNADDR_ANY
@@ -28,7 +28,7 @@ import System.Log.Logger ( debugM )
 import Text.Printf ( printf )
 
 -- Re-exported module
-import Network.Types
+import Ltc.Network.Types
 
 ----------------------
 -- Debugging

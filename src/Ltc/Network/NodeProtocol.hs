@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, ExistentialQuantification, StandaloneDeriving #-}
 
-module Network.NodeProtocol (
+module Ltc.Network.NodeProtocol (
         NodeEnvelope(..), NodeMessage(..), encode, decode
     ) where
 
@@ -8,9 +8,9 @@ import Data.ByteString ( ByteString )
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable )
+import Ltc.Network.Interface ( NetworkInterface(..) )
 import Ltc.Store ( Version )
 import Ltc.Store.VersionControl ( DiffPack )
-import Network.Interface ( NetworkInterface(..) )
 import qualified Data.Serialize as S
 
 ----------------------

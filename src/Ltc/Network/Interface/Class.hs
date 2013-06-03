@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies, FlexibleContexts #-}
 
-module Network.Interface.Class (
+module Ltc.Network.Interface.Class (
         NetworkInterface(..)
     ) where
 

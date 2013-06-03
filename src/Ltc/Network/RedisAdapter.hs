@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts, GADTs #-}
 
 -- | This module is the processor for 'RedisMessage's.
-module Network.RedisAdapter (
+module Ltc.Network.RedisAdapter (
         redisProxyD
     ) where
 
@@ -11,9 +11,9 @@ import Control.Monad ( forM, unless )
 import Control.Proxy ( Proxy, Pipe, runIdentityP, request, respond, lift )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Set ( Set )
+import Ltc.Network.RedisProtocol ( RedisMessage(..) )
 import Ltc.Store ( Store(..), Storable, SetCmd(..), Key(..), Version
                  , TypeMismatchError(..) )
-import Network.RedisProtocol ( RedisMessage(..) )
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S

@@ -2,20 +2,20 @@
 
 -- | The UDP interface exposes the operating system's underlying UDP network functions as
 -- a 'NetworkInterface', and handles name resolution automatically.
-module Network.Interface.UDP (
+module Ltc.Network.Interface.UDP (
         UdpInterface, NetworkLocation(..)
     ) where
 
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable )
+import Ltc.Network.Interface.Class ( NetworkInterface(..) )
+import Ltc.Network.Types ( Hostname, Port )
 import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
                       , AddrInfo(..), getAddrInfo, defaultHints
                       , Family(..), SocketType(..), SockAddr(..)
                       , SocketOption(..), setSocketOption, defaultProtocol )
 import Network.Socket.ByteString ( sendAll, recv )
-import Network.Types ( Hostname, Port )
-import Network.Interface.Class ( NetworkInterface(..) )
 import qualified Control.Exception as CE
 import qualified Network.Socket as NS
 import Text.Printf ( printf )

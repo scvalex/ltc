@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies, FlexibleInstances, DeriveGeneric #-}
 
-module Network.Interface.Null (
+module Ltc.Network.Interface.Null (
         NullInterface, NetworkLocation(..)
     ) where
 
@@ -8,7 +8,7 @@ import Control.Concurrent ( newEmptyMVar, takeMVar )
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable )
-import Network.Interface.Class ( NetworkInterface(..) )
+import Ltc.Network.Interface.Class ( NetworkInterface(..) )
 
 -- | The null interface discards any message sent and blocks indefinitely on receive.
 data NullInterface = NullInterface
