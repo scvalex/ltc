@@ -38,7 +38,6 @@ instance Serialize SerializedNodeEnvelope
 instance Sexpable SerializedNodeEnvelope
 
 data NodeMessage = Ping String
-                 | Pong String
                  | Changes { getVersionClock :: Version
                            , getChanges      :: DiffPack
                            }

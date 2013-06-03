@@ -33,12 +33,13 @@ import Language.Sexp ( printMach, toSexp )
 import Ltc.Network.Interface ( NetworkInterface, NetworkLocation )
 import Ltc.Network.Interface.UDP ( UdpInterface )
 import Ltc.Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
-import Ltc.Store ( Store(..), Event(..), SetEvent(..) )
+import Ltc.Store ( Store(..), Event(..), SetEvent(..), Version )
 import Network.BSD ( getHostName )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map as M
+import qualified Data.VectorClock as VC
 import qualified Ltc.Network.Interface as NI
 import qualified Ltc.Network.Interface.UDP as U
 import System.Log.Logger ( debugM, warningM )
@@ -85,6 +86,7 @@ newtype Node a = Node { getNodeData :: MVar (NodeData a) }
 data RemoteNode a = NetworkInterface a => RemoteNode
     { getRemoteLocation  :: NetworkLocation a
     , getRemoteInterface :: a
+    , getRemoteClock     :: Version
     }
 
 instance (NetworkInterface a) => Eq (RemoteNode a) where
@@ -191,6 +193,7 @@ addNeighbour node location = do
         intf <- NI.connect location
         let remoteNode = RemoteNode { getRemoteLocation  = location
                                     , getRemoteInterface = intf
+                                    , getRemoteClock     = VC.empty
                                     }
             neighbours' = M.insert location remoteNode (getNeighbours nodeData)
         return (nodeData { getNeighbours = neighbours' })
@@ -239,16 +242,22 @@ handleNodeEnvelopeC :: (NetworkInterface a, Proxy p, Store s)
                     => Node a -> s -> a -> () -> Consumer p (NodeEnvelope a) IO ()
 handleNodeEnvelopeC node store intf () = runIdentityP $ forever $ do
     envelope <- request ()
-    lift $ debugM tag "handling envelope"
+    lift $ debugM tag (printf "handling %s"
+                              (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
     lift $ handleNodeEnvelope node store intf envelope
 
 -- | Handle a single node envelope.
 handleNodeEnvelope :: (NetworkInterface a, Store s) => Node a -> s -> a -> NodeEnvelope a -> IO ()
-handleNodeEnvelope _node _store _intf envelope@NodeEnvelope {getEnvelopeMessage = Ping _} = do
-    debugM tag (printf "handling %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
-    debugM tag "envelope handled"
-handleNodeEnvelope _node _store _intf envelope = do
-    warningM tag (printf "unknown message %s" (BL.unpack (printMach (toSexp (getEnvelopeMessage envelope)))))
+handleNodeEnvelope _node _store _intf (NodeEnvelope {getEnvelopeMessage = Ping _}) = do
+    debugM tag "ping handled"
+handleNodeEnvelope node _store _intf envelope@(NodeEnvelope {getEnvelopeMessage = changes@(Changes {})}) = do
+    modifyMVar_ (getNodeData node) $ \nodeData -> do
+        let neighbours' = M.adjust (\remoteNode -> remoteNode { getRemoteClock =
+                                                                     getVersionClock changes})
+                                   (getEnvelopeSender envelope)
+                                   (getNeighbours nodeData)
+        return (nodeData { getNeighbours = neighbours' })
+    debugM tag "changes handled"
 
 ----------------------
 -- Change propagation
