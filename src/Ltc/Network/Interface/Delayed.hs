@@ -7,13 +7,15 @@ module Ltc.Network.Interface.Delayed (
         setDelay, getDelay
     ) where
 
-import Control.Concurrent ( MVar, newMVar, modifyMVar_, readMVar )
+import Control.Concurrent ( MVar, newMVar, modifyMVar_, readMVar
+                          , forkIO, threadDelay )
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable )
 import Ltc.Network.Interface.Class ( NetworkInterface(..) )
 import Ltc.Network.Interface.UDP ( UdpInterface, NetworkLocation(..) )
 import Ltc.Network.Types ( Hostname, Port )
+import System.Random ( randomRIO )
 import Text.Printf ( printf )
 
 ----------------------
@@ -42,7 +44,17 @@ instance NetworkInterface DelayedInterface where
         delayedInterfaceWithDefaults
         =<< connect (delayedToUdpLocation location)
 
-    send intf = send (getUdpInterface intf)
+    send intf bin = do
+        (minDelay, maxDelay) <- readMVar (getArtificalDelay intf)
+        if maxDelay < 0.01
+            then do
+                send (getUdpInterface intf) bin
+            else do
+                d <- randomRIO (floor (1000000.0 * minDelay), floor (1000000.0 * maxDelay))
+                _ <- forkIO $ do
+                    threadDelay d
+                    send (getUdpInterface intf) bin
+                return ()
 
     close intf = close (getUdpInterface intf)
 

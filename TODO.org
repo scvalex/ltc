@@ -152,12 +152,13 @@
   - [X] mset
   - [ ] mget
 * TODO Better merging
-* TODO Artificial delay network interface
+* DONE Artificial delay network interface
   :LOGBOOK:
+  CLOCK: [2013-06-04 Tue 13:14]--[2013-06-04 Tue 13:21] =>  0:07
   CLOCK: [2013-06-04 Tue 12:32]--[2013-06-04 Tue 13:13] =>  0:41
   :END:
   - [X] Configurable stub
-  - [ ] Artificial delays
+  - [X] Artificial delays
 * TODO Test network interfaces
 * TODO Temporal logic formalization
   Figure out what properties the whole thing should have, and what
