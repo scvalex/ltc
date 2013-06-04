@@ -34,6 +34,7 @@ import Ltc.Network.Interface ( NetworkInterface, NetworkLocation )
 import Ltc.Network.Interface.UDP ( UdpInterface )
 import Ltc.Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
 import Ltc.Store ( Store(..), Event(..), SetEvent(..), Version, NodeName )
+import Ltc.Store.VersionControl ( DiffPack )
 import Network.BSD ( getHostName )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
@@ -256,14 +257,31 @@ handleNodeEnvelopeC node store () = runIdentityP $ forever $ do
 handleNodeEnvelope :: (Store s) => Node a -> s -> NodeEnvelope a -> IO ()
 handleNodeEnvelope _node _store (NodeEnvelope {getEnvelopeMessage = Ping _}) = do
     debugM tag "ping handled"
-handleNodeEnvelope node _store envelope@(NodeEnvelope {getEnvelopeMessage = changes@(Changes {})}) = do
+handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = changes@(Changes {})}) = do
     modifyMVar_ (getNodeData node) $ \nodeData -> do
-        let neighbours' = M.adjust (\remoteNode -> remoteNode { getRemoteClock =
-                                                                     getVersionClock changes})
-                                   (getEnvelopeNode envelope)
-                                   (getNeighbours nodeData)
-        return (nodeData { getNeighbours = neighbours' })
+        case M.lookup (getEnvelopeNode envelope) (getNeighbours nodeData) of
+            Nothing -> do
+                return nodeData
+            Just remoteNode -> do
+                let neighbours' = M.insert (getEnvelopeNode envelope)
+                                           (remoteNode { getRemoteClock =
+                                                              getVersionClock changes})
+                                           (getNeighbours nodeData)
+                applyChanges store
+                             (getRemoteClock remoteNode)
+                             (getVersionClock changes)
+                             (getChanges changes)
+                return (nodeData { getNeighbours = neighbours' })
     debugM tag "changes handled"
+
+-- | Apply changes to the store.
+applyChanges :: (Store s)
+             => s               -- ^ The store
+             -> Version         -- ^ The old version clock for the remote node.
+             -> Version         -- ^ The new version clock for the remote node
+             -> DiffPack        -- ^ The changes
+             -> IO ()
+applyChanges _store _oldClock _newClock _changes = return ()
 
 ----------------------
 -- Change propagation
