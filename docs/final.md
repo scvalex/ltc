@@ -213,7 +213,7 @@ Database\footnote{\url{http://www.oracle.com/uk/products/database/overview/index
 generally offer two different kinds of replication: master-slave
 replication, where changes are only made on one master node, which
 then propagates them to slave nodes, and clustering, where changes can
-be made on any node, and are then propagated to every other node.
+be made on any node, which are then propagated to every other node.
 
 MySQL describes its replication mechanism as "asynchronous"
 \citep{mysql:replication}, by which it means that the master node is
@@ -249,24 +249,26 @@ replication" through an external program:
 Bucarado\footnote{\url{http://bucardo.org/wiki/Bucardo}} attempts to
 keep several PostgreSQL databases in sync by propagating changes
 between them.  On each node, on seeing a change to the database,
-Bucarado connects to the databases on the other nodes, figures out the
-differences between datasets, and tries to reconcile them.  Since
-changes can be made on any node without having to wait for the other
-nodes, this scheme is asynchronous.  Unfortunately, the actual
-reconciliation of datasets is done through PostgreSQL transactions,
-which require synchronous connections between nodes.
+Bucarado connects to the other nodes, figures out the differences
+between datasets, and tries to reconcile them.  Since changes can be
+made on any node without having to wait for the other nodes, this
+scheme is asynchronous.  Unfortunately, the actual reconciliation of
+datasets is done through PostgreSQL transactions, which require
+temporary synchronous connections between nodes.
 
-Oracle Database's approach to replication has more in common with
-messaging systems such as JMS\footnote{Java Message Service} or
-AMQP\footnote{Advanced Message Queuing Protocol} than with the
-databases previously mentioned.  Oracle Streams provides a mechanism
-for Oracle databases to publish and to subscribe to events
-\citep{oracle:streams}.  Although this scheme could work in an
-asynchronous fashion, it still requires stable lossless connections
-between databases.
+Oracle Database's approach to replication is similar to messaging
+systems such as JMS\footnote{Java Message Service} or
+AMQP\footnote{Advanced Message Queuing Protocol}, and is a
+generalization of the approaches of MySQL and PostgreSQL.  Oracle
+Streams provides a mechanism for Oracle databases to publish and to
+subscribe to events \citep{oracle:streams}.  Although this scheme
+could work in an asynchronous fashion, it still requires stable
+lossless connections between databases.
 
-Oracle Database's clustering solution is conceptually the same as
-MySQL's and PostgreSQL's, and thus requires a low-latency network.
+Oracle Database's clustering
+solution\footnote{\url{http://www.oracle.com/technetwork/products/clustering/overview/index.html}}
+is conceptually the same as MySQL's and PostgreSQL's, and requires a
+low-latency network.
 
 ### NoSQL Data Stores
 
