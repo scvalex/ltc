@@ -235,6 +235,19 @@ other to ensure that none commit changes unless all of them do
 connected to the same low-latency network
 \citep{mysql:clustering-requirements}.
 
+PostgreSQL provides much the same options as MySQL, albeit with
+different names \citep{postgresql:replication}.  "Transaction log
+shipping" is PostgreSQL's counterpart of MySQL's replication, and
+works by having the master send a stream of changes to the slaves.  It
+suffers from the same problem in that it requires lossless connections
+between master and slaves.  PostgreSQL's "synchronous multimaster
+replication" works exactly like MySQL's clustering and shares the
+requirement that nodes must be connected to a low-latency network.
+
+Additionally, PostgreSQL supports "asynchronous multimaster
+replication" through an external program,
+Bucarado\footnote{\url{http://bucardo.org/wiki/Bucardo}}.
+
 ### NoSQL Data Stores
 
 ### Version Control Systems
