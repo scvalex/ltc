@@ -10,8 +10,8 @@ channel is mostly error-free.  Although these assumptions hold within
 data centers and sometimes on the Internet, they do not hold for some
 extreme situations such as disaster-stricken areas and interplanetary
 communications.  We have implemented LTc, a replicated data store that
-remains synchronized over the bad network links typically found in
-such situations.
+remains synchronized over the high-latency lossy network channels
+typically found in such situations.
 
 \end{abstract}
 
@@ -41,11 +41,11 @@ systems, traditional databases, and modern NoSQL data stores.  Current
 systems are unsuitable for some situations because they make tacit
 assumptions about the communications medium.  We discuss these
 assumptions in detail in Sections \ref{sec:other-data-stores} and
-\ref{sec:dtn}.  Broadly speaking, these systems assume that
-communication channels between nodes\footnote{when speaking of nodes,
-we mean machines that hold (possibly different versions of) the same
-data set} are always available, and use a protocol with strong
-reliability and ordering guarantees such as TCP/IP.
+\ref{sec:dtn}.  Broadly speaking, these systems assume that network
+channels between nodes\footnote{when speaking of nodes, we mean
+machines that hold (possibly different versions of) the same data set}
+are always available, and use a protocol with strong reliability and
+ordering guarantees such as TCP/IP.
 
 Unlike other systems, LTc makes only the following explicit
 assumptions.  First, nodes may send messages to some other nodes
@@ -56,7 +56,7 @@ In other words, an LTc node does *not* expect to be able to send
 messages to any other node at any time, it does *not* expect all sent
 messages to reach the other nodes, and it does *not* expect immediate
 replies to sent messages.  Additionally, if we construct a graph,
-where nodes are vertices, and the asynchronous communication channels
+where nodes are vertices, and the asynchronous network channels
 between nodes are directed edges, then the graph is strongly
 connected.
 
@@ -70,7 +70,7 @@ above and discuss this in the following section.
 There are several environments in which current systems will not work
 effectively or at all, but for which LTc is designed.  In this
 section, we look at what issues arise in each environment, and how
-they impact communication channels.
+they impact network channels.
 
 The following issues can usually be alleviated by better
 communications infrastructure.  That said, unless an inexpensive
@@ -193,13 +193,39 @@ chosen in favour of its alternatives.
 
 \label{sec:other-data-stores}
 
-<!-- FIXME Explain how other databases are lacking. -->
+As mentioned in Section \ref{sec:motivation}, our main reason for
+writing LTc is because other data stores make certain strong
+assumptions about the communications medium, which makes it hard to
+synchronize data over high-latency lossy channels.  We will now look
+at how several other data stores synchronize and why exactly their
+approach is problematic.
 
 <!-- FIXME Mention The Fallacies of Distributed Computing:
 
 https://en.wikipedia.org/wiki/Fallacies_of_Distributed_Computing -->
 
 ### Traditional Databases
+
+Traditional databases such as
+MySQL\footnote{\url{https://www.mysql.com/}},
+PostgreSQL\footnote{\url{http://www.postgresql.org/}}, and
+Oracle\footnote{\url{http://www.oracle.com/uk/products/database/overview/index.html}}
+generally offer two different kinds of replication: master-slave
+replication, where changes are only made on one master node, which
+then propagates them to slave nodes, and clustering, where changes can
+be made on any node.
+
+MySQL describes its replication as "asynchronous"
+\citep{mysql:replication}, by which it means that the master node is
+not permanently connected to the slave nodes; instead, the master
+holds a log of all the changes made, which the slaves get at their
+leisure, and then apply the same changes to their local copies of the
+data \citep{mysql:replication-implementation}.  Apart from the obvious
+downside that slaves cannot initiate changes, slaves also need a
+complete log of the changes made by the master: if there were any gaps
+in the log, they would not be able to guarantee data consistency.  So,
+although MySQL replication would be suitable for high-latency
+connections, it would not work over lossy ones.
 
 ### NoSQL Data Stores
 

@@ -169,6 +169,9 @@
   the bigger thing.
 * TODO Check documentation
 * Final Report
+  :LOGBOOK:
+  CLOCK: [2013-06-04 Tue 14:01]
+  :END:
 * Code improvements
   :LOGBOOK:
   CLOCK: [2013-06-04 Tue 00:35]--[2013-06-04 Tue 00:37] =>  0:02
