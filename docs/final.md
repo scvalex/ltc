@@ -245,12 +245,20 @@ replication" works exactly like MySQL's clustering and shares the
 requirement that nodes must be connected to a low-latency network.
 
 Additionally, PostgreSQL supports "asynchronous multimaster
-replication" through an external program,
-Bucarado\footnote{\url{http://bucardo.org/wiki/Bucardo}}.
+replication" through an external program:
+Bucarado\footnote{\url{http://bucardo.org/wiki/Bucardo}} attempts to
+keep several PostgreSQL databases in sync by propagating changes
+between them.  On each node, on seeing a change to the database,
+Bucarado connects to the databases on the other nodes, figures out the
+differences between datasets, and tries to reconcile them.  Since
+changes can be made on any node without having to wait for the other
+nodes, this scheme is asynchronous.  Unfortunately, the actual
+reconciliation of datasets is done through PostgreSQL transactions,
+which require synchronous connections between nodes.
 
 ### NoSQL Data Stores
 
-### Version Control Systems
+### Distributed Version Control Systems
 
 For instance, \href{http://redis.io/}{Redis}, a widely used key-value
 store, requires nodes to perform a re-synchronization of all the data
