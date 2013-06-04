@@ -206,16 +206,16 @@ https://en.wikipedia.org/wiki/Fallacies_of_Distributed_Computing -->
 
 ### Traditional Databases
 
-Traditional databases such as
+Traditional relational databases such as
 MySQL\footnote{\url{https://www.mysql.com/}},
-PostgreSQL\footnote{\url{http://www.postgresql.org/}}, and
-Oracle\footnote{\url{http://www.oracle.com/uk/products/database/overview/index.html}}
+PostgreSQL\footnote{\url{http://www.postgresql.org/}}, and Oracle
+Database\footnote{\url{http://www.oracle.com/uk/products/database/overview/index.html}}
 generally offer two different kinds of replication: master-slave
 replication, where changes are only made on one master node, which
 then propagates them to slave nodes, and clustering, where changes can
-be made on any node.
+be made on any node, and are then propagated to every other node.
 
-MySQL describes its replication as "asynchronous"
+MySQL describes its replication mechanism as "asynchronous"
 \citep{mysql:replication}, by which it means that the master node is
 not permanently connected to the slave nodes; instead, the master
 holds a log of all the changes made, which the slaves get at their
@@ -255,6 +255,18 @@ changes can be made on any node without having to wait for the other
 nodes, this scheme is asynchronous.  Unfortunately, the actual
 reconciliation of datasets is done through PostgreSQL transactions,
 which require synchronous connections between nodes.
+
+Oracle Database's approach to replication has more in common with
+messaging systems such as JMS\footnote{Java Message Service} or
+AMQP\footnote{Advanced Message Queuing Protocol} than with the
+databases previously mentioned.  Oracle Streams provides a mechanism
+for Oracle databases to publish and to subscribe to events
+\citep{oracle:streams}.  Although this scheme could work in an
+asynchronous fashion, it still requires stable lossless connections
+between databases.
+
+Oracle Database's clustering solution is conceptually the same as
+MySQL's and PostgreSQL's, and thus requires a low-latency network.
 
 ### NoSQL Data Stores
 
