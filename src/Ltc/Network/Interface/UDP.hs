@@ -30,7 +30,7 @@ data UdpInterface = UdpInterface
 
 instance NetworkInterface UdpInterface where
     -- | A UDP network location is a host/port pair.
-    data NetworkLocation UdpInterface = NetworkLocation
+    data NetworkLocation UdpInterface = UdpLocation
         { host :: Hostname
         , port :: Port
         } deriving ( Eq, Generic, Ord )

@@ -132,15 +132,15 @@ main = do
             _ <- printf "Running Node on %d with %s\n" (N.nodePort + idx) myStoreDir
             hostname <- getHostName
             store <- open (openParameters myStoreDir hostname idx True)
-            node <- N.serveFromLocation (U.NetworkLocation { U.host = hostname
-                                                           , U.port = N.nodePort + idx })
+            node <- N.serveFromLocation (U.UdpLocation { U.host = hostname
+                                                       , U.port = N.nodePort + idx })
                                         store
                                         (makeNodeName hostname idx)
             -- FIXME Remove hacky "connect to next node in the ring"
             N.addNeighbour node
                            (makeNodeName hostname (idx + 1))
-                           (U.NetworkLocation { U.host = hostname
-                                              , U.port = N.nodePort + idx + 1 })
+                           (U.UdpLocation { U.host = hostname
+                                          , U.port = N.nodePort + idx + 1 })
             status <- S.serveWithPort (S.statusPort + idx) store
             monkey <- M.start store
             shutdownOnInt store [N.shutdown node, S.shutdown status, M.shutdown monkey]
@@ -148,12 +148,11 @@ main = do
             _ <- printf "Connecting wire client to %s:%d\n" h p
             hostname <- getHostName
             store <- open (openParameters "wire-client-store" hostname 0 True)
-            node <- N.serveFromLocation (U.NetworkLocation { U.host = hostname
-                                                           , U.port = N.nodePort + 11 })
+            node <- N.serveFromLocation (U.UdpLocation { U.host = hostname
+                                                       , U.port = N.nodePort + 11 })
                                         store
                                         (makeNodeName hostname 11)
-            conn <- N.connect node (U.NetworkLocation { U.host = h
-                                                      , U.port = p })
+            conn <- N.connect node (U.UdpLocation { U.host = h, U.port = p })
             homeDir <- getHomeDirectory
             CE.handle (\Interrupt -> return ())
                       (flip runInputT (withInterrupt (repl node conn)) $

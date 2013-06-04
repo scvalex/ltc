@@ -56,6 +56,7 @@ Library
                         Ltc.Monkey,
                         Ltc.Network.Interface,
                         Ltc.Network.Interface.Class,
+                        Ltc.Network.Interface.Delayed,
                         Ltc.Network.Interface.Null,
                         Ltc.Network.Interface.UDP,
                         Ltc.Network.NodeProtocol,

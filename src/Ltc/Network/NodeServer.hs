@@ -108,8 +108,8 @@ data NodeData a = NodeData
 serve :: (Store s) => s -> NodeName -> IO (Node UdpInterface)
 serve store nodeName = do
     hostname <- getHostName
-    let location = U.NetworkLocation { U.host = hostname
-                                     , U.port = nodePort }
+    let location = U.UdpLocation { U.host = hostname
+                                 , U.port = nodePort }
     serveFromLocation location store nodeName
 
 -- | Start the node interface on the given port.
