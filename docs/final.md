@@ -227,6 +227,14 @@ in the log, they would not be able to guarantee data consistency.  So,
 although MySQL replication would be suitable for high-latency
 connections, it would not work over lossy ones.
 
+MySQL clustering works by replicating the data across multiple nodes,
+and making sure that changes on any node happen on all the other nodes
+as well.  To achieve this, the clustered nodes need access to each
+other to ensure that none commit changes unless all of them do
+\citep{mysql:clustering-overview}.  So, all the nodes need to be
+connected to the same low-latency network
+\citep{mysql:clustering-requirements}.
+
 ### NoSQL Data Stores
 
 ### Version Control Systems
