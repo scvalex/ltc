@@ -24,8 +24,8 @@ Introduction
 
 LTc\footnote{the name is an acronym that stands for "less than c", and
 refers to the fact that all communication happens at sub-light speeds
-in our universe} is a key-value store designed so that replicated data
-sets can be synchronized over lossy connections where end-to-end
+in our universe} is a key-value data store designed so that replicated
+data sets can be synchronized over lossy connections where end-to-end
 connectivity may not be available.  Examples of environments where
 this is the case "include spacecraft, military/tactical, some forms of
 disaster response, underwater, some forms of ad-hoc sensor/actuator
@@ -36,29 +36,32 @@ suffer such as developing parts of the world." \citep{dtnrg}
 
 \label{sec:motivation}
 
-Data replication is a problem tacked in by Distributed Version Control
-Systems (DVCSs), traditional databases (DBMSs), and modern NoSQL data
-stores.  Such current systems are unsuitable for some situations
-because they make tacit assumptions about the communications medium.
-We discuss these assumptions in detail in Section \ref{sec:dtn}, but,
-broadly speaking, these systems assume that the communication channel
-uses a protocol such as TCP/IP, which has strong reliability and
-ordering guarantees.
+Data replication is a problem tackled by distributed version control
+systems, traditional databases, and modern NoSQL data stores.  Current
+systems are unsuitable for some situations because they make tacit
+assumptions about the communications medium.  We discuss these
+assumptions in detail in Sections \ref{sec:other-data-stores} and
+\ref{sec:dtn}.  Broadly speaking, these systems assume that
+communication channels between nodes\footnote{when speaking of nodes,
+we mean machines that hold (possibly different versions of) the same
+data set} are always available, and use a protocol with strong
+reliability and ordering guarantees such as TCP/IP.
 
 Unlike other systems, LTc makes only the following explicit
-assumptions.  First of all, nodes\footnote{when speaking of nodes, we
-mean machines that hold (possibly different versions of) the same data
-set} may send messages to other nodes occasionally.  This means that
-an LTc node does *not* expect to be able to send messages to another
-at any time, it does *not* expect that all the sent messages will
-reach the other node, and it does *not* expect an immediate reply to
-the sent messages.  Secondly, it is possible for all nodes to
-communicate with each other, perhaps indirectly.  In other words, if
-we construct a directed graph, where the LTc nodes are vertices, and
-the communication channels between nodes are directed edges, the graph
-is strongly connected.  We note that these assumptions hold for all
-the environments mentioned above, and discuss this in Section
-\ref{sec:scenarios}.
+assumptions.  First, nodes may send messages to some other nodes
+occasionally.  Secondly, it is possible for all nodes to communicate
+with each other, perhaps indirectly.
+
+In other words, an LTc node does *not* expect to be able to send
+messages to any other node at any time, it does *not* expect all sent
+messages to reach the other nodes, and it does *not* expect immediate
+replies to sent messages.  Additionally, if we construct a graph,
+where nodes are vertices, and the asynchronous communication channels
+between nodes are directed edges, then the graph is strongly
+connected.
+
+We note that these assumptions hold for all the environments mentioned
+above and discuss this in the following section.
 
 ## Usage Scenarios
 
