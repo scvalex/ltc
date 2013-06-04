@@ -48,6 +48,7 @@ stores: build
 fasttest: build
 	$(CABAL) test diff
 	$(CABAL) test protocols
+	$(CABAL) test customtype
 
 resources: $(RESOURCES)
 

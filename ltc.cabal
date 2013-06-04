@@ -158,3 +158,22 @@ Test-suite protocols
                         test-framework,
                         test-framework-smallcheck,
                         smallcheck
+
+Test-suite customtype
+  Hs-Source-Dirs:       test
+  Main-Is:              CustomType.hs
+  Type:                 exitcode-stdio-1.0
+  Ghc-Options:          -Wall
+  Extensions:           ScopedTypeVariables, OverloadedStrings
+  Build-Depends:        base >= 4 && < 5,
+                        bytestring,
+                        cereal,
+                        directory,
+                        HUnit,
+                        ltc,
+                        network,
+                        QuickCheck,
+                        sexp,
+                        test-framework,
+                        test-framework-hunit,
+                        vector-clock
