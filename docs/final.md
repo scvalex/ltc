@@ -176,9 +176,15 @@ Background
 
 <!-- What am I trying to achieve? -->
 
-In this section we discuss various design decisions we made for LTc,
-what factors we considered, the advantages and disadvantages of our
-approach, and the ways other products have tackled the same problems.
+LTc is, first and foremost, a data store.  As such, we need to answer
+a few questions about its design: how its data can be accessed, what
+sort of data it can hold, what guarantees it makes, and over what
+kinds of networks it can synchronize.
+
+We begin this section by discussing how other data stores keep
+replicated copies of the data synchronized.  We then move on to
+answering the above questions, and discuss why each approach was
+chosen in favour of its alternatives.
 
 ## Replicating Other Data Stores
 
