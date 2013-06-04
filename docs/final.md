@@ -1,16 +1,17 @@
 \begin{abstract}
 
 One of the difficulties of engineering a distributed system is keeping
-the data on different nodes synchronized.  Solutions include
-distributed version control systems such as git, traditional databases
+data synchronized across different nodes.  Current solutions include
+distributed version control systems such as Git, traditional databases
 such as MySQL, and modern NoSQL data stores such as Redis.  But all
 these make tacit assumptions about the communication medium: that the
 round-trip time between nodes is relatively short, and that the
 channel is mostly error-free.  Although these assumptions hold within
-data centers, and sometimes, on the Internet, they do not hold for
-some extreme situations such as interplanetary communications.  LTc
-aims to define and implement synchronization protocols for such
-situations.
+data centers and sometimes on the Internet, they do not hold for some
+extreme situations such as disaster-stricken areas and interplanetary
+communications.  We have implemented LTc, a replicated data store that
+remains synchronized over the bad network links typically found in
+such situations.
 
 \end{abstract}
 
@@ -179,7 +180,7 @@ In this section we discuss various design decisions we made for LTc,
 what factors we considered, the advantages and disadvantages of our
 approach, and the ways other products have tackled the same problems.
 
-## Replicating Other Data-Stores
+## Replicating Other Data Stores
 
 \label{sec:other-data-stores}
 
@@ -191,7 +192,7 @@ https://en.wikipedia.org/wiki/Fallacies_of_Distributed_Computing -->
 
 ### Traditional Databases
 
-### NoSQL Data-Stores
+### NoSQL Data Stores
 
 ### Version Control Systems
 
