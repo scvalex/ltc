@@ -286,11 +286,28 @@ structures such as lists and sets.  Although its interface implies
 much weaker consistency guarantees, Redis's only replication mechanism
 is essentially the same as that used by traditional databases: when a
 slave node is attached to the master, it first requests all the
-current entries in the data store, and then gets a continuous stream
-of changes to that data \citep{redis-replication}.  In addition to
-requiring a lossless connection for the stream of changes, this
-approach is wasteful since it requires the slave to re-get the whole
-data set if the stream of changes from the master is interrupted.
+current entries in the data store, and then gets a stream of changes
+to that data \citep{redis-replication}.  In addition to requiring a
+lossless connection for the stream of changes, this approach is
+wasteful since it requires the slave to re-get the whole data set if
+the stream of changes from the master is interrupted.
+
+\href{https://couchdb.apache.org/}{CouchDB} is a widely used document
+store.  Like Redis, it is conceptually a key-value store which holds
+no relational information about the data , but, unlike Redis, it is
+persistent, and the values are arbitrary queryable JSON *documents*.
+Replication works the same as with traditional databases: a CouchDB
+node connects to another and requests a stream of changes from it
+\citep{couchdb:replication}.  Since CouchDB has conflict resolution
+built-in, it is possible to do two-way replication, and thus have
+multiple writable nodes.  This achieves the same effect as clustering
+in traditional databases.  Additionally, since CouchDB versions the
+documents inserted into it, it avoids the wasteful retransmission that
+Redis does.  Unfortunately, getting the stream of changes requires
+synchronous lossless connections between nodes.  That said, the
+authors do not believe that this requirement is essential to the
+replication scheme, and LTc's replication is similar, but designed to
+work over lossy asynchronous connections.
 
 ### Distributed Version Control Systems
 
