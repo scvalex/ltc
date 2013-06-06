@@ -318,6 +318,24 @@ a similar scheme fraught with the same problems
 
 ### Distributed Version Control Systems
 
+### Conclusion
+
+In this section, we have looked at how some traditional SQL databases,
+NoSQL data stores, and distributed version control systems handle
+replication of data across nodes.  We have seen that they generally
+follow one of two schemes: the first is based around the idea of
+propagating changes to the data between nodes such that they all apply
+the same operations, and the second is based around the idea of
+blocking write operations until all nodes commit to making the change.
+Although only the latter scheme is inherently synchronous, in
+practice, either due to assumptions about the network medium, or as an
+artifact of the environment in which they were written, both schemes
+tend to be implemented in synchronous ways.  Furthermore, all
+implementations invariably assume the existence of lossless
+connections between nodes.  These two characteristics make them
+unsuitable for the environments describe in Section
+\ref{sec:scenarios}.
+
 ## Data Interface
 
 <!-- FIXME Discuss the various interfaces LTc could expose and why we
