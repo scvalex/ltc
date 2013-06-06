@@ -195,9 +195,9 @@ chosen in favour of its alternatives.
 
 As mentioned in Section \ref{sec:motivation}, our main reason for
 writing LTc is because other data stores make certain strong
-assumptions about the communications medium, which makes it hard to
-synchronize data over high-latency lossy channels.  We will now look
-at how several other data stores synchronize and why exactly their
+assumptions about the communications medium which make
+synchronization over high-latency lossy channels hard.  We will now
+look at how several data stores synchronize and see why exactly their
 approach is problematic.
 
 <!-- FIXME Mention The Fallacies of Distributed Computing:
@@ -272,11 +272,27 @@ low-latency network.
 
 ### NoSQL Data Stores
 
-### Distributed Version Control Systems
+Unlike traditional SQL databases which are similar in many regards,
+the various NoSQL data stores have very different approaches to
+solving the problem of data storage and retrieval.  Despite this, they
+use same replication schemes as traditional databases.
 
-For instance, \href{http://redis.io/}{Redis}, a widely used key-value
-store, requires nodes to perform a re-synchronization of all the data
-once the connection has been re-established \citep{redis-replication}.
+Consider \href{http://redis.io/}{Redis}, a widely used in-memory
+key-value store.  Unlike traditional databases, it does not store any
+persistent on-disk data, it only supports "tables" with two columns,
+the key and the value, it does not store any relational information
+about the data, but it instead supports storing more varied data
+structures such as lists and sets.  Although its interface implies
+much weaker consistency guarantees, Redis's only replication mechanism
+is essentially the same as that used by traditional databases: when a
+slave node is attached to the master, it first requests all the
+current entries in the data store, and then gets a continuous stream
+of changes to that data \citep{redis-replication}.  In addition to
+requiring a lossless connection for the stream of changes, this
+approach is wasteful since it requires the slave to re-get the whole
+data set if the stream of changes from the master is interrupted.
+
+### Distributed Version Control Systems
 
 ## Data Interface
 
@@ -404,6 +420,10 @@ has to take into account that they may be operating on "old" data.
 
 ## Atomicity
 
+### Atomic Read/Write
+
+### MSET/MGET
+
 ### ACID
 
 Orthogonal to which of the CAP guarantees LTc makes, we ask whether it
@@ -421,10 +441,6 @@ So, ACID-wise, LTc only supports atomic, isolated, durable write
 operations, but this is not as limiting as it first seems: widely used
 data stores such as MongoDB and CouchDB have similar limitations.
 \citep{mongodb-transactions} \citep{couchdb-transactions}
-
-### MSET/MGET
-
-### Atomic Read/Write
 
 ## Delay-Tolerant Network Model
 
