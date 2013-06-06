@@ -206,6 +206,8 @@ https://en.wikipedia.org/wiki/Fallacies_of_Distributed_Computing -->
 
 ### Traditional Databases
 
+\label{sec:other-traditional-databases}
+
 Traditional relational databases such as
 MySQL\footnote{\url{https://www.mysql.com/}},
 PostgreSQL\footnote{\url{http://www.postgresql.org/}}, and Oracle
@@ -352,6 +354,98 @@ briefly present the two paradigms, and explain why we chose key-value
 for LTc.
 
 ### Relational
+
+Relational databases conceptually store data of a few basic types into
+arbitrary tables connected by constraints.  Consider the following
+\href{https://sqlite.org/}{SQLite} commands which define two tables:
+
+~~~~ {.sourceCode}
+sqlite> CREATE TABLE users ( id INTEGER PRIMARY KEY
+                           , name STRING );
+sqlite> CREATE TABLE languages ( id INTEGER PRIMARY KEY
+                               , language STRING
+                               , user INTEGER
+                               , FOREIGN KEY (user) REFERENCES users(id) );
+~~~~
+
+The `users` table has two rows: `id` which holds integers, and `name`
+which holds strings.  Furthermore, `id` is a primary key, which
+effectively means that all rows must have different values on the `id`
+column.
+
+The `languages` table has three rows: `id` which holds integers and is
+the primary key, `language` which holds strings, and `user` which
+holds integers.  Furthermore, we define `user` as a foreign key into
+`users(id)`, which effectively means that all rows must have some value
+on the `user` column that is present on the `id` column of some row in
+the `users` table.
+
+We see the primary key and foreign key constraints in actions by
+inserting some values into the tables:
+
+~~~~ {.sourceCode}
+sqlite> INSERT INTO users VALUES (1, "alex");
+sqlite> INSERT INTO users VALUES (1, "mike");
+Error: PRIMARY KEY must be unique
+sqlite> INSERT INTO users VALUES (2, "mike");
+sqlite> INSERT INTO languages VALUES (1, "english", 1);
+sqlite> INSERT INTO languages VALUES (2, "english", 2);
+sqlite> INSERT INTO languages VALUES (3, "french", 2);
+sqlite> INSERT INTO languages VALUES (4, "french", 3);
+Error: foreign key constraint failed
+~~~~
+
+The second insertion into `users` fails because the value for the `id`
+column, $1$, has already been used on the other row.  The last
+insertion into `languages` fails because the value for the `user`
+column, $3$, has not been used as the `id` of any row in `users`.
+
+Having populated the tables with some values, we display them:
+
+~~~~ {.sourceCode}
+sqlite> SELECT * FROM users;
+1|alex
+2|mike
+sqlite> SELECT * FROM languages;
+1|english|1
+2|english|2
+3|french |2
+sqlite> SELECT name, language
+        FROM users JOIN languages
+        WHERE users.id = languages.user;
+alex|english
+mike|english
+mike|french
+~~~~
+
+The first two commands are unsurprising: they merely display the
+`users` and `languages` table.  The third command, however,
+illustrates a key feature of relational databases, the ability to
+combine tables in queries.  Here, we combine (or join) the two tables
+on the `id` column in `users` and the `user` column in `languages`.
+Since the foreign key constraint holds, we know that all rows in the
+`languages` table will be matched with some row of the `users` table.
+
+A difficulty in implementing relational databases is ensuring that
+constraints are not broken by changes to the data.  Although this is
+not particularly difficult to guarantee if the entire database is on a
+single machine, it becomes much harder in a distributed context.
+
+We have seen in Section \ref{sec:other-traditional-databases} that, in
+practice, relational databases generally have two data replication
+mechanisms.  Of these, simple replication is the only asynchronous
+scheme and involves sending a stream of changes from the master node
+to the slaves.  It is easy to see now why this stream must be
+lossless: if the master applies any change which the slaves do not
+receive, they will end up checking constraints against a different
+data set than the master, and may find failures where there are none;
+so, it would be impossible to check consistency on the slaves.
+
+Since LTc's replication needs to work over lossy connections, LTc
+cannot support the kinds of constraints that are central to relational
+databases.  So, a true relational data interface is out of the
+question.  With this in mind, we look at another interface to data
+which has gained much traction in recent years: key-value stores.
 
 ### Key-Value
 
