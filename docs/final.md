@@ -338,20 +338,18 @@ unsuitable for the environments describe in Section
 
 ## Data Interface
 
-<!-- FIXME Discuss the various interfaces LTc could expose and why we
-chose KV. -->
+Now that we have seen what problems existing data storage systems
+present, we explain just what sort of data store LTc is, and how these
+choices relate to data replication.  We begin with the data interface
+LTc exposes.
 
 When people talk about "relational", "NoSQL", or "logical" databases,
-they refer to the data interface exposed to user.  The two main ways
-to access data are through SQL interfaces, and various key-value
-interfaces.  We explain how these are usually a tradeoff between
-richness/complexity/difficulty-to-write/difficulty-to-reason-about,
-and
-simplicity/generality/scalability/ease-to-write/ease-to-reason-about.
-
-~~~~ {.sourceCode}
-  Simple ------------------------------------------ Complex
-~~~~
+they are referring to the ways users can access stored data.
+Traditionally, the main paradigm has been relational, but with the
+advent of the Web over the past decade, key-value stores have been
+gaining increased popularity.  In the following two subsections, we
+briefly present the two paradigms, and explain why we chose key-value
+for LTc.
 
 ### Relational
 
