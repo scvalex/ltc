@@ -309,6 +309,13 @@ authors do not believe that this requirement is essential to the
 replication scheme, and LTc's replication is similar, but designed to
 work over lossy asynchronous connections.
 
+For completeness, we also mention
+\href{http://www.mongodb.org/}{MongoDB}, the other widely used
+document store.  From a usage point of view, it provides roughly the
+same interface and features as CouchDB, and handles replication using
+a similar scheme fraught with the same problems
+\citep{mongodb:replication}.
+
 ### Distributed Version Control Systems
 
 ## Data Interface
