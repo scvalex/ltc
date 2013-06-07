@@ -145,15 +145,19 @@
   :LOGBOOK:
   CLOCK: [2013-06-04 Tue 00:51]--[2013-06-04 Tue 01:15] =>  0:24
   :END:
-* TODO Multi-entry changes
+* TODO Configurable monkey
+* TODO Expose net/monkey config in web interface
+* TODO Set/get in web UI
+* DONE Multi-entry changes
   :LOGBOOK:
+  CLOCK: [2013-06-07 Fri 19:10]--[2013-06-07 Fri 19:16] =>  0:06
   CLOCK: [2013-06-01 Sat 23:42]--[2013-06-01 Sat 23:43] =>  0:01
   CLOCK: [2013-06-01 Sat 23:39]--[2013-06-01 Sat 23:42] =>  0:03
   CLOCK: [2013-06-01 Sat 22:44]--[2013-06-01 Sat 22:54] =>  0:10
   CLOCK: [2013-06-01 Sat 20:41]--[2013-06-01 Sat 21:42] =>  1:01
   :END:
   - [X] mset
-  - [ ] mget
+  - [X] mget
 * TODO Better merging
 * TODO Recoverable store state
   - [ ] Was store closed cleanly?

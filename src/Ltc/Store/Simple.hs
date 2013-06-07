@@ -174,6 +174,8 @@ instance Store Simple where
 
     mset store kvs = doMSet store kvs
 
+    withWriteLock store act = lockStore store act
+
     keys store = doKeys store
 
     addEventChannel store eventChannel = doAddEventChannel store eventChannel

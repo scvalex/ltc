@@ -69,6 +69,12 @@ class Store a where
     -- 'StoreClosed'.
     mset :: a -> [SetCmd] -> IO Version
 
+    -- | Acquire the write lock, execute the given action, and release the write lock.
+    -- Since writes to the store cannot happen while the lock is acquired, this is an
+    -- effective way to atomically get multiple values from the store.  Note that if you
+    -- try to write while the write lock is acquired, you will block indefinitely.
+    withWriteLock :: a -> IO b -> IO b
+
     -- | Get all the keys stored in the store.  Note that using this is probably racey
     -- because the set of keys may change before it is used.
     keys :: a -> IO (Set Key)

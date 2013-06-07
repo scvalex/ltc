@@ -145,7 +145,7 @@ redisProxyD store () = runIdentityP loop
             end' = fromIntegral (normalize end)
         resply (Bulk (strict (BL.take (end' - start' + 1) (BL.drop start' s))))
 
-    handleMGet ks = do
+    handleMGet ks = withWriteLock store $ do
         values <- forM ks $ \key -> do
             (mv :: Maybe (ByteString, Version)) <- getLatest store key
             return $ case mv of
