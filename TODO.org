@@ -145,7 +145,10 @@
   :LOGBOOK:
   CLOCK: [2013-06-04 Tue 00:51]--[2013-06-04 Tue 01:15] =>  0:24
   :END:
-* TODO Configurable monkey
+* DONE Configurable monkey
+  :LOGBOOK:
+  CLOCK: [2013-06-07 Fri 19:45]--[2013-06-07 Fri 19:55] =>  0:10
+  :END:
 * TODO Expose net/monkey config in web interface
 * TODO Set/get in web UI
 * DONE Multi-entry changes
