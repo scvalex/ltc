@@ -160,7 +160,10 @@
   - [X] mget
 * TODO Better merging
 * TODO Recoverable store state
-  - [ ] Was store closed cleanly?
+  :LOGBOOK:
+  CLOCK: [2013-06-07 Fri 19:16]--[2013-06-07 Fri 19:26] =>  0:10
+  :END:
+  - [X] Was store closed cleanly?
   - [ ] A list of all the changes made to a store (to speed up
     computations for updates).
 * DONE Artificial delay network interface

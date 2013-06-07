@@ -13,6 +13,7 @@
 -- ├── version
 -- ├── clock
 -- ├── nodeName
+-- ├── clean-shutdown
 -- ├── tmp/
 -- ├── keys/
 -- └── values/
@@ -26,6 +27,9 @@
 --
 -- @DB_DIR/clock@ is the latest version clock seen by the store.  This is probably also
 -- the version of the latest value written to disk, but this is not necessary.
+--
+-- @DB_DIR/clean-shutdown@ is only present if 1) the store is closed, and 2) the store was
+-- shutdown cleanly.
 --
 -- @DB_DIR/tmp@ is a directory used as a staging ground for creating
 -- new files.  On most file systems, /move/ is an atomic operation,
@@ -72,10 +76,10 @@ import Ltc.Store.Class ( Store(..), SetCmd(..)
                        , StoreClosed(..), CorruptValueFileError(..), NodeNameMismatchError(..) )
 import Ltc.Store.Event ( EventChannel, Event(..), SetEvent(..) )
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
-                        , renameFile, getDirectoryContents )
+                        , renameFile, getDirectoryContents, removeFile )
 import System.FilePath ( (</>) )
 import System.IO ( hClose, openBinaryTempFile )
-import System.Log.Logger ( debugM )
+import System.Log.Logger ( debugM, warningM )
 import Text.Printf ( printf )
 
 ----------------------
@@ -202,6 +206,11 @@ doOpen params = do
     when (vsn /= BL.pack (show storeVsn)) $
         CE.throw (CorruptStoreError { csReason = "different version" })
 
+    cleanShutdown <- doesFileExist (locationCleanShutdown (location params))
+    if cleanShutdown
+        then removeFile (locationCleanShutdown (location params))
+        else doRecover
+
     clock <- newMVar =<< readClockExn (locationClock (location params))
 
     eventChannels <- newMVar []
@@ -216,11 +225,15 @@ doOpen params = do
                    , getClock          = clock
                    , getLock           = lock
                    })
+  where
+    doRecover = do
+        warningM tag "recovering store"
 
 doClose :: Simple -> IO ()
 doClose store = do
     debugM tag (printf "close store '%s'" (getBase store))
     modifyMVar_ (getIsOpen store) (const (return False))
+    writeFile (locationCleanShutdown (getBase store)) ""
     writeEventChannels store CloseEvent
 
 doGet :: forall a. (Storable a) => Simple -> Key -> Version -> IO (Maybe a)
@@ -448,6 +461,7 @@ initStore params = do
     let initialClock = VC.insert (nodeName params) (0 :: Int) VC.empty
     BL.writeFile (locationClock base) (printHum (toSexp initialClock))
     BL.writeFile (locationNodeName base) (nodeName params)
+    writeFile (locationCleanShutdown base) ""
     createDirectory (locationTemporary base)
     createDirectory (locationValues base)
     createDirectory (locationKeys base)
@@ -498,6 +512,9 @@ locationVersion base = base </> "version"
 
 locationClock :: FilePath -> FilePath
 locationClock base = base </> "clock"
+
+locationCleanShutdown :: FilePath -> FilePath
+locationCleanShutdown base = base </> "clean-shutdown"
 
 locationTemporary :: FilePath -> FilePath
 locationTemporary base = base </> "tmp"
