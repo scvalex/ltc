@@ -149,8 +149,9 @@
   :LOGBOOK:
   CLOCK: [2013-06-07 Fri 19:45]--[2013-06-07 Fri 19:55] =>  0:10
   :END:
-* TODO Expose net/monkey config in web interface
+* TODO Expose monkey config in web interface
   :LOGBOOK:
+  CLOCK: [2013-06-08 Sat 01:27]--[2013-06-08 Sat 01:56] =>  0:29
   CLOCK: [2013-06-08 Sat 00:00]--[2013-06-08 Sat 01:11] =>  1:11
   CLOCK: [2013-06-07 Fri 19:58]--[2013-06-07 Fri 19:59] =>  0:01
   :END:
@@ -183,6 +184,7 @@
   - [X] Configurable stub
   - [X] Artificial delays
 * TODO Test network interfaces
+* TODO Expose net config in web interface
 * TODO Temporal logic formalization
   Figure out what properties the whole thing should have, and what
   properties the individual components should have to be able to prove

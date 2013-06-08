@@ -44,46 +44,56 @@
       </svg>
     </div>
 
-    <h3>Events</h3>
-    <div id="eventsBox">
-      <table id="eventCounts">
-        <thead>
-          <tr>
-            <th>Total </th>
-            <th>Count</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th>Get</th>
-            <td class="getBackground" data-bind="text: countGets"></td>
-          </tr>
-          <tr>
-            <th>Set</th>
-            <td class="setBackground" data-bind="text: countSets"></td>
-          </tr>
-        </tbody>
-      </table>
+    <ul id="tabHead" data-bind="foreach: tabs">
+      <li data-bind="text: title, css: { selected: selected }, click: $root.selectTab"></li>
+    </ul>
+    <div id="tabBody">
+      <div id="logTab">
+        <h3>Events</h3>
+        <div id="eventsBox">
+          <table id="eventCounts">
+            <thead>
+              <tr>
+                <th>Total </th>
+                <th>Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>Get</th>
+                <td class="getBackground" data-bind="text: countGets"></td>
+              </tr>
+              <tr>
+                <th>Set</th>
+                <td class="setBackground" data-bind="text: countSets"></td>
+              </tr>
+            </tbody>
+          </table>
 
-      <div id="eventsGraphContainer">
-          <div id="eventsYAxis"></div>
-          <div id="eventsGraph"></div>
+          <div id="eventsGraphContainer">
+            <div id="eventsYAxis"></div>
+            <div id="eventsGraph"></div>
+          </div>
+        </div>
+
+        <h3>Log</h3>
+        <ul id="log" data-bind="foreach: log">
+          <li class="logItem">
+            <span class="time"><time data-bind="text: prettyTime, attr: { datetime: time }"></time></span>
+            <span class="operation" data-bind="text: operation, css: { getBackground: operation == 'get', setBackground: operation == 'set' }"></span>
+            <span class="target">
+              <span data-bind="text: key"></span>
+              <span data-bind="if: operation == 'set'">
+                →
+                <span class="value" data-bind="style: { backgroundColor: $root.colourFromDigest(valueDigest) }">&nbsp;</span>
+              </span>
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div id="monkeyTab">
+        <h3>Monkey!</h3>
       </div>
     </div>
-
-    <h3>Log</h3>
-    <ul id="log" data-bind="foreach: log">
-      <li class="logItem">
-        <span class="time"><time data-bind="text: prettyTime, attr: { datetime: time }"></time></span>
-        <span class="operation" data-bind="text: operation, css: { getBackground: operation == 'get', setBackground: operation == 'set' }"></span>
-        <span class="target">
-          <span data-bind="text: key"></span>
-          <span data-bind="if: operation == 'set'">
-            →
-            <span class="value" data-bind="style: { backgroundColor: $root.colourFromDigest(valueDigest) }">&nbsp;</span>
-          </span>
-        </span>
-      </li>
-    </ul>
   </body>
 </html>

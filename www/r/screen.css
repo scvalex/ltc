@@ -16,11 +16,6 @@ body {
     overflow-x: hidden;
 }
 
-h3 {
-    clear: both;
-    margin-top: 1em;
-}
-
 #eventsBox, #log, #tipBox {
     border-top: 1px solid #999;
 }
@@ -83,6 +78,37 @@ h3 {
 .logItem .value {
     display: inline-block;
     width: 4em;
+}
+
+/* ******************** */
+/* Tab */
+/* ******************** */
+
+#tabHead {
+    width: 6em;
+    float: left;
+    margin-top: 2em;
+}
+
+#tabHead li {
+    background-color: #FF6B6B;
+    padding: 0.6em 0em;
+    text-align: center;
+    border: 1px solid #fff;
+    cursor: pointer;
+}
+
+#tabHead li.selected {
+    background-color: #C44D58;
+}
+
+#tabBody {
+    float: left;
+    border-left: 2px solid #333;
+    padding-left: 10px;
+    margin-left: 10px;
+    margin-top: 2em;
+    min-height: 500px;
 }
 
 /* ******************** */

@@ -45,6 +45,14 @@ function KeyEntry(event) {
     self.valueColour = ko.observable(model.colourFromDigest(event.valueDigest));
 }
 
+function Tab(title, bodyElement, selected) {
+    var self = this;
+
+    self.title = title;
+    self.bodyElement = bodyElement;
+    self.selected = ko.observable(selected);
+}
+
 function AppViewModel() {
     var self = this;
 
@@ -214,12 +222,24 @@ function AppViewModel() {
             }
         }).get();
     }
+
+    self.tabs = ko.observableArray([new Tab("Events", $("logTab"), false),
+                                    new Tab("Monkey", $("monkeyTab"), false)]);
+    self.selectTab = function(tab) {
+        for (var i = 0; i < self.tabs().length; i++) {
+            self.tabs()[i].selected(false);
+            $(self.tabs()[i].bodyElement).style.display = "none";
+        }
+        tab.selected(true);
+        tab.bodyElement.style.display = "block";
+    }
+    self.selectTab(self.tabs()[0]);
 }
 
 function setupLayout() {
     var height = document.getSize().y - $$("header")[0].getSize().y - 20;
     var width = document.getSize().x;
-    model.eventsGraph.configure({width: width - 40});
+    model.eventsGraph.configure({width: width - $("tabHead").getSize().x - 60});
     $("tipGraph").style.width = width - $("tipGraphLegend").getSize().x - 20 + "px";
 }
 
