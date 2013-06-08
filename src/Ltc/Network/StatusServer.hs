@@ -7,25 +7,32 @@ module Ltc.Network.StatusServer (
         serve, serveWithPort, statusPort
     ) where
 
+import Control.Applicative ( (<|>) )
 import Control.Concurrent ( forkIO )
 import Control.Concurrent.STM ( atomically, newTChanIO, readTChan )
 import Control.Exception ( Exception )
 import Control.Monad ( forever )
 import Control.Monad.IO.Class ( liftIO )
 import Data.Aeson ( encode )
+import Data.ByteString.Lazy.Char8 ( ByteString, fromStrict )
 import Data.Monoid ( mempty )
 import Data.Typeable ( Typeable )
+import Ltc.Monkey ( Monkey )
 import Ltc.Store ( Store(..), EventChannel )
 import Network.WebSockets ( WebSockets, Hybi00, textData, acceptRequest )
 import Network.WebSockets.Snap ( runWebSocketsSnap )
 import Network.WebSockets.Util.PubSub ( PubSub, newPubSub, subscribe, publish )
-import qualified Data.ByteString.Char8 as BS
 import qualified Control.Exception as CE
-import Snap.Core ( route )
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Ltc.Monkey as M
+import Snap.Core ( Method(..), method, route
+                 , writeLBS
+                 , getRequest, rqPostParam )
 import Snap.Http.Server ( ConfigLog(..), setErrorLog, setAccessLog
                         , httpServe, setPort )
 import Snap.Util.FileServe ( serveFile, serveDirectory )
-import System.Log.Logger ( debugM )
+import System.Log.Logger ( debugM, warningM )
 import Text.Printf ( printf )
 
 -- Re-exported module
@@ -59,18 +66,20 @@ data Status = Status
     }
 
 -- | Start the status interface on the default port.
-serve :: (Store s) => s -> IO Status
+serve :: (Store s) => s -> Maybe Monkey -> IO Status
 serve = serveWithPort statusPort
 
 -- | Start the status interface on the given port.
-serveWithPort :: (Store s) => Port -> s -> IO Status
-serveWithPort port store = do
+serveWithPort :: (Store s) => Port -> s -> Maybe Monkey -> IO Status
+serveWithPort port store mmonkey = do
     debugM tag (printf "starting status interface on %d" port)
     pubSub <- newPubSub
-    let handler = route [ ("", indexHandler)
-                        , ("r", resourcesHandler)
-                        , ("status", statusHandler pubSub)
-                        ]
+    let handler = route ([ ("", indexHandler)
+                         , ("r", resourcesHandler)
+                         , ("status", statusHandler pubSub)
+                         ]
+                         ++ maybe [] (\monkey ->
+                                       [("monkey", monkeyHandler monkey)]) mmonkey)
         config = setAccessLog (ConfigIoLog BS.putStrLn) $
                  setErrorLog (ConfigIoLog BS.putStrLn) $
                  setPort port $
@@ -92,11 +101,66 @@ serveWithPort port store = do
   where
     indexHandler = serveFile "www/index.html"
     resourcesHandler = serveDirectory "www/r"
+
     statusHandler pubSub = runWebSocketsSnap $ \req -> do
         acceptRequest req
         liftIO $ debugM tag "new client subscription"
         subscribe pubSub :: WebSockets Hybi00 ()
 
+    monkeyHandler monkey =
+        route [ ("active", monkeySetActiveHandler monkey <|> monkeyGetActiveHandler monkey)
+              , ("delay", monkeySetDelayHandler monkey <|> monkeyGetDelayHandler monkey)
+              ]
+    monkeyGetActiveHandler monkey = method GET $ do
+        active <- liftIO $ M.getActive monkey
+        writeLBS (encode active)
+    monkeySetActiveHandler monkey = method POST $ do
+        rq <- getRequest
+        case rqPostParam "state" rq of
+            Just [stateJ] -> do
+                case maybeRead (fromStrict stateJ) of
+                    Nothing -> do
+                        liftIO $ warningM tag (printf "could not decode monkey set active param '%s'"
+                                                      (show stateJ))
+                    Just stateI -> do
+                        let state = toEnum stateI
+                        liftIO $ debugM tag (printf "changed monkey state to %s" (show state))
+                        liftIO $ M.setActive monkey state
+            stateParam ->
+                liftIO $ warningM tag (printf "could not interpret monkey set active param '%s'"
+                                              (show stateParam))
+
+    monkeyGetDelayHandler monkey = method GET $ do
+        delay <- liftIO $ M.getDelay monkey
+        writeLBS (encode delay)
+    monkeySetDelayHandler monkey = method POST $ do
+        rq <- getRequest
+        case rqPostParam "delay" rq of
+            Just [delayJ] -> do
+                case maybeRead (fromStrict delayJ) of
+                    Nothing -> do
+                        liftIO $ warningM tag (printf "could not decode monkey set delay param '%s'"
+                                                      (show delayJ))
+                    Just delay -> do
+                        liftIO $ debugM tag (printf "changed monkey delay to %s" (show delay))
+                        liftIO $ M.setDelay monkey (delay !! 0, delay !! 1)
+            delayParam ->
+                liftIO $ warningM tag (printf "could not interpret monkey set delay param '%s'"
+                                              (show delayParam))
+
+
 -- | Shutdown a running 'Status'.  Idempotent.
 shutdown :: Status -> IO ()
 shutdown = getShutdown
+
+--------------------------------
+-- Helpers
+--------------------------------
+
+-- | Try to read a value; return 'Nothing' if the parse fails.
+maybeRead :: (Read a) => ByteString -> Maybe a
+maybeRead bs =
+    let s = BL.unpack bs in
+    case readsPrec 0 s of
+        [(x, "")] -> Just x
+        _         -> Nothing

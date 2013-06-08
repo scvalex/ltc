@@ -48,7 +48,7 @@ data Monkey = Monkey
 start :: (Store s) => s -> IO Monkey
 start store = do
     debugM tag "starting monkey"
-    delayVar <- newMVar (0.2, 0.4)
+    delayVar <- newMVar (2.0, 4.0)
     activeVar <- newMVar True
     tid <- forkIO $
            CE.handle (\(_ :: Shutdown) -> return ()) $ do

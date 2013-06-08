@@ -173,6 +173,47 @@ function AppViewModel() {
         // Scroll to bottom
         $("log").scrollTop = $("log").scrollHeight;
     }
+
+    self.setMonkeyActive = function(state) {
+        new Request({
+            url: "/monkey/active",
+            onSuccess: function() {
+                log("Monkey state changed to ", state);
+            }
+        }).post("state="+state);
+    }
+    self.monkeyState = ko.observable(true);
+    self.getMonkeyActive = function() {
+        new Request({
+            url: "/monkey/active",
+            onSuccess: function(data) {
+                var state = JSON.parse(data);
+                self.monkeyState(state);
+                log("Monkey state is ", state);
+            }
+        }).get();
+    }
+    self.getMonkeyActive();
+
+    self.setMonkeyDelay = function(delay) {
+        new Request({
+            url: "/monkey/delay",
+            onSuccess: function() {
+                log("Monkey delay changed to ", delay);
+            }
+        }).post("delay="+JSON.stringify(delay));
+    }
+    self.monkeyDelay = ko.observable([0.0, 0.0]);
+    self.getMonkeyDelay = function() {
+        new Request({
+            url: "/monkey/delay",
+            onSuccess: function(data) {
+                var delay = JSON.parse(data);
+                self.monkeyDelay(delay);
+                log("Monkey delay is ", delay);
+            }
+        }).get();
+    }
 }
 
 function setupLayout() {

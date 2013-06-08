@@ -141,8 +141,8 @@ main = do
                            (makeNodeName hostname (idx + 1))
                            (U.UdpLocation { U.host = hostname
                                           , U.port = N.nodePort + idx + 1 })
-            status <- S.serveWithPort (S.statusPort + idx) store
             monkey <- M.start store
+            status <- S.serveWithPort (S.statusPort + idx) store (Just monkey)
             shutdownOnInt store [N.shutdown node, S.shutdown status, M.shutdown monkey]
         WireClient h p -> do
             _ <- printf "Connecting wire client to %s:%d\n" h p
