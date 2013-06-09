@@ -528,21 +528,91 @@ discuss the details in Section \ref{sec:outside-view}.
 
 ## Field Types
 
+Now that we know that LTc is a key-value store, the question arises:
+what sort of values can it hold?  The answer lies somewhere along the
+spectrum from "only strings", to "any data type".  In this section, we
+examine what other systems have done, and use them to put LTc's choice
+into perspective.
+
 ### No Types
 
-<!-- File Systems, BerkleyDB?, Almost Redis. -->
+The most common storage systems are file systems, and they also tend
+to be simplest in terms of what data types they can store.  POSIX file
+systems \footnote{This is not the case for other file systems like the
+Be File System, or HFS+ which store metadata along with file
+contents}, in particular, only store binary strings \footnote{Note
+that permissions and ownership data do not refer to the contents of
+the file, but rather to how the file can be used.}.  The advantage of
+viewing values as opaque binary blobs is that it makes the storage
+system as general as possible: anything that can be serialized can be
+stored and no modification to the storage system is required.  The
+downside is that it puts the burden of type safety squarely on the
+user's shoulders; the end result is as expected: many programs use
+heuristics to determine the types of the contents of files, and the
+heuristics often give wrong results\footnote{The author cannot count
+the number of times he has had to manually tell his text editor that
+it is looking at a Prolog file, and not a Perl file, even though they
+both use the same extension}.
+
+Redis takes a similar approach: it can store strings, sets of strings,
+and lists of strings \citep{redis:types}.  Additionally, it sometimes
+interprets some strings as integers, but there is nothing to stop a
+misbehaving application from setting what is obviously an integer
+field to some arbitrary string.  Again, the issue with this approach
+is that it provides no safety and places the entire responsibility of
+type checking on the user.
 
 ### Primitive Types
 
-<!-- SQL Databases, though the relational structures can be used to
-build more complex types. -->
+The next step along the spectrum is to support storing some primitive
+types in addition to strings.
 
-<!-- Document Stores, though documents themselves are richer types.
-It's all Javascript, so meh. -->
+Relational databases are like this and those that adhere to the SQL
+'92 standard are capable of storing at least strings, bit strings,
+several kinds of integer and floating point numbers, arbitrary
+precision numbers, times, and dates \citep{sql-language}.
 
-### Rich Types
+Modern document stores also support multiple primitive data types.
+CouchDB stores data as JSON\footnote{"A lightweight data-interchange
+format ... based on a subset of the JavaScript Programming Language";
+\url{http://www.json.org/}}, and supports integer and floating point
+numbers, dates, timestamps, arrays, dictionaries, and JavaScript
+\citep{couchdb:json}.  MongoDB stores data as BSON\footnote{"A
+binary-encoded serialization for JSON-like documents";
+\url{http://bsonspec.org/}}, and supports roughly the same types as
+CouchDB \citep{mongodb:bson-types}.
 
-<!-- OO Databases -->
+From a type-safety point of view, supporting some primitive types is
+better than nothing, and indeed, it is often "good enough" since it
+covers the most common use cases, but it still requires users to
+manually disassemble their types into primitive components before
+inserting them into the data store, and to manually reassemble them
+when extracting.
+
+### Any Types
+
+Finally, some systems support storing any data types.  The fine print
+is that only data types with some specific characteristics are
+supported: they usually have to be serializable, and their
+representations have to be finite\footnote{this usually rules out
+storing functions and infinite data types}.
+
+Object databases are the most famous examples of systems that support
+storing any data type.  For instance,
+ZODB\footnote{\url{http://zodb.org/}}, "a native object database for
+Python", is capable of storing almost any Python object on disk, but
+only if it inherits the `persistent.Persistent` class.
+
+Since such systems can store arbitrary data types with little
+additional programming effort, they are often used as a persistence
+layer for applications.  ZODB, mentioned above, is the persistence
+layer for Zope\footnote{\url{http://zope.org/}} and several associated
+content management systems widely used on the Internet.
+
+Since this is the most general approach, is also the approach LTc
+takes.  We discuss the implications of this decision in detail in
+Section \ref{sec:strongly-typed}, but, roughly speaking, any Haskell
+data type that can be serialized and diffed can be stored in LTc.
 
 ## Guarantees
 
@@ -859,6 +929,8 @@ Type Safety
 ## Types in Database Interfaces
 
 ## A Strongly Typed Database Interface
+
+\label{sec:strongly-typed}
 
 <!-- Mention Redis's stringly typed interface -->
 
