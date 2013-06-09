@@ -451,46 +451,78 @@ which has gained much traction in recent years: key-value stores.
 
 \label{sec:kv-store}
 
-Conceptually, LTc is a key-value store.  Its API has only three core
-commands: `set <key> <value>`, `get <key>`, and `delete <key>`.  The
-main reason behind this decision is simplicity: experience has shown
-that key-value stores such as Cassandra, Dynamo, and Riak are the
-simplest data stores that are still useful. \citep{wiki:NoSQL}
+Unlike relational databases which store tables of interconnected data,
+key-value stores only associate keys with values, and the individual
+values are entirely independent.  In terms of their interface, they
+are more like the map or dictionary data structures present in every
+programming language's standard library than relational databases.
 
-The main alternative designs are relational databases such as
-PostgreSQL, and document stores such as CouchDB.  Implementing either
-of these would have made LTc more useful, but it would have made
-writing the data store itself much more difficult, and that is not the
-focus of this project.  So, although, LTc is *not* designed as a
-drop-in replacement for any existing piece of software, we believe
-that the plugable architecture described in Section \ref{sec:plugable}
-makes writing adapters a simple order of business.
+Key-value stores have gained prominence in recent years and are now
+used throughout the industry.  To list a few examples: Redis is used
+by Twitter, GitHub, StackOverflow \citep{redis:who-uses}; CouchDB is
+used by Engine Yard, and Credit Suisse \citep{couchdb:in-the-wild};
+MongoDB is used by SAP, MTV, and Disney
+\citep{mongodb:production-deployments}.
+
+Although, the interfaces of key-value stores are much less featureful
+than those exposed by relational databases, we note that a recent
+trend has been to use the latter strictly as the former.  For example,
+\citet{Hof10} mentions that \href{http://www.reddit.com}{Reddit}, a
+site with $270$ million page views per month, achieves its performance
+by using MySQL as a key-value store.
+
+By transliterating the previous section's example into Redis, we see
+the main characteristics of key-value stores.  Since there is no
+schema to define, we skip the "create tables" step, and simply insert
+the data.
 
 ~~~~ {.sourceCode}
-    +----------------+----------------+
-    | Key            | Value          |
-    +================+================+
-    | users          | alex,bob       |
-    +----------------+----------------+
-    + alex:karma     + 42             +
-    +----------------+----------------+
-    + alex:email     + alex@email.com +
-    +----------------+----------------+
-    + bob:karma      + 240            +
-    +----------------+----------------+
-    + bob:email      + bob@bob.me     +
-    +----------------+----------------+
-
-    An example key-value table populated with
-    data for a social news website.
+redis> set user:1:name alex
+redis> sadd users 1
+redis> set user:2:name mike
+redis> sadd users 2
+redis> sadd languages:1 english
+redis> sadd languages:2 english
+redis> sadd languages:2 french
 ~~~~
 
-Although, key-value store APIs are much less featureful than the SQL
-APIs exposed by relational databases, we note that a recent trend has
-been to use the latter strictly as the former.  For example,
-\citet{Hof10} mentions that \href{http://www.reddit.com}{Reddit}, a
-site with 270 million page views per month, achieves its performance
-by using MySQL as a key-value store.
+All the above operations insert data into the data store: `set`
+associates the key in its first argument with the value in its second
+argument; `sadd` adds its second argument to the set keyed by its
+first argument.  Note that the key "user:1:name" is just string; the
+logic that it means "the field name of user 1" is handled solely by
+the application logic.  The resulting data store looks like this:
+
+~~~~ {.sourceCode}
+    +----------------+----------------------+
+    | Key            | Value                |
+    +================+======================+
+    | users          | SET(1, 2)            |
+    +----------------+----------------------+
+    | user:1:name    | alex                 |
+    +----------------+----------------------+
+    | user:2:name    | mike                 |
+    +----------------+----------------------+
+    | languages:1    | SET(english)         |
+    +----------------+----------------------+
+    | languages:2    | SET(english, french) |
+    +----------------+----------------------+
+~~~~
+
+We have adopted a similar key-value interface for LTc.  Conceptually,
+its API has only two core commands: `set <key> <value>`, and `get
+<key>`.  The main reason behind this decision is simplicity: the
+key-value interface is the simplest one that is still useful in
+practice.
+
+One complication introduced by using a key-value interface is that
+there is no standardized one \citep{Zicari12}: every key-value store
+exposes a different interface.  The issues with this situation is that
+it makes transitioning from one data store to another difficult and it
+introduces a learning curve which slows down adoption.  LTc is no
+different in this regard, but attempts to alleviate the problem by
+exposing multiple interfaces compatible with existing systems; we
+discuss the details in Section \ref{sec:outside-view}.
 
 ### Other
 
@@ -552,7 +584,7 @@ True Data Set.
 The downside to using eventually consistent semantics is that the user
 has to take into account that they may be operating on "old" data.
 
-## Atomicity
+## Atomicity of Operations
 
 ### Atomic Read/Write
 
@@ -722,9 +754,11 @@ guarantees.
 
 ## Outside View
 
+\label{sec:outside-view}
+
 <!-- FIXME Say how an LTc systems looks like from the outside: on the
 network (nodes, UDP connections, etc.), on the machine (processes,
-threads, directories). -->
+threads, directories), what interfaces it exposes. -->
 
 ## Haskell
 
