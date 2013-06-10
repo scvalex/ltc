@@ -12,7 +12,7 @@ import Control.Concurrent ( MVar, newMVar, modifyMVar_, readMVar
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable )
-import Ltc.Network.Interface.Class ( NetworkInterface(..) )
+import Ltc.Network.Interface.Class ( NetworkInterface(..), Sending )
 import Ltc.Network.Interface.UDP ( UdpInterface, NetworkLocation(..) )
 import Ltc.Network.Types ( Hostname, Port )
 import System.Random ( randomRIO )
@@ -24,8 +24,8 @@ import Text.Printf ( printf )
 
 -- | The delayed interface introduces random, configurable delays on sends.  It is based
 -- on 'UdpInterface'.
-data DelayedInterface = DelayedInterface
-    { getUdpInterface   :: UdpInterface
+data DelayedInterface a = DelayedInterface
+    { getUdpInterface   :: UdpInterface a
     , getArtificalDelay :: MVar (Double, Double)
     }
 
@@ -66,11 +66,11 @@ instance Serialize (NetworkLocation DelayedInterface)
 instance Sexpable (NetworkLocation DelayedInterface)
 
 -- | Set the artificial delay for the given interface.
-setDelay :: DelayedInterface -> (Double, Double) -> IO ()
+setDelay :: DelayedInterface Sending -> (Double, Double) -> IO ()
 setDelay intf delay = modifyMVar_ (getArtificalDelay intf) (const (return delay))
 
 -- | Get the artificial delay for the given interface.
-getDelay :: DelayedInterface -> IO (Double, Double)
+getDelay :: DelayedInterface Sending -> IO (Double, Double)
 getDelay intf = readMVar (getArtificalDelay intf)
 
 ----------------------
@@ -82,7 +82,7 @@ delayedToUdpLocation :: NetworkLocation DelayedInterface -> NetworkLocation UdpI
 delayedToUdpLocation (DelayedLocation h p) = UdpLocation { host = h, port = p }
 
 -- | Make a 'DelayedInterface' from a 'UdpInterface'.
-delayedInterfaceWithDefaults :: UdpInterface -> IO DelayedInterface
+delayedInterfaceWithDefaults :: UdpInterface a -> IO (DelayedInterface a)
 delayedInterfaceWithDefaults intf = do
     delay <- newMVar (0.0, 0.0)
     return (DelayedInterface { getUdpInterface   = intf

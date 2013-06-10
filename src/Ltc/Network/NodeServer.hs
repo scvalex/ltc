@@ -30,7 +30,7 @@ import Data.Function ( on )
 import Data.Map ( Map )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
-import Ltc.Network.Interface ( NetworkInterface, NetworkLocation )
+import Ltc.Network.Interface ( NetworkInterface, Sending, Receiving, NetworkLocation )
 import Ltc.Network.Interface.UDP ( UdpInterface )
 import Ltc.Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
 import Ltc.Store ( Store(..), Event(..), SetEvent(..), Version, NodeName )
@@ -75,7 +75,7 @@ instance Exception Shutdown
 -- are asynchronous, there is generally no way to tell if the other side is running on
 -- not.
 data Connection a = (NetworkInterface a) => Connection
-    { getConnectionInterface :: a
+    { getConnectionInterface :: a Sending
     , getConnectionLocation  :: NetworkLocation a
     }
 
@@ -87,7 +87,7 @@ newtype Node a = Node { getNodeData :: MVar (NodeData a) }
 data RemoteNode a = NetworkInterface a => RemoteNode
     { getRemoteLocation  :: NetworkLocation a
     , getRemoteName      :: NodeName
-    , getRemoteInterface :: a
+    , getRemoteInterface :: a Sending
     , getRemoteClock     :: Version
     }
 
@@ -224,12 +224,12 @@ removeNeighbour node nodeName = do
 
 -- | Handle incoming node envelopes.
 nodeHandler :: (NetworkInterface a, Store s)
-            => Node a -> s -> a -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
+            => Node a -> s -> a Receiving -> (() -> Producer ProxyFast ByteString IO ()) -> IO ()
 nodeHandler node store intf p =
     runProxy $ p >-> envelopeDecoderD intf >-> handleNodeEnvelopeC node store
 
 -- | Stream data from the network interface..
-interfaceReader :: (Proxy p, NetworkInterface a) => a -> () -> Producer p ByteString IO ()
+interfaceReader :: (Proxy p, NetworkInterface a) => a Receiving -> () -> Producer p ByteString IO ()
 interfaceReader intf () = runIdentityP $ forever $ do
     bin <- lift $ NI.receive intf
     unless (BS.null bin) $ respond bin
@@ -237,7 +237,7 @@ interfaceReader intf () = runIdentityP $ forever $ do
 -- | Decode envelopes and pass them downstream.  Malformed inputs are discarded, and a
 -- warning is emitted.
 envelopeDecoderD :: (NetworkInterface a, Proxy p)
-                 => a -> () -> Pipe p ByteString (NodeEnvelope a) IO ()
+                 => a Receiving -> () -> Pipe p ByteString (NodeEnvelope a) IO ()
 envelopeDecoderD _intf () = runIdentityP $ forever $ do
     bin <- request ()
     case decode bin of

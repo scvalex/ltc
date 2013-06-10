@@ -11,7 +11,7 @@ import Language.Sexp ( Sexpable )
 import Ltc.Network.Interface.Class ( NetworkInterface(..) )
 
 -- | The null interface discards any message sent and blocks indefinitely on receive.
-data NullInterface = NullInterface
+data NullInterface a = NullInterface
 
 instance NetworkInterface NullInterface where
     -- | A null location is just that.
