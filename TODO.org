@@ -169,13 +169,11 @@
   - [X] mset
   - [X] mget
 * TODO Better merging
-* TODO Recoverable store state
+* DONE Recoverable store state
   :LOGBOOK:
   CLOCK: [2013-06-07 Fri 19:16]--[2013-06-07 Fri 19:26] =>  0:10
   :END:
   - [X] Was store closed cleanly?
-  - [ ] A list of all the changes made to a store (to speed up
-    computations for updates).
 * DONE Artificial delay network interface
   :LOGBOOK:
   CLOCK: [2013-06-04 Tue 13:14]--[2013-06-04 Tue 13:21] =>  0:07
