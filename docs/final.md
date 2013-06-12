@@ -1494,14 +1494,3 @@ Future Work
 <!-- Will I continue working on it? -->
 <!-- Will anyone use it? -->
 <!-- What future research opportunities there are? -->
-
-\clearpage
-\appendix
-
-User Guide
-==========
-
-\label{sec:user-guide}
-
-<!-- README: How to setup and run? -->
-<!-- Haddock docs -->
