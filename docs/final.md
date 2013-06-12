@@ -1342,6 +1342,26 @@ suited for LTc is a future path for development.
 Correctness
 ===========
 
+We have seen that LTc is a data store that can be replicated over
+multiple nodes.  Now, we claim that it is *correct*.  In this section,
+we discuss what it means for a data store to be correct, we explain
+why we believe LTc fits this description, and give details to the
+steps we took to convince ourselves of this.
+
+To begin, what would make a data store *worse* than useless?
+Arguably, this is the case if the data store loses data, or if its
+replication mechanism corrupts data.  We say that a data store loses
+data if some write to it that succeeds later becomes undetectable.  We
+say that the replication mechanism corrupts data if, after
+replication, the values in the data store are somehow unexpected.
+
+Note that the first of the two items we would like to prove is a
+negative---we are attempting to prove that something does not happen.
+Since this is hard to do in practice, we will settle for tests that
+show that it does not happen in the common cases.  On the other hand,
+the second item is a positive, so we will give a mathematical proof
+for it.
+
 ## Empirical Correctness
 
 ### Unit Testing
