@@ -71,7 +71,7 @@ ltcModes =
     , Populate { dir = def &= typDir &= argPos 0
                , count = 100 &= help "around how many keys to insert" }
       &= help "populate a store with random values"
-    , Redis { dir = "store" &= typDir }
+    , Redis { dir = "redis-store" &= typDir }
       &= help "run a store with a Redis interface"
     , Node { storeDir = def &= typDir
            , nodeIndex = 0 &= help "what is the index of this node on this machine" }
