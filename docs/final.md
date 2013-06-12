@@ -832,6 +832,8 @@ threads, directories), what interfaces it exposes. -->
 
 ## Haskell
 
+\label{sec:haskell}
+
 ## Component Architecture
 
 ### The Static View: Plugable Architecture
@@ -925,6 +927,62 @@ this problem.
 
 Type Safety
 ===========
+
+LTc is written in Haskell, and the we have discussed the advantages of
+this in Section \ref{sec:haskell}.  We will not repeat the points
+here, but we will expand on one of them, namely type safety.  In
+particular, we now focus on type safety in the context of
+serialization and, especially, deserialization of data.
+
+Consider the archetypal serialization function, `show`:
+
+~~~~ {.sourceCode}
+show :: Show a => a -> String
+~~~~
+
+Its type describes it well: `show` is a function that takes a value of
+some type which can be "shown" to a string, and gives you back the
+value's string representation.  So far, so good, but consider its
+inverse, `read`:
+
+~~~~ {.sourceCode}
+read :: Read a => String -> a
+~~~~
+
+In other words, `read` is a function that takes a string, and converts
+it to a value of some type which can be "read" from a string.  The
+problem is that `read` can make up values of effectively any
+type\footnote{Technically, \texttt{read} can only make up values of
+types which have \texttt{Read} instances, but that covers all the
+types in the standard libraries, and the compiler can generate the
+instances automatically for any user defined types.  So, for the
+purpose of the discussion, we assume that all types have \texttt{Read}
+instances.}.  This effectively throws type safety out the window, as
+can be seen from the following simple example:
+
+~~~~ {.sourceCode}
+λ > let n = 42 :: Int
+λ > read (show n) :: Int
+42
+λ > read (show n) :: String
+"*** Exception: Prelude.read: no parse
+λ > read (show n) :: Float
+42.0
+~~~~
+
+All three of the above calls to `read` are valid Haskell, but the
+second will throw an exception *at runtime*, and the third implicitly
+casts a value between types.  Ideally, we would like the compiler to
+spot both these misuses.  Although the mistakes are obvious in such a
+simple example, they become much less visible when the code is part of
+some larger application\footnote{The author has seen and written code
+that uses \texttt{show} and \texttt{read} to store persistent
+application state, and can attest that the bugs that appear in such
+code are extremely annoying, especially if the deserialization
+succeeds erroneously.}.
+
+Since LTc is a data store, it was designed in such a way as to prevent
+the more common bugs that can arise in such situations.
 
 ## Types in Database Interfaces
 
