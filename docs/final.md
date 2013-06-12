@@ -565,6 +565,8 @@ type checking on the user.
 
 ### Primitive Types
 
+\label{sec:primitive-types}
+
 The next step along the spectrum is to support storing some primitive
 types in addition to strings.
 
@@ -615,7 +617,7 @@ takes.  We discuss the implications of this decision in detail in
 Section \ref{sec:strongly-typed}, but, roughly speaking, any Haskell
 data type that can be serialized and diffed can be stored in LTc.
 
-## Guarantees
+## Consistency Guarantees
 
 ### The CAP Problem
 
@@ -627,9 +629,9 @@ data type that can be serialized and diffed can be stored in LTc.
                           Pick TWO
 ~~~~
 
-### CAp
+### CA
 
-### CaP
+### CP
 
 ### ecAP
 
@@ -821,7 +823,7 @@ guarantees.
 
 <!-- How am I achieving it? -->
 
-# Design and Implementation
+# Implementation and Architecture
 
 So far, we have seen what our reasons for writing LTc were, and what
 design decisions we have made.  We will now discuss LTc is actually
@@ -1039,7 +1041,7 @@ serialization and, especially, deserialization of data.
 
 Consider the archetypal serialization function, `show`:
 
-~~~~ {.sourceCode}
+~~~~ {.haskell}
 show :: Show a => a -> String
 ~~~~
 
@@ -1048,7 +1050,7 @@ some type which can be "shown" to a string, and gives you back the
 value's string representation.  So far, so good, but consider its
 inverse, `read`:
 
-~~~~ {.sourceCode}
+~~~~ {.haskell}
 read :: Read a => String -> a
 ~~~~
 
@@ -1089,13 +1091,143 @@ the more common bugs that can arise in such situations.
 
 ## Types in Database Interfaces
 
-<!-- Mention Redis's stringly typed interface -->
+Consider the following Haskell data type that encodes some basic
+information about a person.
+
+~~~~ {.haskell}
+data Person = Person
+    { name   :: String
+    , age    :: Int
+    , height :: Double
+    }
+~~~~
+
+We will now show how we would insert records of this type into a
+database with \href{http://hackage.haskell.org/package/HDBC}{HDBC}, a
+widely used Haskell SQL database connector.  First, we need to define
+the schema for the `persons` table.  We note that it duplicates the
+information in the `Person` data type declaration, the only difference
+being that it is in the form of string.
+
+~~~~ {.haskell}
+setupTables :: (IConnection c) => c -> IO ()
+setupTables conn = do
+    tables <- getTables conn
+    when (not ("persons" `elem` tables)) $ do
+        stmt <- prepare conn "CREATE TABLE persons ( name STRING,\
+                             \                       age INT,\
+                             \                       height DOUBLE )"
+        _ <- executeRaw stmt
+        return ()
+~~~~
+
+Next, we have a function that inserts values of type `Person` into the
+`persons` table.  Here, we have to manually unfold the `Person`
+record's fields.
+
+~~~~ {.haskell}
+insertPerson :: (IConnection c) => c -> Person -> IO ()
+insertPerson conn person = do
+    stmt <- prepare conn "INSERT INTO persons VALUES (?, ?, ?)"
+    _ <- execute stmt [ toSql (name person)
+                      , toSql (age person)
+                      , toSql (height person)
+                      ]
+    return ()
+~~~~
+
+Finally, we have a function that extracts values of type `Person` from
+the `persons` table.  This time, have to manually reconstruct the
+`Person` record from its fields.
+
+~~~~ {.haskell}
+getPerson :: (IConnection c) => c -> String -> IO (Maybe Person)
+getPerson conn personName = do
+    stmt <- prepare conn "SELECT * FROM persons WHERE name = ?"
+    _ <- execute stmt [toSql personName]
+    values <- fetchRow stmt
+    case values of
+        Just [nameV, ageV, heightV] ->
+            return (Just (Person { name   = fromSql nameV
+                                 , age    = fromSql ageV
+                                 , height = fromSql heightV
+                                 }))
+        _ ->
+            return Nothing
+~~~~
+
+There are quite a few issues with the above code.  First, it ignores
+the returns of the calls to `execute`, so we have no guarantee that
+the database insertions actually succeeded.
+
+Then, there is an undocumented requirement to call `commit` on the
+database connection after each `insertPerson`; if this is omitted,
+with some databases, the changes are not guaranteed to be persistent.
+
+Note the above calls to `toSql` in `insertPerson`, and `fromSql` in
+`getPerson`; these almost introduce the `show`/`read` problem we
+mentioned in the previous section.  The problem in this case is not
+quite so bad because, as we mentioned in Section
+\ref{sec:primitive-types}, SQL databases support a few primitive
+types.
+
+In fact, the calls to `toSql`/`fromSql` are indicative of a larger
+problem: since the database layer has no knowledge of the `Person`
+type, we have to manually handle translations from `Person` to SQL
+table columns and back.  Any change to the `Person` data declaration
+would require slightly different changes to three places in the code.
+Failure to make these changes would cause a warning in `getPerson`,
+and would succeed silently for `setupTables` and `insertPerson`.  It
+is easy to see how these pieces of code could easily get out of sync.
+
+The last problem is somewhat less obvious: if we were to change the
+declaration of `Person`, we would probably also need to change the
+values *already present* in the database.  In other words, the version
+of the code in the executable is now coupled with the values in the
+database; using the wrong code for the database may work fine, it may
+succeed while silently corrupting data, or it may fail.
+
+We illustrated the above problems with SQL databases, but it could be
+much worse.  If we were to rewrite the examples for Redis with
+\href{http://hackage.haskell.org/package/redis-hs-0.1.2}{redis-hs}, we
+would have to use the following primitives to insert and extract data
+from the data store:
+
+~~~~ {.haskell}
+itemSet :: Handle -> String -> String -> IO (Maybe RedisReply)
+itemGet :: Handle -> String -> IO (Maybe RedisReply)
+~~~~
+
+In other words, we would lose what little type safety
+`toSql`/`fromSql` afford us, and would have to manually serialize to
+and deserialize from strings.
+
+While on the subject of bad database interface design, consider the
+return types of the various functions we have seen so far.  HDBC's
+`execute` returns an integer, which represents the number of rows
+altered; so, in order to check if the insertions succeeded, we would
+have to check whether the return is $1$ or not.  The return from
+redis-hs's `itemSet` is `Maybe RedisReply`, where `RedisReply` is a
+sum type with four alternatives which can be used to encode, among
+other things, ordered lists of strings.  So, as far as the type
+`itemSet` is concerned, it is reasonable to expect it to return an
+ordered list of strings.  This is further inducement for the user of
+the library to ignore the returns of functions.
+
+Needless to say, all of these problems can be solved by careful
+coding, but, in the author's experience, the above is typical of code
+that works with databases.  As we will see, LTc's interface is
+designed to prevent such problems from arising in the first place, or,
+if they arise, to signal the failures as loudly and clearly as
+possible.
 
 ## A Strongly Typed Database Interface
 
 \label{sec:strongly-typed}
 
-### Serialize the entire type
+<!-- Mention acid-state: http://hackage.haskell.org/package/acid-state -->
+
+### Serialize the Entire Record
 
 ### Stored Types on Disk
 
