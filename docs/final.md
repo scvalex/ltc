@@ -1364,6 +1364,14 @@ for it.
 
 ## Empirical Correctness
 
+We now show that LTc does not lose data in the common cases.  We use
+three testing methodologies for this: the first is unit testing as
+commonly used in industry; the second and third are random testing and
+exhaustive testing, respectively, which although widely used in the
+Haskell ecosystem, are less widespread outside.  With all three
+methodologies, we will seek to show the same thing, namely that data
+inserted into LTc *somehow* is accessible later *somehow*.
+
 ### Unit Testing
 
 ### Random Testing
@@ -1371,6 +1379,11 @@ for it.
 ### Exhaustive Testing
 
 ## Provable Correctness
+
+We now prove that LTc's replication mechanism does not corrupt data.
+
+<!-- Explain the structure of our proof: global properties/local
+properties -->
 
 ### Global Properties
 
