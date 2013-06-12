@@ -787,8 +787,9 @@ requires a protocol that uniquely identifies nodes, and allows at
 least one-way communication between them.
 
 Interestingly, the only widely used protocol that completely avoids
-round-trips is UDP, which "provides a minimal, unreliable,
-best-effort, message-passing transport". \citep{rfc5405}
+round-trips is UDP\footnote{``I have this awesome joke about UDP, but
+I don't care if you get it or not.''}, which "provides a minimal,
+unreliable, best-effort, message-passing transport". \citep{rfc5405}
 
 The only alternative we could find is the Bundle Protocol (BP), which
 is the subject of Section \ref{sec:dtn}.  Unfortunately, although it
@@ -1708,3 +1709,6 @@ Future Work
 <!-- Will I continue working on it? -->
 <!-- Will anyone use it? -->
 <!-- What future research opportunities there are? -->
+
+<!-- FW: Expire values. -->
+<!-- FW: Expire history. -->
