@@ -521,8 +521,9 @@ exposes a different interface.  The issues with this situation is that
 it makes transitioning from one data store to another difficult and it
 introduces a learning curve which slows down adoption.  LTc is no
 different in this regard, but attempts to alleviate the problem by
-exposing multiple interfaces compatible with existing systems; we
-discuss the details in Section \ref{sec:outside-view}.
+exposing multiple interfaces compatible with existing systems; more
+specifically, LTc supports a subset of Redis's protocol and commands;
+we discuss the details in Section \ref{sec:plugable}.
 
 ### Other
 
@@ -910,6 +911,14 @@ Since LTc uses UDP for replication, it never actually establishes
 persistent outgoing connections, but instead sends discrete messages
 to other nodes.
 
+Additionally, if LTc's Redis adapter is enabled, it will also listen
+on the standard Redis port for incoming connections over the Redis
+wire protocol.
+
+~~~~ {.sourceCode}
+tcp     0   0 *:6379        *:*         LISTEN      19172/./ltc
+~~~~
+
 A bunch\footnote{We intentionally avoid the use of the word "cluster"
 which is usually associated with tight synchronous coupling of nodes.}
 of LTc nodes that hold the same data does not require any particular
@@ -936,6 +945,9 @@ simplicity/staticity -->
 
 <!-- FIXME Break down by plugable component: explain what each
 plugable enables. -->
+
+<!-- Mention the Redis adapter. -->
+<!-- Mention the SQLite backend. -->
 
 Because LTc is a research project, we are not entirely sure what it
 will look like in the end.  In particular, we do not know exactly what
@@ -1374,9 +1386,79 @@ inserted into LTc *somehow* is accessible later *somehow*.
 
 ### Unit Testing
 
+When running the tests for LTc, the first batch of tests are the unit
+tests.  We do this because they tend to finish relatively
+quickly\footnote{In fact, since the unit tests usually finish in just
+a few seconds, the author likes to run them automatically after
+\emph{every} build.}, and because, unlike the random and exhaustive
+tests, when they fail, the reason for failure is usually easy to
+determine.
+
+These tests check the simplest use cases for LTc: open an LTc data
+store, write some value to it, check that we can read the value back,
+write some other value, and check that we can get both values back.
+Once these test finish, we can be confident that LTc is usable, if not
+correct.
+
+One place where unit testing proved a particularly good fit was
+testing conformance with Redis: we extracted the examples from Redis's
+documentation, and converted them to unit tests for the Redis adapter.
+Since these tests pass, we can be somewhat confident that we have
+correctly implemented our subset of Redis.  Unfortunately, since Redis
+does not define any formal semantics, we have no way to say for
+certain.
+
 ### Random Testing
 
+The problem with unit tests is that crafting complicated scenarios is
+long and boring process which the author would rather avoid.  This
+explains why the majority of LTc tests are not unit tests.  Instead,
+we have focused our efforts on random testing.
+
+By random testing, we mean that "properties are described as Haskell
+functions, and can be automatically tested on random input"
+\citep{quickcheck}.  We used Haskell's
+\href{http://hackage.haskell.org/package/QuickCheck}{QuickCheck}
+framework to write these tests.
+
+For each random test, we usually take a new LTc data store, and we
+then apply a random sequence of set commands to it, all the while
+checking various properties.  As with unit testing, we are usually
+interested that data written to the data store is later accessible,
+even if it is superseded by newer data.  Once these tests are done,
+and by virtue of our running them thousands of times, we can be
+reasonably confident that LTc does not lose data in the usual cases.
+
+We make a point of running roughly the same tests both with LTc's
+normal interface, and over the Redis wire protocol.  By doing this, we
+gain confidence that the two interfaces do not have different
+semantics.
+
 ### Exhaustive Testing
+
+Although random testing forms the backbone of LTc tests, and the
+author expects it to catch the most bugs, there are a few deficiencies
+in the approach.  A large list is included in the SmallCheck paper
+\citep{smallcheck}, but we are interested in one in particular: most
+errors are revealed by small test cases, but random testing does not
+favour them, and instead wastes time on unnecessarily large test
+cases.  This is a problem for LTc particularly, since the tests make
+changes to the on-disk data store which, in turn, are time-expensive.
+
+We attempt to remedy this problem by using
+\href{http://hackage.haskell.org/package/smallcheck}{SmallCheck}, an
+exhaustive testing framework for Haskell.  Unlike our random tests
+which generate random sequences of commands to run on a data store,
+the exhaustive tests generate *all* command sequences up to a certain
+depth.  This gives us more breadth on the set of tested commands, and
+we gain certainty that LTc is not doing anything surprising.
+
+In addition to checking variants of the properties previously
+mentioned, we also use exhaustive testing for the encoders and
+decoders for the network protocols we use: LTc's inter-node protocol,
+and the Redis wire protocol.  Of course, in Redis's case, this does
+not mean we are actually handling it correctly, but at least we know
+that we are handling it consistently.
 
 ## Provable Correctness
 
