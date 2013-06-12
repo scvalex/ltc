@@ -834,6 +834,10 @@ threads, directories), what interfaces it exposes. -->
 
 \label{sec:haskell}
 
+### GADTs
+
+### Phantom Types
+
 ## Component Architecture
 
 ### The Static View: Plugable Architecture
@@ -986,15 +990,15 @@ the more common bugs that can arise in such situations.
 
 ## Types in Database Interfaces
 
+<!-- Mention Redis's stringly typed interface -->
+
 ## A Strongly Typed Database Interface
 
 \label{sec:strongly-typed}
 
-<!-- Mention Redis's stringly typed interface -->
+### Serialize the entire type
 
-### GADTs
-
-### Phantom Types
+### Stored Types on Disk
 
 \clearpage
 
