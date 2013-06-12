@@ -822,13 +822,100 @@ guarantees.
 
 # Design and Implementation
 
+So far, we have seen what our reasons for writing LTc were, and what
+design decisions we have made.  We will now discuss LTc is actually
+implemented.  We begin with an outside view that treats an LTc system
+as a blackbox, we briefly mention our choice of programming language,
+we describe LTc's internal architecture, and we finish by discussing a
+few design issues that cropped up during implementation.
+
 ## Outside View
 
 \label{sec:outside-view}
 
-<!-- FIXME Say how an LTc systems looks like from the outside: on the
-network (nodes, UDP connections, etc.), on the machine (processes,
-threads, directories), what interfaces it exposes. -->
+In this section, we describe what a running LTc system looks like from
+the outside.
+
+LTc is designed to run as an embedded data store.  In other words,
+unlike most "big" SQL databases, but like SQLite, LTc runs in the same
+process as the application that is using it.  For instance, an LTc
+node started by the debugging tool `ltc` looks like:
+
+~~~~ {.sourceCode}
+% ps -aux | grep ltc
+scvalex   6807  2.0  0.4  55956 15948 pts/4    S+   10:19   0:00 ./ltc node
+~~~~
+
+"Big" databases usually run as separate server processes.  This is
+advantageous, since it allows several applications to use a single
+shared database.  The downside of this approach is that it requires
+additional effort to setup a database, and more programming effort
+because a client/server protocol is needed.  We believe that the costs
+of a separate server process outweigh the benefits in LTc's case, so
+we used the simpler approach.
+
+On disk, an LTc database looks like an opaque directory.  By opaque,
+we mean that we do not expect anyone other than an LTc process to have
+any need to look into it.  For instance, after running a test node
+with the file system backend for some time with `ltc node`, we get an
+on-disk structure like the following:
+
+~~~~ {.sourceCode}
+% tree node-store-0
+node-store-0
+|-- clean-shutdown
+|-- clock
+|-- format
+|-- keys
+|   |-- 27067ff31175f604acdf4dcb804036e48ef050dd
+|   |-- 3b19bc2b8b75edd0ee7d243100e7772c9feeb59c
+|   |-- 788a88b84869f85cb5c09b6ea61a8319a04b5bad
+|   |-- a689532a6a4af42dbc8e4610c784854e177a3dde
+|   |-- c30bd16026732cc5e4147276f5b8e7fe990eba35
+|   \-- fc98c6c9be0fcd6d389119906ad9da8a9e80bb8b
+|-- nodeName
+|-- tmp
+|-- values
+|   |-- 1b6453892473a467d07372d45eb05abc2031647a
+|   |-- 356a192b7913b04c54574d18c28d46e6395428ab
+|   |-- 77de68daecd823babbb58edb1c8e14d7106e83bb
+|   \-- da4b9237bacccdf19c0760cab7aec4a8359010b0
+\-- version
+~~~~
+
+The individual files each have their use; for instance,
+`node-store-0/format` and `version` contain the format and the version
+of the on-disk data store, which would enable us to perform automatic
+upgrades whenever the on-disk structure needs changing; the
+`node-store-0/keys/*` files hold records containing type information
+and the changes made to each key in the data store.  For a full
+description of these files, see the documentation for `Ltc.Store` in
+Appendix \ref{sec:user-guide}.
+
+From a network point of view, LTc usually listens on two ports: an UDP
+port around $3582$ for replication, and an HTTP port around $5000$ for
+the administrative web interface.  We say "around" because multiple
+nodes may be running on the same machine, in which case the ports will
+be offset by the node index (e.g. first node uses $3582$, the second
+uses $3583$).  For instance, the test node started by `ltc node` looks
+like:
+
+~~~~ {.sourceCode}
+% netstat -lp | grep ltc
+tcp     0   0 *:5000        *:*         LISTEN      8522/./ltc
+udp     0   0 *:3582        *:*                     8522/./ltc
+~~~~
+
+Since LTc uses UDP for replication, it never actually establishes
+persistent outgoing connections, but instead sends discrete messages
+to other nodes.
+
+A bunch\footnote{We intentionally avoid the use of the word "cluster"
+which is usually associated with tight synchronous coupling of nodes.}
+of LTc nodes that hold the same data does not require any particular
+network layout, and would not have any distinctive features.  The only
+condition is for every node to be addressable and reachable by some
+other node via UDP.
 
 ## Haskell
 
@@ -1380,6 +1467,8 @@ Future Work
 
 User Guide
 ==========
+
+\label{sec:user-guide}
 
 <!-- README: How to setup and run? -->
 <!-- Haddock docs -->
