@@ -174,8 +174,8 @@ Section \ref{sec:other-data-stores}.
 
 \clearpage
 
-Background
-==========
+Design
+======
 
 <!-- What am I trying to achieve? -->
 
@@ -937,6 +937,8 @@ We have seen what LTc looks like from the outside-in; we now delve
 into LTc's internals.  The most obvious idiosyncrasy is that it is
 written in Haskell; in this section, we motivate the choice, and
 explain how choosing another language might have affected development.
+
+
 
 ### GADTs
 
@@ -1754,8 +1756,8 @@ properties -->
 
 \clearpage
 
-Evaluation Plan
-===============
+Evaluation
+==========
 
 We evaluate LTc in terms of what it can do (Section
 \ref{sec:functionality}), and how well it does it (Section
