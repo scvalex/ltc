@@ -46,7 +46,7 @@ class Store a where
     -- requested version does not exist, return 'Nothing'.  Note that you should know the
     -- type of the value before in order to use this function; if the type on disk is not
     -- the same as the requested type, throw 'TypeMismatchError'.
-    get :: (Storable b) => a -> Key ->  Version -> IO (Maybe b)
+    get :: (Storable b) => a -> Key -> Version -> IO (Maybe b)
 
     -- | Get the latest value associated with the given key.  Note that you should know
     -- the type of the value in order to use this function.

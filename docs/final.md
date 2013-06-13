@@ -1226,11 +1226,148 @@ possible.
 
 \label{sec:strongly-typed}
 
-<!-- Mention acid-state: http://hackage.haskell.org/package/acid-state -->
+We now write the above example with LTc.  First off, LTc requires the
+types of values inserted into it to have certain instances.
 
-### Serialize the Entire Record
+~~~~ {.haskell}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies, FlexibleInstances #-}
 
-### Stored Types on Disk
+data Person = Person
+    { name   :: String
+    , age    :: Int
+    , height :: Double
+    } deriving ( Eq, Generic, Ord, Typeable, Show )
+
+instance Serialize Person
+instance Sexpable Person
+
+instance Diffable Person where
+    data Diff Person = ReplaceDiff Person Person
+                       deriving ( Eq, Generic, Show )
+
+    diffFromTo = ReplaceDiff
+
+    applyDiff x1 (ReplaceDiff x2 y) =
+        if x1 == x2 then y else error "cannot apply diff to Person"
+
+    reverseDiff (ReplaceDiff x y) = ReplaceDiff y x
+
+instance Serialize (Diff Person)
+instance Sexpable (Diff Person)
+
+instance Storable Person
+~~~~
+
+And that is all.  With this boilerplate code in place, we can insert
+and retrieve values of type `Person` from an LTc data store:
+
+~~~~ {.haskell}
+set :: (Store b, Storable b) => a -> Key -> b -> IO Version
+get :: (Store a, Storable b) => a -> Key -> Version -> IO (Maybe b)
+~~~~
+
+The type for `set` says, given something that is an LTc data store, a
+key, and some value that is storable, insert the key-value pair into
+the store, and return the version of the value just inserted.  The
+type for `get` says, given something that is an LTc data store, a key,
+and a version, return the value that is associated with the key at the
+version, if it exists.
+
+Conceptually, an LTc data store looks like the following:
+
+~~~~ {.sourceCode}
+              Keys                    Values
++======+=====================+      +========+
+| key1 | - TypeRep           |      | value1 |
+|      | - Versions:         |      | value2 |
+|      | |-- vsn1 -----------+----> |        |
+|      | |   ...             |      |        |
+|      | \-- vsnN -----------+----> |        |
++------+---------------------+      |        |
+|       ...                  |      |   ...  |
++------+---------------------+      |        |
+| keyN | - TypeRep           |      |        |
+|      | - Version:          |      |        |
+|      | |-- vsn1 -----------+----> |        |
+|      | |   ...             |      |        |
+|      | \-- vsnN -----------+----> | valueN |
++===============+============+      +========+
+~~~~
+
+We will now go through the complaints and problems mentioned in the
+previous section, explain why LTc addresses them, and how it achieves
+this.
+
+We begin with the complaint about the return types of `set` and `get`.
+When we retrieve a value, we would expect `get` to either return it,
+or let us know that it does not exist.  When inserting a value, we
+would expect `set`, at least in the context of LTc, to give us some
+proof that the value was inserted.  In both cases, the types match our
+expectations.  Note also that because `get` wraps the retrieved value
+in a `Maybe`, we are effectively forcing the user to pattern match
+against the result, and consider the case where the value is missing.
+If `set` fails for whatever reason, it throws an exception; so, there
+is no chance of \emph{silent} data loss\footnote{There is still a
+chance that \emph{noisy} data loss can occur, but that will make it
+immediately clear that \emph{something} bad is happening.}.
+
+Next, we consider the situation where the definition for `Person` were
+changed, but the values in the data store were not updated to match
+the new definition.  In LTc, *the type of the value is stored
+alongside the value*, and *changing the type associated with a key is
+not permitted*.  Concretely, when we insert a value of type `Person`
+in the data store, the
+\href{http://hackage.haskell.org/packages/archive/base/latest/doc/html/Data-Typeable.html\#t:TypeRep}{\texttt{TypeRep}}
+of `Person` is also stored with the value; when we try a key already
+associated with the `Person` type with a value with the modified
+`Person`, we get an error.  There are still problems with this
+approach: first, these errors can only be signaled at runtime, since
+they require accessing the on-disk database; second, although we
+cannot update a key with the wrong type, we can still insert a new key
+with the wrong type.  That said, we do not believe these problems are
+fixable, unless we declare the types associated with all the keys in
+advance, which would be far to cumbersome.
+
+We briefly mentioned the `TypeRep` of a type above, but it deserves
+further mention.  We can get the `TypeRep` of `Person` because
+`Person` has a `Typeable` instance which is generated automatically by
+the compiler \citep{syb}.  Despite its name, the `TypeRep` is more of
+a hash of the type, than an actual representation of it; we know that
+if two `TypeRep`s are different, they originated from different types.
+We only use `TypeRep`s to ensure that the types associated with keys
+do not change.
+
+The next issue that we mentioned was the manual deconstruction and
+reconstruction of the `Person` records when inserting and getting
+values.  For LTc, we require that values have a `Generic` instance.
+This type-class is part of the
+\href{http://www.haskell.org/ghc/docs/7.6.2/html/users_guide/generic-programming.html}{GHC
+Generics} framework, and allows us to get a "universal" representation
+of any value.  We can then use this representation to automatically
+generate the serializers and deserializers which effectively replace
+the `insertPerson` and `getPerson` functions from the original
+example.  As an added bonus, since the type of the values is always
+implied by the type of the accessor functions, we can drop the
+needless "Person" suffix, and just use `get` and `set`.
+
+Our final complaint about HDBC's interface was that are hidden
+requirements to ensuring persistence of data.  For LTc's data stores,
+if a `set` returns, the value has been stored successfully.
+
+We end this section by mentioning that LTc is not the first Haskell
+data store to attempt a nicer type-safe interface.  In particular, the
+interface of
+\href{http://hackage.haskell.org/package/acid-state}{acid-state} seems
+to have been guided by the same principles as that of LTc.  The main
+difference is that, whereas LTc attempts to make all of its
+requirements explicit by requiring the numerous `instance`
+declarations, `acid-state` attempts to keep everything "under the
+hood" by wrapping the boilerplate in
+\href{http://www.haskell.org/ghc/docs/7.4.2/html/users_guide/template-haskell.html}{Template
+Haskell} macros.  On the other hand, this difference could just be an
+artifact of the times, since when `acid-state` was originally written,
+GHC Generics were not yet available.
 
 \clearpage
 
@@ -1712,3 +1849,5 @@ Future Work
 
 <!-- FW: Expire values. -->
 <!-- FW: Expire history. -->
+<!-- FW: Namespaces for keys; sort of like databases in SQL lingo. -->
+<!-- FW: Upgradeable values (store the full representation of the type) -->
