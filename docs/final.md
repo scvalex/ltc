@@ -933,6 +933,11 @@ other node via UDP.
 
 \label{sec:haskell}
 
+We have seen what LTc looks like from the outside-in; we now delve
+into LTc's internals.  The most obvious idiosyncrasy is that it is
+written in Haskell; in this section, we motivate the choice, and
+explain how choosing another language might have affected development.
+
 ### GADTs
 
 ### Phantom Types
