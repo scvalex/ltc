@@ -37,7 +37,8 @@ Library
                         hslogger,
                         network,
                         pipes >= 3.1,
-                        pipes-attoparsec,
+                        -- FIXME Use latest pipes-attoparsec
+                        pipes-attoparsec < 0.2,
                         random,
                         regex-tdfa,
                         sexp >= 0.6,
