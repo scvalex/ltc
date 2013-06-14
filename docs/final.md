@@ -619,6 +619,11 @@ data type that can be serialized and diffed can be stored in LTc.
 
 ## Consistency Guarantees
 
+So far, we have seen that LTc is a distributed key-value data store
+that can hold any serializable Haskell value.  We now consider what
+guarantees it makes about its replicated data when multiple nodes are
+involved.
+
 ### The CAP Problem
 
 ~~~~ {.sourceCode}
@@ -933,16 +938,149 @@ other node via UDP.
 
 \label{sec:haskell}
 
-We have seen what LTc looks like from the outside-in; we now delve
-into LTc's internals.  The most obvious idiosyncrasy is that it is
-written in Haskell; in this section, we motivate the choice, and
-explain how choosing another language might have affected development.
+We have seen what LTc looks like from the outside; we now delve into
+LTc's internals.  The most obvious idiosyncrasy is that it is written
+in \href{http://www.haskell.org/}{Haskell}; in this section, we
+motivate the choice, and explain how choosing another language might
+have affected development.
 
+In addition to the author's familiarity with the language, we had
+several other reasons for choosing Haskell.  The first is that it is
+possible to write very terse code in some cases.  For instance,
+consider the following predicate which asserts that a list is sorted
+in non-decreasing order:
 
+~~~~ {.haskell}
+isSorted :: Ord b => [b] -> Bool
+isSorted xs = all id (zipWith (<=) xs (tail xs))
+~~~~
 
-### GADTs
+If we were to write it in Java, it would be considerably more verbose,
+and, in the author's opinion, more obscure:
 
-### Phantom Types
+~~~~ {.java}
+<T extends Comparable> boolean isSorted(List<T> xs) {
+    for (int i = 0; i < xs.size() - 1; i++) {
+        if (xs.get(i).compareTo(xs.get(i+1)) > 0) {
+            return false;
+        }
+    }
+    return true;
+}
+~~~~
+
+Recent extensions to the Haskell compiler also helped in this regard.
+The
+\href{http://www.haskell.org/ghc/docs/7.6.2/html/users_guide/generic-programming.html}{GHC
+Generics} generic programming framework enabled us to generate
+serializers and deserializers for data types automatically, which
+meant that we could avoid the considerable boilerplate associated with
+such tasks.
+\href{http://www.haskell.org/ghc/docs/7.6.2/html/users_guide/type-families.html}{Indexed
+type families}, and, in particular, associated data types
+\citep{type-families}, allowed us to express the dependencies between
+some types clearly, and thus avoid the somewhat obscure type-class
+machinery that were traditionally required.  We discuss the impact of
+using these extensions in more detail in Section
+\ref{sec:type-safety}, where we focus on type safety.
+
+The fact that Haskell treats functions as first class objects was of
+particular help when writing tests: almost all of the unit tests for
+LTc are generated from tables of data.  More specifically, we usually
+have a list of `(test name, input, expected output)` tuples, a test
+generation function that takes an entry from this list and returns a
+test function that actually runs a test, and we apply the test
+generation function to the list of tuples.  In other words, we
+generate the tests at runtime.  This is usually hard to do in other,
+especially non-functional, languages\footnote{Interestingly enough, it
+is hard to do even in some functional languages as well, if they lack
+enough abstraction features.  For instance, Erlang's standard unit
+testing framework, \texttt{etest}, is based entirely on macros which
+get very confused if they are used as part of automatic test
+generation.}.
+
+Point in case, the data store part of LTc weights in at less than
+$3000$ SLOC\footnote{Source Lines of Code $\approx$ total lines -
+whitespace lines - comment lines} of Haskell.  Unfortunately, since
+LTc is not *manture* software by any standard, we cannot compare its
+size with other similar pieces of software.
+
+Another reason for our choosing Haskell is its good library support.
+At the time of writing, Hackage, the canonical repository of Haskell
+packages, offers libraries for more-or-less every need imaginable.
+For LTc, we have used an embedded web server, a WebSockets library, a
+couple of serialization libraries, several testing frameworks, and
+several libraries for writing command line programs.  Indeed, if there
+is a problem with the current Haskell package ecosystem, it is that it
+offers too much choice: for all the above cases, we have had to choose
+between multiple alternatives\footnote{We usually chose the
+alternative we were most familiar with.  While this heuristic may not
+always lead to the best choice, it is fast, and, in our case, it led
+to good enough choices}.
+
+Our last reason for choosing Haskell was that we expected that some
+features of its type system to come in handy.  We were particularly
+hopeful that we would be able to use
+\href{http://www.haskell.org/ghc/docs/7.6.2/html/users_guide/data-type-extensions.html\#gadt}{Generalised
+Algebraic Data Types} to encode a type system for the values storable
+in LTc.  There were a couple of problems with our attempt both caused
+by limitation of the compiler.  The first was that the compiler could
+not perform an exhaustiveness check when defining type class instances
+over the GADT; in other words, defining instances for all individual
+sub-types of the GADT would not automatically imply an instance for
+the whole GADT.  This meant that we would have to include a large
+number of type class constraints when defining even the simplest
+functions, and that we would have to occasionally annotate values with
+their types.  The second and larger problem was that the compiler
+could not automatically derive common instances for GADTs.  This made
+working with them very difficult, and meant we would lose most of the
+advantages mentioned here.  We present the approach we ultimately
+adopted in Section \ref{sec:type-safety}.
+
+On the other hand, we had moderate success with using
+\href{http://www.cs.ox.ac.uk/ralf.hinze/talks/FOP.pdf}{phantom types}
+to encode extra properties about our data and have the type checker
+enforce them automatically.  As a simple example, consider the
+following type class, which describes an abstract network interface:
+
+~~~~ {.haskell}
+data Sending
+data Receiving
+
+class NetworkInterface a where
+    serve :: NetworkLocation -> IO (a Receiving)
+    receive :: a Receiving -> IO ByteString
+
+    connect :: NetworkLocation -> IO (a Sending)
+    send :: a Sending -> ByteString -> IO ()
+
+    close :: a b -> IO ()
+~~~~
+
+One peculiarity of the way LTc handles network communications is that
+it makes a sharp distinction between interfaces on which it sends
+data, and interfaces on which it receives data.  In particular,
+attempting to receive on a sending interface and vice versa is an
+error.  Due to the above type class, making this error is impossible,
+since an erroneous program would not type check.  For instance, note
+that `receive` takes an `a Receiving` as its first parameter, but this
+can only obtained from `serve`; the `a Sending` obtained from
+`connect` is simply not the right type.
+
+We end this section by mentioning a few other languages we considered.
+Since LTc is a distributed program, it would have been reasonable to
+write it in Erlang, and indeed, this would have given us inter-node
+communication for free; unfortunately, Erlang's lack of static
+typing\footnote{The author did not appreciate the importance of static
+typing until he had to track down a malformed three-tuple as it was
+passed through many modules and processes in a large Erlang project he
+previously worked on.}  and its poor library support ruled it out
+immediately.  Other similar key-values stores are written in C
+(Redis), and C++ (MongoDB); we believe that following suit would have
+made the code too long for a single person to develop effectively.  Of
+the other languages the author is familiar with, OCaml would have
+probably worked as well as Haskell, but its packaging ecosystem is far
+inferior to the Haskell one.
 
 ## Component Architecture
 
@@ -1040,6 +1178,8 @@ this problem.
 
 Type Safety
 ===========
+
+\label{sec:type-safety}
 
 LTc is written in Haskell, and the we have discussed the advantages of
 this in Section \ref{sec:haskell}.  We will not repeat the points
@@ -1378,8 +1518,8 @@ GHC Generics were not yet available.
 
 \clearpage
 
-Changes
-=======
+Handling Changes
+================
 
 ## Patches
 
