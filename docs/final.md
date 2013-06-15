@@ -98,23 +98,31 @@ Mars Reconnaissance Orbiter.  When they are closest together, Earth
 and Mars are $4$ light minutes apart.  This means that any message
 sent from one to the other will take *at least* $4$ minutes.
 
-~~~~ {.sourceCode}
-    The Sun             Earth     Mars
-     /---\
-     |   | <------------> o <----> o
-     \---/     8 min         4 min
-~~~~
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+The Sun             Earth     Mars
+ /---\
+ |   | <------------> o <----> o
+ \---/     8 min         4 min
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 When they are furthest apart, Earth and Mars are $20$ light minutes
 apart.  Even worse, the Sun is between them at this point, making
 communications impossible.
 
-~~~~ {.sourceCode}
-    Earth             The Sun                   Mars
-                       /---\
-      0 <------------> |   | <------------------> o
-            8 min      \---/         12 min
-~~~~
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+Earth             The Sun                   Mars
+                   /---\
+  0 <------------> |   | <------------------> o
+        8 min      \---/         12 min
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 Given that the packet round-trip to Mars is at least $1200$ times
 greater than the longest packet round-trip in today's Internet, it is
@@ -155,17 +163,21 @@ non-existing, and the only alternative is satellite communications.
 Unfortunately, consumer-grade satellite links tend to be expensive,
 lossy, and unpredictable.
 
-~~~~ {.sourceCode}
-       +--------+     +--------+
-       |  |  |  |--0--|  |  |  |
-       +--------+     +--------+
-                   |
-             /     |     \
-            o      o      o
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
++--------+     +--------+
+|  |  |  |--0--|  |  |  |
++--------+     +--------+
+            |
+      /     |     \
+     o      o      o
 
-       A satellite communicating
-       with three nodes.
-~~~~
+   A satellite communicating
+   with three nodes.
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 Although a traditional database system could function in such an
 environment, it would also have to handle the inevitable network
@@ -489,21 +501,25 @@ first argument.  Note that the key "user:1:name" is just string; the
 logic that it means "the field name of user 1" is handled solely by
 the application logic.  The resulting data store looks like this:
 
-~~~~ {.sourceCode}
-    +----------------+----------------------+
-    | Key            | Value                |
-    +================+======================+
-    | users          | SET(1, 2)            |
-    +----------------+----------------------+
-    | user:1:name    | alex                 |
-    +----------------+----------------------+
-    | user:2:name    | mike                 |
-    +----------------+----------------------+
-    | languages:1    | SET(english)         |
-    +----------------+----------------------+
-    | languages:2    | SET(english, french) |
-    +----------------+----------------------+
-~~~~
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
++----------------+----------------------+
+| Key            | Value                |
++================+======================+
+| users          | SET(1, 2)            |
++----------------+----------------------+
+| user:1:name    | alex                 |
++----------------+----------------------+
+| user:2:name    | mike                 |
++----------------+----------------------+
+| languages:1    | SET(english)         |
++----------------+----------------------+
+| languages:2    | SET(english, french) |
++----------------+----------------------+
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 We have adopted a similar key-value interface for LTc.  Conceptually,
 its API has only two core commands: `set <key> <value>`, and `get
@@ -530,6 +546,27 @@ what sort of values can it hold?  The answer lies somewhere along the
 spectrum from "only strings", to "any data type".  In this section, we
 examine what other systems have done, and use them to put LTc's choice
 into perspective.
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+             ...              \
+             ...              |
+ |  \ /  |    x   | \ /  |    > Any Types
+ |   x   |   / \  |  x   |    |
+ |  / \  |  /   \ | / \  |    /
+ | /   \ | /     \|/   \ |
+ |/     \|/       |     \|
+int   string    float   ...   - Primitive Types
+   \     \       /     /
+     \     \   /     /
+       \     |     /
+         \   |   /
+           \ | /
+             *                - No Types
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 ### No Types
 
@@ -632,13 +669,17 @@ responding to requests at any time.  By partition tolerance, we mean
 that the system continues to function even if some nodes become
 unreachable.
 
-~~~~ {.sourceCode}
-  +---------------+  +----------------+  +-----------------------+
-  |  Consistency  |  |  Availability  |  |  Partition Tolerance  |
-  +---------------+  +----------------+  +-----------------------+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
++-------------+  +--------------+  +---------------------+
+| Consistency |  | Availability |  | Partition Tolerance |
++-------------+  +--------------+  +---------------------+
 
-                          Pick TWO
-~~~~
+                     Pick TWO
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 In other words, when designing a distributed data store, we must relax
 at least one of the above guarantees.  Various systems have, in the
@@ -1209,34 +1250,36 @@ spawning clients in response to received messages, and sending
 messages in response to internal events.  Other proxies would offer
 support for different protocols such as BP, or Redis.
 
-~~~~ {.sourceCode}
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
++------+  +------+
+| LTc  |  | LTc  |
+| Node |  | Node |   ...
++------+  +------+
+   |        |
++-- LTc node ---------------------------+
+|                                       |
+|   |  |  |     | | |           |       |
+| +--------+  +-------+     +-------+   |
+| |   UDP  |  |  BP   |     | Redis |   |
+| |  Proxy |  | Proxy |     | Proxy |   |
+| +--------+  +-------+     +-------+   |
+|         |    |               |||      |
+|          \  /             +--------+  |
+|           ||              | Redis  |  |
+|       +-------+      /--- | Client |  |
+|       | Store | ----/     +--------+  |
+|       +-------+                       |
++---------------------------------------+
 
-    +------+  +------+
-    | LTc  |  | LTc  |
-    | Node |  | Node |   ...
-    +------+  +------+
-       |        |
-
-    +-- LTc node ---------------------------+
-    |                                       |
-    |   |  |  |     | | |           |       |
-    | +--------+  +-------+     +-------+   |
-    | |   UDP  |  |  BP   |     | Redis |   |
-    | |  Proxy |  | Proxy |     | Proxy |   |
-    | +--------+  +-------+     +-------+   |
-    |         |    |               |||      |
-    |          \  /             +--------+  |
-    |           ||              | Redis  |  |
-    |       +-------+      /--- | Client |  |
-    |       | Store | ----/     +--------+  |
-    |       +-------+                       |
-    +---------------------------------------+
-
-       An LTc node, connected to other LTc nodes
-       through UDP and BP proxies, and which
-       exposes a Redis-like interface through
-       a Redis proxy.
-~~~~
+An LTc node, connected to other LTc nodes
+through UDP and BP proxies, and which
+exposes a Redis-like interface through
+a Redis proxy.
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 We take an unusual approach to configuring LTc nodes: we use an
 XMonad-like DSL to choose which components are active in a node; a
@@ -1336,9 +1379,9 @@ setupTables :: (IConnection c) => c -> IO ()
 setupTables conn = do
     tables <- getTables conn
     when (not ("persons" `elem` tables)) $ do
-        stmt <- prepare conn "CREATE TABLE persons ( name STRING,\
-                             \                       age INT,\
-                             \                       height DOUBLE )"
+        stmt <- prepare conn ("CREATE TABLE persons ( name STRING, \
+                              \                       age INT, \
+                              \                       height DOUBLE )"
         _ <- executeRaw stmt
         return ()
 ~~~~
@@ -1497,7 +1540,9 @@ version, if it exists.
 
 Conceptually, an LTc data store looks like the following:
 
-~~~~ {.sourceCode}
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
               Keys                    Values
 +======+=====================+      +========+
 | key1 | - TypeRep           |      | value1 |
@@ -1514,7 +1559,9 @@ Conceptually, an LTc data store looks like the following:
 |      | |   ...             |      |        |
 |      | \-- vsnN -----------+----> | valueN |
 +===============+============+      +========+
-~~~~
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 We will now go through the complaints and problems mentioned in the
 previous section, explain why LTc addresses them, and how it achieves
@@ -1616,19 +1663,23 @@ much like a distributed version control system.  This should allow us
 solve some conflicting changes by "merging"; this is the subject of
 Section \ref{sec:patch-theory}.
 
-~~~~ {.sourceCode}
-    Other key-value stores          LTc key-value store with changes
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+Other key-value stores     LTc key-value store with changes
 
-    +---------------+-----------+   +---------------+--------------+
-    | Key           | Value     |   | Key           | Value        |
-    +===============+===========+   +===============+==============+
-    | alex:ballance |  120$     |   | alex:ballance |    0$        |
-    +---------------+-----------+   |               |  v | +200$   |
-                                    |               |    200$      |
-                                    |               |  v | -80$    |
-                                    |               |    120$      |
-                                    +---------------+--------------+
-~~~~
++--------------+--------+  +--------------+--------------+
+| Key          | Value  |  | Key          | Value        |
++==============+========+  +==============+==============+
+| alex:balance |  120$  |  | alex:balance |    0$        |
++--------------+--------+  |              |  v | +200$   |
+                           |              |    200$      |
+                           |              |  v | -80$    |
+                           |              |    120$      |
+                           +--------------+--------------+
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 The use of vector clocks and storing changes are complications due to
 the scope of the problem.  Conflict resolution mechanisms employed by
@@ -1811,27 +1862,31 @@ update is assumed to have propagated through the network, and ceases
 to be infectious. \citep{Vah00} Thus, the update executes a
 breadth-first walk of network graph.
 
-~~~~ {.sourceCode}
-    A    B    C           Day 1: None of the three nodes is
-    o    o    o                  infected.
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+A    B    C           Day 1: None of the three nodes is
+o    o    o                  infected.
 
-    A    B    C           Day 2: B is "infected" by an update.
-    o    I    o
+A    B    C           Day 2: B is "infected" by an update.
+o    I    o
 
-    A    B    C           Day 3: C connects to B and is infected
-    o    I -- I                  by the update.
+A    B    C           Day 3: C connects to B and is infected
+o    I -- I                  by the update.
 
-    A    B    C           Day 4: B does not consider the update
-    o    i    I                  infections any more.
+A    B    C           Day 4: B does not consider the update
+o    i    I                  infections any more.
 
-    A    B    C           Day 5: A connects to B, but does not
-    o -- i    I                  receive the update.
+A    B    C           Day 5: A connects to B, but does not
+o -- i    I                  receive the update.
 
-       The propagation of an update through a partially
-       connected network of three nodes.  Ultimately, the
-       update does not fully propagate due to it ceasing to
-       be infectious too soon in B.
-~~~~
+   The propagation of an update through a partially
+   connected network of three nodes.  Ultimately, the
+   update does not fully propagate due to it ceasing to
+   be infectious too soon in B.
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 The algorithm outlined above is rumor mongering, and it is what LTc
 will initially use.  By changing the way a nodes selects other nodes

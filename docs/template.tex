@@ -6,6 +6,7 @@
 \usepackage{amssymb,amsmath}
 
 \usepackage[hyphens]{url}
+\urlstyle{same}
 \usepackage[
   setpagesize=false, % page size defined by xetex
   unicode=false, % unicode breaks when used with xetex
@@ -41,6 +42,12 @@
   \else\Gin@nat@width\fi
 }
 \makeatother
+
+\usepackage{courier}
+\usepackage{listings}
+\usepackage{float}
+\lstset{basicstyle=\small\ttfamily,
+        showstringspaces=false}
 
 \let\Oldincludegraphics\includegraphics
 \renewcommand{\includegraphics}[1]{\Oldincludegraphics[width=\maxwidth]{#1}}
