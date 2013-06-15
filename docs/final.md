@@ -200,10 +200,6 @@ synchronization over high-latency lossy channels hard.  We will now
 look at how several data stores synchronize and see why exactly their
 approach is problematic.
 
-<!-- FIXME Mention The Fallacies of Distributed Computing:
-
-https://en.wikipedia.org/wiki/Fallacies_of_Distributed_Computing -->
-
 ### Traditional Databases
 
 \label{sec:other-traditional-databases}
@@ -626,41 +622,119 @@ involved.
 
 ### The CAP Problem
 
+In general, one of the ways to characterize a distributed data store
+is in terms of Eric Brewer's CAP Theorem \citep{Gil02}.  The CAP
+theorem roughly states that a distributed service cannot provide all
+three of the following guarantees: consistency, availability, and
+partition tolerance.  By consistency, we mean that all nodes have the
+same data.  By availability, we mean that all nodes are capable of
+responding to requests at any time.  By partition tolerance, we mean
+that the system continues to function even if some nodes become
+unreachable.
+
 ~~~~ {.sourceCode}
   +---------------+  +----------------+  +-----------------------+
-  |  Consistency  |  |  Availability  |  |  Partition-Tolerance  |
+  |  Consistency  |  |  Availability  |  |  Partition Tolerance  |
   +---------------+  +----------------+  +-----------------------+
 
                           Pick TWO
 ~~~~
 
-### CA
+In other words, when designing a distributed data store, we must relax
+at least one of the above guarantees.  Various systems have, in the
+past, relaxed each of the guarantees, and we now give a brief overview
+of them.
 
 ### CP
 
+The simplest guarantee we can relax is Availability.  This gives us a
+system that is Consistent and Partition Tolerant.
+
+Recall how clustering works in relational databases: one of the nodes
+initiates a transaction, but before applying it, the node waits for
+the other nodes to confirm that they are willing to make the
+change\footnote{We limit our discussion here to the two-phase commit
+algorithm, but other more sophisticated algorithms
+exist. \url{https://en.wikipedia.org/w/index.php?title=Special:Cite&page=Two-phase_commit_protocol&id=559848750}}.
+This implies that if even one of the other nodes is unreachable, no
+changes can be made.  In other words, the clustering mechanism for
+relational databases is not partition tolerant.
+
+Although we described the above problem in terms of a clustered
+database, it effectively boils down to a decision problem: when one
+node wishes to make a decision, the other nodes must agree with the
+decision.  In other words, this is basically the
+\href{https://en.wikipedia.org/w/index.php?title=Consensus_\%28computer_science\%29&oldid=555475271}{distributed
+consensus problem}, and the more sophisticated algorithms for solving
+it would work for clustered databases as well.  For instance, by using
+Paxos \citep{revisiting-paxos}, we could lift the constraint that all
+the nodes be reachable, and limit it to requiring that only a majority
+of nodes be reachable\footnote{Generally speaking, since there can
+only ever be one majority of nodes, conflicting changes cannot be
+made, so consistency is still guaranteed.  Paxos handles the details
+of whether ``a majority of nodes are reachable'' or not.}.
+
+### CA
+
+The next guarantee we can relax is Partition Tolerance\footnote{In
+fact, supposing that the network is always connected is one the most
+common fallacies of distributed
+computing. \url{http://en.wikipedia.org/w/index.php?title=Fallacies_of_Distributed_Computing&oldid=549312262}}.
+This gives us a system that is Consistent and Available.
+
+We note that, since network partitions do happen, we cannot generally
+relax this guarantee \citep{Vog08}.  On the other hand, if we
+distinguish between read and write nodes, we can relax this guarantee
+to a certain extent.
+
+For instance, consider how replication works with relational databases
+or with NoSQL data stores: there is usually one or more master nodes
+which accept both write and read requests, one or more slave nodes
+which only accept read requests, and the master nodes forward write
+requests to the slaves.  If a network partition occurs between slave
+and master nodes, it is usually safe for both to continue operation,
+with the caveat that the slaves may be serving stale data.
+
 ### ecAP
 
-LTc is a distributed data store and one of the ways to characterize it
-is in terms of Eric Brewer's CAP Theorem \citep{Gil02}.  The CAP
-theorem simply states that a distributed service cannot provide all
-three of the following guarantees: consistency, availability, and
-partition tolerance.
+Finally, we can relax the Consistency guarantee.  This gives us a
+system that is Available and Partition Tolerant.
 
-In other words, when designing a distributed service, we must relax at
-least one of the above guarantees.  We note that since network
-partitions happen, we cannot relax the last guarantee. \citep{Vog08}
-LTc takes this observation further: not only do network partitions
-happen, the network *is* partitioned.
+Of course, a truly inconsistent system would not be very useful.  A
+simple way to build such a system would be to setup several completely
+independent nodes: each node would always be available, and since no
+node is aware of any other nodes, network partitions would not affect
+them; the downside would be that any advantage we might have been
+trying to gain by distributing the data would be lost.  But suppose we
+could guarantee that the system were *eventually* consistent.  That
+is, suppose we could guarantee that, in the absence of writes, the
+system will eventually reach a state where all the nodes have the same
+data.  Then the system would be useful again.
+
+This is the approach taken by CouchDB and its user manual illustrates
+many of the difficulties that arise.  The biggest of them is the
+existence of conflicts.  Note that, when relaxing any of the other
+guarantees, it would not have been possible for nodes to make
+conflicting changes to the database, but if we guarantee availability
+and partition tolerance, it must be possible for nodes to make changes
+independently of each other.  This introduces the need for conflict
+resolution in the data store semantics, which in turn introduces the
+need to keep track of previous versions of the data.
+
+We previously mentioned that network partitions occur in practice.
+With LTc, we take this observation further: not only do network
+partitions happen, the network *is* partitioned.  As such, must
+support partition tolerance.
 
 Since communication between nodes can be very slow, guaranteeing
 consistency would mean that most operations have to be equally slow.
-So, we relax the strict consistency guarantee and use *eventual
-consistency*.  In other words, LTc nodes may have conflicting data
-sets, but, given enough time, all the nodes will converge to The One
-True Data Set.
+For LTc, we relax the strict consistency guarantee and use *eventual
+consistency*.
 
-The downside to using eventually consistent semantics is that the user
-has to take into account that they may be operating on "old" data.
+So, LTc is an eventually consistent, always available, and partition
+tolerant system.  In this sense, LTc has more in common with
+distributed version control systems and NoSQL data stores, than with
+relational databases.
 
 ## Atomicity of Operations
 
