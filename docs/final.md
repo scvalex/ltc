@@ -781,9 +781,29 @@ relational databases.
 
 ## Atomicity of Operations
 
-### Atomic Read/Write
+So far, we have seen that LTc is a an ecAP distributed data store
+which can hold any serializable Haskell value.  Now we describe the
+levels of atomicity operations on individual data stores may have, and
+then define the level LTc uses.
+
+On one end of the spectrum, operations could have no atomicity
+whatsoever: writes may be interrupted halfway through, reads may
+happen on partially written values, and reads and writes may
+interleave arbitrarily.  On the other end of the spectrum, the data
+store may support full ACID transactions.
+
+~~~~ {.sourceCode}
+No Atomicity           MGet/MSet           ACID
+   |-----------------------|----------------|
+ Posix Filesystems        LTc         SQL Databases
+                          Redis
+~~~~
+
+### No Atomicity
 
 ### MSET/MGET
+
+There's also Atomic Read/Write, but nobody really supports only it.
 
 ### ACID
 
