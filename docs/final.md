@@ -805,27 +805,76 @@ No Atomicity           MGet/MSet           ACID
 
 ### No Atomicity
 
-### MSET/MGET
+The simplest data stores are those that make no guarantees about
+read/write atomicity.  Famously, Posix file systems such as those used
+by Linux are like this\footnote{Other file systems provide more
+guarantees.  For instance, NTFS, used by Windows, has full support for
+transactions:
+\url{http://msdn.microsoft.com/en-us/library/windows/desktop/aa365695\%28v=vs.85\%29.aspx}}.
+Although some operations like file creation, deletion, and renaming
+are atomic, the key operations of read and write are not.  In other
+words, when a process writes a string to a file, the operation can be
+interrupted, perhaps by the process dying or the machine shutting
+down, resulting in a partially written file.  Similarly, it is
+possible for second process to be reading the file while the first is
+writing to it, resulting in the second reading a mixture of the
+original file contents and the modified ones.
 
-There's also Atomic Read/Write, but nobody really supports only it.
+The situation is worse if the network is involved in any way.  For
+instance, the Network File System, which "provides transparent remote
+access to shared files across networks" \citep{rfc1094}, actually has
+slightly different semantics than most local file systems: when
+appending to a file, it first enlarges the file by zeroing out the new
+space, and only afterwards writes the new data.  This means that, if
+you are tailing a file over NFS, you see spurious zeros which are
+never part of the file itself.
+
+Although file systems usually provide few atomicity guarantees, the
+few that they do provide are enough to build upon.  For instance, we
+can simulate atomic file writes by writing to an anonymous temporary
+file, and then renaming it to the destination.  LTc relies heavily on
+tricks like this to ensure its atomicity guarantees.
+
+### MGet/MSet
+
+The next step along the spectrum would be to support atomic single
+reads and writes.  In other words, writing a single item to and
+reading a single item from the data store is guaranteed to be an
+uninterruptible atomic operation.  In practice, data stores usually go
+one step further and support atomically writing and reading multiple
+items at once.
+
+Most NoSQL data stores usually make these or similar guarantees.  For
+instance, Redis supports exactly this through two commands: `mset`
+sets multiple values atomically, and `mget` retrieves multiple values
+atomically.
+
+CouchDB has an interesting take on this approach: it technically only
+supports atomically reading and writing single values, but provides
+the building blocks for full blown transactions
+\citep{couchdb-transactions}.  In CouchDB, every stored value has a
+version, and, in order to update a value, one must specify the
+previous version of the value.  If the specified previous version and
+the real version do not match, the update operation fails.  This is
+enough to manually implement Software Transactional Memory
+\citep{stm}, if desired.
+
+For LTc, we provide both the ability to atomically set and get
+multiple values, and versions for values.  Since both Redis and
+CouchDB are widely used in production, we believe that these
+guarantees and features are enough for a wide range of applications.
 
 ### ACID
 
-Orthogonal to which of the CAP guarantees LTc makes, we ask whether it
-supports ACID transactions. \citet{wiki:ACID} defines ACID as the
-following four characteristics which transactions need to have:
+For completeness, we also mention ACID transactions, which
+\citep{ACID} defines as having the following four characteristics:
 atomicity, consistency, isolation, durability.
 
-LTc does *not* support any transactions at the moment, but they would
-be a very useful future development.  Although this makes LTc less
-useful, it does allow us to focus on the data store, and on the
-synchronization protocols, both of which would be greatly complicated
-by the addition of transactions.
-
-So, ACID-wise, LTc only supports atomic, isolated, durable write
-operations, but this is not as limiting as it first seems: widely used
-data stores such as MongoDB and CouchDB have similar limitations.
-\citep{mongodb-transactions} \citep{couchdb-transactions}
+LTc does *not* support any transactions.  In particular, it does not
+support atomically reading a value, processing it, and writing it
+back.  Although this makes LTc less useful, it does allow us to focus
+on the data store, and on the synchronization protocols, both of which
+would be greatly complicated by the addition of transactions.
 
 ## Delay-Tolerant Network Model
 
@@ -2153,3 +2202,4 @@ Future Work
 <!-- FW: Expire history. -->
 <!-- FW: Namespaces for keys; sort of like databases in SQL lingo. -->
 <!-- FW: Upgradeable values (store the full representation of the type) -->
+<!-- FW: More ACID -->
