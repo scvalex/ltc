@@ -792,12 +792,16 @@ happen on partially written values, and reads and writes may
 interleave arbitrarily.  On the other end of the spectrum, the data
 store may support full ACID transactions.
 
-~~~~ {.sourceCode}
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
 No Atomicity           MGet/MSet           ACID
    |-----------------------|----------------|
  Posix Filesystems        LTc         SQL Databases
                           Redis
-~~~~
+\end{lstlisting}
+\end{tabular}
+\end{center}
 
 ### No Atomicity
 
