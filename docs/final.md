@@ -552,18 +552,20 @@ into perspective.
 \begin{lstlisting}
              ...              \
              ...              |
- |  \ /  |    x   | \ /  |    > Any Types
- |   x   |   / \  |  x   |    |
- |  / \  |  /   \ | / \  |    /
+ |  \ /  |    x   | \ /  |    > Any Types:
+ |   x   |   / \  |  x   |    |  LTc
+ |  / \  |  /   \ | / \  |    /  Object Databases
  | /   \ | /     \|/   \ |
  |/     \|/       |     \|
-int   string    float   ...   - Primitive Types
-   \     \       /     /
-     \     \   /     /
+int   string    float   ...   - Primitive Types:
+   \     \       /     /         SQL Databases
+     \     \   /     /           NoSQL Document Stores
        \     |     /
          \   |   /
            \ | /
-             *                - No Types
+             *                - No Types:
+                                 Most Filesystems
+                                 Redis
 \end{lstlisting}
 \end{tabular}
 \end{center}
