@@ -1802,14 +1802,13 @@ We have seen that LTc is a distributed data store (Section
 interface it exposes (Section \ref{sec:type-safety}).  We now focus on
 the *distributed* aspect of LTc.
 
-We begin by looking at how LTc models the states a data store may find
-itself it, how it represents changes between states, how these
-states/changes form the entire history of the data store, how changes
-are sent between nodes, how conflicts are handled, and we finish by
-briefly discussing some concerns regarding our implementation,
-focusing, in particular, on how states are versioned and what
-inter-node propagation of changes looks like when there are multiple
-nodes involved.
+We begin by looking at how an LTc data store can be modeled in terms
+of states and changes to those states, how changes are propagated
+between nodes and how various problematic changes are handled, and
+finish by briefly discussing some concerns regarding our
+implementation, focusing, in particular, on how states are versioned
+and what inter-node propagation of changes looks like when there are
+multiple nodes involved.
 
 ## Data Store States
 
@@ -1818,6 +1817,8 @@ nodes involved.
 ## Version History
 
 ## Propagating Changes
+
+## Partial Updates
 
 ## Conflict Resolution
 
