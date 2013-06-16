@@ -72,7 +72,7 @@ effectively or at all, but for which LTc is designed.  In this
 section, we look at what issues arise in each environment, and how
 they impact network channels.
 
-The following issues can usually be alleviated by better
+The following issues can usually be *alleviated* by better
 communications infrastructure.  That said, unless an inexpensive
 instantaneous communication system is discovered, these issues are
 here to stay, and will only get worse as time goes on and the
@@ -86,7 +86,7 @@ negligible delay and errors, and a wired backbone, the Interplanetary
 Internet is a store-and-forward network of internets that is often
 disconnected, has a wireless backbone fraught with error-prone links
 and delays ranging from tens of minutes to even hours, even when there
-is a connection." \citep{Bur03} In other words, due to obstacles and
+is a connection" \citep{Bur03}.  In other words, due to obstacles and
 the energy-efficient nature of the machines involved, there is
 significant packet-loss on any interplanetary communication channel.
 Furthermore, because of the distances involved, the round-trip times
@@ -110,7 +110,7 @@ The Sun             Earth     Mars
 \end{center}
 
 When they are furthest apart, Earth and Mars are $20$ light minutes
-apart.  Even worse, the Sun is between them at this point, making
+apart.  Even worse, the Sun is between, them at this point, making
 communications impossible.
 
 \begin{center}
@@ -129,18 +129,21 @@ greater than the longest packet round-trip in today's Internet, it is
 not hard to see how an acknowledgment/retransmission-based protocol
 such as TCP would not work effectively.  Similarly, because of the
 length of time in which communications are impossible, any system not
-designed with severe partitioning in mind will probably not work.
+designed with severe network partitioning in mind will probably not
+work.
 
 ### Disaster-Stricken Areas
 
-Consider a disaster stricken area: a city hit by an earthquake or by a
-storm.  Although many parts of the infrastructure can collapse after a
-catastrophic event, "the breakdown of essential communications is one
-of the most widely shared characteristics of all disasters".
-\citep{Tow05} Interestingly enough, cell towers and other elements of
-the centralized communications infrastructure fail, but individual
-devices such as mobile phones or portable computers continue to
-function.
+The problems mentioned above are not limited to such esoteric
+situations like interplanetary communications.  A more mundane setting
+for them are disaster stricken areas.  Consider a city hit by an
+earthquake or by a storm.  Although many parts of the infrastructure
+can collapse after a catastrophic event, "the breakdown of essential
+communications is one of the most widely shared characteristics of all
+disasters" \citep{Tow05}.  Interestingly enough, cell towers and other
+elements of the centralized communications infrastructure fail, but
+individual devices such as mobile phones or portable computers
+continue to function.
 
 The result of this sort of centralized communications failure is a
 large number of nodes that can set up occasional connections between
