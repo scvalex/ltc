@@ -353,7 +353,7 @@ present, we explain just what sort of data store LTc is, and how these
 choices relate to data replication.  We begin with the data interface
 LTc exposes.
 
-When people talk about "relational", "NoSQL", or "logical" databases,
+When people talk about "relational", "NoSQL", or "object" databases,
 they are referring to the ways users can access stored data.
 Traditionally, the main paradigm has been relational, but with the
 advent of the Web over the past decade, key-value stores have been
@@ -537,7 +537,65 @@ exposing multiple interfaces compatible with existing systems; more
 specifically, LTc supports a subset of Redis's protocol and commands;
 we discuss the details in Section \ref{sec:plugable}.
 
-### Other
+### Object
+
+The last widely used data interface is that of object databases.
+These databases store entire objects from the host language, intercept
+changes to their fields, and automatically propagate these changes to
+persistent storage.
+
+One of the most striking features of object databases is their
+uniquely idiomatic interface.  For instance, with
+ZODB\footnote{\url{http://zodb.org/}}, "a native object database for
+Python", we would implement the above example as follows:
+
+~~~~ {.python}
+from persistent import Persistent
+from ZODB import FileStorage, DB
+import transaction
+
+# Declare the User object
+class User(Persistent):
+    def __init__(self, name):
+        self.name = name
+        self.languages = []
+
+    def add_language(self, language):
+        self.languages.append(language)
+
+# Open the database and get the "root" object
+db = DB(FileStorage.FileStorage('users.db'))
+conn = db.open()
+dbroot = conn.root()
+
+# Ensure that the users sub-object exists
+if not dbroot.has_key("users"):
+    from BTrees.OOBTree import OOBTree
+    dbroot["users"] = OOBTree()
+users = dbroot["users"]
+
+# Create and add users
+user1 = User("alex")
+user1.add_language("english")
+users[1] = user1
+
+user2 = User("mike")
+user2.add_language("english")
+user2.add_language("french")
+users[2] = user2
+
+# Write changes to disk
+transaction.commit()
+~~~~
+
+The non boilerplate part of the above code are the $7$ lines which
+create and add the users.  We note how these lines do *not* look like
+usual database handling code.  In fact, they look like normal Python.
+
+Although such an interface is certainly nice to have, it would be
+significantly trickier to implement than a key-value one.
+Additionally, it makes less sense in the context of a language like
+Haskell which emphasizes the use of immutable data.
 
 ## Field Types
 
@@ -636,10 +694,9 @@ representations have to be finite\footnote{this usually rules out
 storing functions and infinite data types}.
 
 Object databases are the most famous examples of systems that support
-storing any data type.  For instance,
-ZODB\footnote{\url{http://zodb.org/}}, "a native object database for
-Python", is capable of storing almost any Python object on disk, but
-only if it inherits the `persistent.Persistent` class.
+storing any data type.  For instance, ZODB, is capable of storing
+almost any Python object on disk, but only if it inherits the
+`persistent.Persistent` class.
 
 Since such systems can store arbitrary data types with little
 additional programming effort, they are often used as a persistence
@@ -2140,7 +2197,7 @@ above test for networks of nodes, and not just for pairs of nodes.
 <!-- Emphasis on how hard it would be to write with something
 else. -->
 
-### Writing a Collaborative Editor Example
+### Writing a Rock Paper Scissors Example
 
 <!-- Emphasis on how hard it would be to write with something
 else. -->
