@@ -650,7 +650,7 @@ content management systems widely used on the Internet.
 Since this is the most general approach, is also the approach LTc
 takes.  We discuss the implications of this decision in detail in
 Section \ref{sec:strongly-typed}, but, roughly speaking, any Haskell
-data type that can be serialized and diffed can be stored in LTc.
+value that can be serialized and diffed can be stored in LTc.
 
 ## Consistency Guarantees
 
@@ -880,15 +880,20 @@ would be greatly complicated by the addition of transactions.
 
 \label{sec:dtn}
 
+So far, we have seen that LTc is a ecAP distributed data store which
+can hold any serializable Haskell value and which supports atomically
+writing and reading multiple values at once.  We now discuss the
+network conditions under which LTc needs to function.
+
 As mentioned in Section \ref{sec:motivation}, LTc's synchronization
 mechanism is meant to work even on networks where packet round-trip
-times are prohibitively large, and end-to-end connectivity may be
-impossible.  The approach LTc takes with regards to communication is
-not new, and is called Delay-Tolerant Networking\footnote{or,
-\emph{Disruption}-Tolerant Networking as DARPA likes to call it}
-(DTN).  Although research in DTN has been done since the first
-computer networks were built, the pace has increased greatly in the
-last decade.  More relevant to LTc, the
+times are prohibitively large, where nodes are not always reachable,
+and where end-to-end connectivity may be impossible.  The approach LTc
+takes with regards to communication is not new, and is called
+Delay-Tolerant Networking\footnote{or, \emph{Disruption}-Tolerant
+Networking as DARPA likes to call it} (DTN).  Although research in DTN
+has been done since the first computer networks were built, the pace
+has increased greatly in the last decade.  More relevant to LTc, the
 \href{https://www.ietf.org/}{IETF} has now published two RFCs about
 the architecture of DTN systems, and the protocol used by them.
 
@@ -962,37 +967,30 @@ BP.
 >   way to express the useful lifetime of data to allow the network to
 >   better deliver data in serving the needs of applications.
 
-As mentioned in Section \ref{sec:udp}, LTc uses UDP instead of BP, but
-this decision was made because of the obscurity of BP, and not based
-on the relative technical merits of the two protocols.  Despite this,
-LTc is internally written as if it were using BP; for example, LTc
-node names follow the same convention as BP endpoint ids.  Given this
-policy, and because UDP has strictly fewer features than BP, adapting
-LTc to BP in the future should not be difficult.
+LTc's replication is designed to work over BP, but does not actually
+do so.  The main reason for this is that BP is currently obscure, and
+the necessary infrastructure is not widely deployed; relying on it now
+would just make development and testing more difficult.  Instead, LTc
+uses UDP, a widely deployed protocol which has strictly fewer features
+than BP.  Given that UDP is less general than BP, and that the
+network-facing side of LTc is abstracted, we believe that it will
+would be easy to add support for BP at a later date.
 
 ### UDP
 
 \label{sec:udp}
 
-As previously mentioned in Section \ref{sec:scenarios}, LTc cannot use
-a transport protocol such as TCP, which assumes end-to-end
-connectivity, and short round-trips between nodes.  Starting from the
-first assumption outlined in Section \ref{sec:motivation}, LTc only
-requires a protocol that uniquely identifies nodes, and allows at
-least one-way communication between them.
+As previously mentioned, LTc cannot use a transport protocol such as
+TCP, which assumes end-to-end connectivity and short round-trips
+between nodes.  Starting from the first assumption outlined in Section
+\ref{sec:motivation}, LTc only requires a protocol that uniquely
+identifies nodes, and allows at least one-way communication between
+them.
 
 Interestingly, the only widely used protocol that completely avoids
 round-trips is UDP\footnote{``I have this awesome joke about UDP, but
 I don't care if you get it or not.''}, which "provides a minimal,
 unreliable, best-effort, message-passing transport". \citep{rfc5405}
-
-The only alternative we could find is the Bundle Protocol (BP), which
-is the subject of Section \ref{sec:dtn}.  Unfortunately, although it
-is a better fit for LTc's requirements, BP is not widely deployed, and
-relying on it would only make LTc more difficult to use and test.
-However, because of the plugable architecture described in Section
-\ref{sec:plugable} which we adopted, we believe that adding support
-for BP would be a straightforward future extension.
 
 Defining the LTc's synchronization protocol on top of UDP poses
 significant problems.  First, UDP makes no guarantee that a sent
@@ -1001,19 +999,16 @@ there is no way for the source to tell if a packet was lost or not.
 Worse yet, even assuming a perfect connection that does not lose
 packets, if the destination does not process them quickly enough, its
 UDP buffer will spill over causing lost packets.  So, LTc's
-synchronization mechanism must be able to make forward progress even <!-- FIXME: Susan: Explain incomplete updates -->
-if only incomplete updates are available.  Second, UDP makes no
-guarantee that sent packets will be received in order.  This is
-problematic because the order of updates is important.  Finally, UDP
-makes no guarantee that a sent packet will not be received multiple
-times.  Again, this is problematic because updates should only be
-applied once.  Because BP was designed with systems like LTc in mind,
-if we used it, it would solve or alleviate all these problems.
-
-### Other Protocols
-
-Needless to say, LTc would work well on models that offer more
-guarantees.
+synchronization mechanism must be able to make forward progress even
+if only partial updates are available.  Second, UDP makes no guarantee
+that sent packets will be received in order.  This is problematic
+because the order of updates is important.  Finally, UDP makes no
+guarantee that a sent packet will not be received multiple times.
+Again, this is problematic because updates should only be applied
+once.  If we were using BP, which was designed with systems like LTc
+in mind, it would solve or alleviate all these problems.  Since we
+have little choice in the matter, we have worked around the
+limitations of UDP as discussed in Section \ref{sec:changes}.
 
 \clearpage
 
@@ -1716,6 +1711,8 @@ GHC Generics were not yet available.
 
 Handling Changes
 ================
+
+\label{sec:changes}
 
 ## Patches
 
