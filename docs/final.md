@@ -1459,8 +1459,8 @@ this problem.
 
 \clearpage
 
-Type Safety
-===========
+Type Safe Interface
+===================
 
 \label{sec:type-safety}
 
@@ -1791,8 +1791,8 @@ GHC Generics were not yet available.
 
 \clearpage
 
-Handling Changes
-================
+Data Distribution
+=================
 
 \label{sec:changes}
 
