@@ -68,6 +68,7 @@ Library
                         Ltc.Network.StatusServer,
                         Ltc.Network.Types,
                         Ltc.Store,
+                        Ltc.Store.ChangeSet,
                         Ltc.Store.Class,
                         Ltc.Store.Event,
                         Ltc.Store.Simple,

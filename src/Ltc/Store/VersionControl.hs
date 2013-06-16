@@ -38,7 +38,7 @@ import Text.Printf ( printf )
 
 -- | Debugging tag for this module
 tag :: String
-tag = "Simple"
+tag = "VersionControl"
 
 ----------------------
 -- Wrappers around values and diffs
