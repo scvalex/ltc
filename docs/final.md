@@ -189,6 +189,8 @@ Section \ref{sec:other-data-stores}.
 Design
 ======
 
+\label{sec:design}
+
 <!-- What am I trying to achieve? -->
 
 LTc is, first and foremost, a data store.  As such, we need to answer
@@ -1108,6 +1110,8 @@ limitations of UDP as discussed in Section \ref{sec:changes}.
 
 # Implementation and Architecture
 
+\label{sec:implementation}
+
 So far, we have seen what our reasons for writing LTc were, and what
 design decisions we have made.  We will now discuss LTc is actually
 implemented.  We begin with an outside view that treats an LTc system
@@ -1792,9 +1796,28 @@ Handling Changes
 
 \label{sec:changes}
 
-## ChangeSets
+We have seen that LTc is a distributed data store (Section
+\ref{sec:design}), we have looked at how it is structured (Section
+\ref{sec:implementation}), and we have explored the somewhat unusual
+interface it exposes (Section \ref{sec:type-safety}).  We now focus on
+the *distributed* aspect of LTc.
+
+We begin by looking at how LTc models the states a data store may find
+itself it, how it represents changes between states, how these
+states/changes form the entire history of the data store, how changes
+are sent between nodes, how conflicts are handled, and we finish by
+briefly discussing some concerns regarding our implementation,
+focusing, in particular, on how states are versioned and what
+inter-node propagation of changes looks like when there are multiple
+nodes involved.
+
+## Data Store States
+
+## Changes
 
 ## Version History
+
+## Propagating Changes
 
 ## Conflict Resolution
 
@@ -1838,43 +1861,6 @@ the scope of the problem.  Conflict resolution mechanisms employed by
 other data stores such as consensus and majority voting \citep{Vog08}
 cannot be used by LTc because of the large delays in communications
 between nodes.
-
-## Patch Theory
-
-\label{sec:patch-theory}
-
-As mentioned in Section \ref{sec:conflicts}, we expect parallel
-updates to the data sets on different nodes to cause conflicts.
-Relational databases data stores usually solve this issue by
-coordinating the nodes such that conflicts cannot appear in the first
-place.  Because of the disconnected nature of LTc, this is not an
-option, so LTc nodes have to deal with conflicts as they appear.
-DVCSs such as git face a similar problem, which they solve by
-attempting a textual merge of the conflicting changes, and falling
-back to manual intervention.  NoSQL data stores usually adopt an
-automated version of previous scheme; for instance, CouchDB detects
-conflicts, but lets the user application decide how the merging should
-be done. \citep{And10} Because both these approaches work well in
-practice, in LTc, we first attempt to solve conflict through automatic
-merging, and fallback to application specific conflict resolution.
-
-Among DVCSs, \href{http://darcs.net/}{Darcs} is the only one with a
-mathematical formalism underlying its behaviour.  This formalism is
-known as Patch Theory, and is a way of reasoning about what happens
-when two repositories exchange patches.  It begins by defining basic
-concepts such as patches, and changes, and the properties these may
-have.  For instance, some patches have inverses, and some pairs of
-patches are commutative; if all the patches participating in a
-conflict have these two properties, it is always possible to perform
-an automatic merge.  As other DVCSs have shown, it is possible to
-write a working system without any formalization, but for an
-experimental system such as LTc, we believe that a formalism will be
-indispensable.
-
-Unfortunately, Patch Theory is very much an open area of research;
-there are no published works on the topic, but the
-\href{http://darcs.net/Theory}{Darcs Theory} page links to several
-talks and unfinished articles.
 
 ## Versioning with Vector Clocks
 
@@ -2175,6 +2161,43 @@ properties -->
 
 ### Proof
 
+### Patch Theory
+
+\label{sec:patch-theory}
+
+As mentioned in Section \ref{sec:conflicts}, we expect parallel
+updates to the data sets on different nodes to cause conflicts.
+Relational databases data stores usually solve this issue by
+coordinating the nodes such that conflicts cannot appear in the first
+place.  Because of the disconnected nature of LTc, this is not an
+option, so LTc nodes have to deal with conflicts as they appear.
+DVCSs such as git face a similar problem, which they solve by
+attempting a textual merge of the conflicting changes, and falling
+back to manual intervention.  NoSQL data stores usually adopt an
+automated version of previous scheme; for instance, CouchDB detects
+conflicts, but lets the user application decide how the merging should
+be done. \citep{And10} Because both these approaches work well in
+practice, in LTc, we first attempt to solve conflict through automatic
+merging, and fallback to application specific conflict resolution.
+
+Among DVCSs, \href{http://darcs.net/}{Darcs} is the only one with a
+mathematical formalism underlying its behaviour.  This formalism is
+known as Patch Theory, and is a way of reasoning about what happens
+when two repositories exchange patches.  It begins by defining basic
+concepts such as patches, and changes, and the properties these may
+have.  For instance, some patches have inverses, and some pairs of
+patches are commutative; if all the patches participating in a
+conflict have these two properties, it is always possible to perform
+an automatic merge.  As other DVCSs have shown, it is possible to
+write a working system without any formalization, but for an
+experimental system such as LTc, we believe that a formalism will be
+indispensable.
+
+Unfortunately, Patch Theory is very much an open area of research;
+there are no published works on the topic, but the
+\href{http://darcs.net/Theory}{Darcs Theory} page links to several
+talks and unfinished articles.
+
 \clearpage
 
 Evaluation
@@ -2282,3 +2305,4 @@ Future Work
 <!-- FW: Namespaces for keys; sort of like databases in SQL lingo. -->
 <!-- FW: Upgradeable values (store the full representation of the type) -->
 <!-- FW: More ACID -->
+<!-- FW: Store changes instead of values. -->
