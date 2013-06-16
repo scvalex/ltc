@@ -328,6 +328,40 @@ a similar scheme fraught with the same problems
 
 ### Distributed Version Control Systems
 
+The last kind of data store we will consider are Distributed Version
+Control Systems.  Such programs gained much traction among developers
+in the last decade due to their unique features.  Unlike traditional
+version control systems which had some centralized server which
+developers needed to communicate with in order to commit and pull
+changes, DVCSs replicated the entire source code repository among
+every participating developer.  This allowed multiple developers to
+work concurrently without needing to know what the others are doing.
+Key concepts popularized by DVCSs are branching and merging.
+
+At first glance, DVCS such as \href{http://git-scm.com/}{Git},
+\href{http://mercurial.selenic.com/}{Mercurial}, or
+\href{http://darcs.net/}{Darcs} have exactly the features we are
+looking for: they are distributed data stores where nodes are normally
+disconnected, and partial or full synchronization can be performed
+whenever nodes become reachable.  Unfortunately, they were designed
+with a very specific purpose in mind, and artifacts of this makes them
+unusable for our needs.
+
+The largest problem, by far, is that the synchronization mechanism
+between replicated copies is designed to run over what developers
+would normally use: low latency SSH or HTTP connections.  The emphasis
+here is on "low latency" as the synchronization protocols of the DVCSs
+mentioned above all require multiple round trips during a single
+synchronization \citep{Chacon09} \citep{mercurial}.
+
+Another lesser problem is that the synchronization mechanism between
+two nodes usually expects to have all the necessary information about
+the copies of the data in both nodes.  Practically, this is achieved
+by the having one node query the other for its state.  Although this
+approach is clearly not suitable for our use cases, this is not a
+fundamental problem as each node could simply memoize the state of the
+other nodes.
+
 ### Conclusion
 
 In this section, we have looked at how some traditional SQL databases,
@@ -373,7 +407,8 @@ sqlite> CREATE TABLE users ( id INTEGER PRIMARY KEY
 sqlite> CREATE TABLE languages ( id INTEGER PRIMARY KEY
                                , language STRING
                                , user INTEGER
-                               , FOREIGN KEY (user) REFERENCES users(id) );
+                               , FOREIGN KEY (user)
+                                 REFERENCES users(id) );
 ~~~~
 
 The `users` table has two rows: `id` which holds integers, and `name`
