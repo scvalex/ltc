@@ -1800,7 +1800,9 @@ We have seen that LTc is a distributed data store (Section
 \ref{sec:design}), we have looked at how it is structured (Section
 \ref{sec:implementation}), and we have explored the somewhat unusual
 interface it exposes (Section \ref{sec:type-safety}).  We now focus on
-the *distributed* aspect of LTc.
+the *distributed* aspect of LTc \footnote{Spoiler: LTc behaves much
+like a DVCS under the hood, but with a few twists added by the unusual
+network model.}.
 
 We begin by looking at how an LTc data store can be modeled in terms
 of states and changes to those states, how changes are propagated
@@ -1810,9 +1812,114 @@ implementation, focusing, in particular, on how states are versioned
 and what inter-node propagation of changes looks like when there are
 multiple nodes involved.
 
-## Data Store States
+## States and Changes
 
-## Changes
+Let us consider a simple key-value data store, and how it evolves as
+values are added to it.  Initially, it is empty:
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
++--------------+--------+
+| Key          | Value  |
++==============+========+
++--------------+--------+
+
+         State 0
+\end{lstlisting}
+\end{tabular}
+\end{center}
+
+We set the key "foo" to the value $22$, and then we set "baz" to $13$:
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
++--------------+--------+      +--------------+--------+
+| Key          | Value  |      | Key          | Value  |
++==============+========+      +==============+========+
+| foo          | 22     |      | foo          | 22     |
++--------------+--------+      +--------------+--------+
+                               | baz          | 13     |
+                               +--------------+--------+
+
+         State 1                        State 2
+\end{lstlisting}
+\end{tabular}
+\end{center}
+
+Finally, we simultaneously set "foo" to $23$, and "bar" to $42$:
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
++--------------+--------+
+| Key          | Value  |
++==============+========+
+| foo          | 23     |
++--------------+--------+
+| bar          | 42     |
++--------------+--------+
+| baz          | 13     |
++--------------+--------+
+
+         State 3
+\end{lstlisting}
+\end{tabular}
+\end{center}
+
+These four are states in which the data store finds itself in.  One
+way to uniquely identify these states is by the keys and associated
+values stored within.  We will refer to these by names such as "State
+N", where "State 0" is the initial state which always refers to the
+empty data store, and any subsequent states are obtained my setting
+values on existing states.  For simplicity, we refer to states here by
+integers, but, in reality, LTc uses a somewhat more complicated scheme
+as detailed in Section \ref{sec:vector-clocks}.
+
+Given two states, it is possible to compute the *changes* required to
+transform one state to another.  Interestingly, there are several ways
+to do this, each with its advantages and disadvantages.
+
+The simplest way to represent changes is by the exact commands that
+transform one state into another.  For instance, the changes that turn
+"State 2" into "State 3" would be `mset [("foo", 23), ("bar", 42)]`,
+where `mset` atomically sets the multiple values.  Note that we are
+explicitly representing the *updated* values of the keys.  Given this,
+the immediate problem with this approach becomes apparent if the
+values are not integers, but large texts.  Then, assuming that the
+\href{http://linux.die.net/man/1/diff}{diffs} between the texts
+associated with any key are usually smaller than the full texts, it
+would be less wasteful to use diffs to represent changes, rather than
+updated values.
+
+This brings us to the second way of representing changes, namely by
+diffs to the modified values.  For instance, the changes that turn
+"State 2" into "State 3" would now be `[("foo", +1), ("bar", +42)]`;
+here, we consider the diff between to integers to simply be the
+increment between them, and that a non-existing key has $0$ implicitly
+associated with it.  In order to use this change to make "State 3", we
+would take the value of "foo" from "State 2", and add `+1` to it;
+similarly, we would take the value of "bar" from "State 2", see that
+it is missing, assume $0$, and add `+42` to it.
+
+One interesting property of this approach is that it makes changes
+"mergeable" and "reversible", and, as we will see in the next section,
+this turns out to be a major advantage when manipulating changes.
+
+The downside of this approach is that introduces an extra level of
+complexity: values must how have a diff function associated with them.
+On the other hand, it is possible to define a "general" diff that
+works on values of any type and behaves much like our first
+representation: we consider a change on the value of some key to be a
+tuple of the form `(value before, value after)`.  This general scheme
+is as wasteful as our first approach, but it preserves the property
+that changes are "mergeable" and "reversible".
+
+LTc uses this second approach: it defines diffing functions for some
+common data types, and it lets users define their own diffing
+functions for custom data types, with the option of using the general
+method outlined above.
 
 ## Version History
 
