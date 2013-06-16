@@ -1668,20 +1668,6 @@ data Person = Person
 instance Serialize Person
 instance Sexpable Person
 
-instance Diffable Person where
-    data Diff Person = ReplaceDiff Person Person
-                       deriving ( Eq, Generic, Show )
-
-    diffFromTo = ReplaceDiff
-
-    applyDiff x1 (ReplaceDiff x2 y) =
-        if x1 == x2 then y else error "cannot apply diff to Person"
-
-    reverseDiff (ReplaceDiff x y) = ReplaceDiff y x
-
-instance Serialize (Diff Person)
-instance Sexpable (Diff Person)
-
 instance Storable Person
 ~~~~
 
@@ -1689,7 +1675,7 @@ And that is all.  With this boilerplate code in place, we can insert
 and retrieve values of type `Person` from an LTc data store:
 
 ~~~~ {.haskell}
-set :: (Store b, Storable b) => a -> Key -> b -> IO Version
+set :: (Store a, Storable b) => a -> Key -> b -> IO Version
 get :: (Store a, Storable b) => a -> Key -> Version -> IO (Maybe b)
 ~~~~
 
@@ -1806,7 +1792,9 @@ Handling Changes
 
 \label{sec:changes}
 
-## Patches
+## ChangeSets
+
+## Version History
 
 ## Conflict Resolution
 
@@ -2236,6 +2224,8 @@ else. -->
 
 <!-- Emphasis on how hard it would be to write with something
 else. -->
+
+<!-- Generalize to Bidding War -->
 
 ### Large Amounts of Data
 
