@@ -2363,6 +2363,11 @@ work.
 
 \label{sec:vector-clocks}
 
+We now move on to a discussion about how we identify data store
+states.  To be more precise, we are actually identifying the changes
+that transform states, but we adopt the convention that a state shares
+the identifier of the last change that led to it.
+
 Many distributed systems need to create globally unique identifiers
 for events, and to determine a global logical ordering for them.  This
 is definitely the case for LTc, which attempts to store historic
@@ -2370,9 +2375,10 @@ changes in addition to just the values of entries, and needs an
 unambiguous way of referring to these changes.  There are many ways of
 generating these identifiers, and in this section, we look at vector
 clocks, which are a general way of achieving this while preserving
-enough information to determine causal relationships among events.
+enough information to determine some causal relationships among
+events.
 
-Consider the following problem: We have two nodes, A and B.  There are
+Consider the following problem.  We have multiple nodes.  There are
 events that occur internally in each node, and nodes may send messages
 to each other, causing events to occur in the destination node.
 Uniquely identifying events inside a node is simple: we just keep a
@@ -2387,7 +2393,7 @@ cannot mean chronological ordering, because clocks in distributed
 systems are rarely synchronized well enough to allow this.
 Furthermore, according to Special Relativity, time passes at different
 rates for observers moving at different speeds, so it does not make
-sense to talk about a "global" time. \citep{wiki:SR} Because
+sense to talk about a "global" time \citep{wiki:SR}.  Because
 chronological ordering is not an option, we must use a logical
 ordering.
 
@@ -2405,18 +2411,17 @@ information to state anything more about the order of two events,
 given only their ids.
 
 ~~~~ {.sourceCode}
-    Event timeline for Node A: (A, 1); (A, 2)
-    Event timeline for Node B: (B, 199); (B, 200)
+Event timeline for Node A: (A, 1); (A, 2)
+Event timeline for Node B: (B, 199); (B, 200)
 
-    B sends "(B, 200)" to A.
+B sends "(B, 200)" to A.
 
-    Event timeline for Node A: (A, 1); (A, 2); (B, 200); (A, 201)
-    Event timeline for Node B: (B, 199); (B, 200)
-
-       After Node A receives B's message, it updates its own
-       counter to be 200, so the next event will have a counter
-       value of 201.
+Event timeline for Node A: (A, 1); (A, 2); (B, 200); (A, 201)
+Event timeline for Node B: (B, 199); (B, 200)
 ~~~~
+
+After "Node A" receives "Node B"'s message, it updates its own counter
+to be $200$, so the next event will have a counter value of $201$.
 
 In order to get more ordering relations we need to increase the amount
 of information in the event ids.  \citet{Bal02} describe vector
@@ -2430,20 +2435,20 @@ node's vector clock is conceptually the list of all the events the
 node is aware of and which may have affected its behaviour.
 
 ~~~~ {.sourceCode}
-    Event timeline for Node A: [(A, 1)]; [(A, 2)]
-    Event timeline for Node B: [(B, 199)]; [(B, 200)]
+Event timeline for Node A: [(A, 1)]; [(A, 2)]
+Event timeline for Node B: [(B, 199)]; [(B, 200)]
 
-    B sends "[(B, 200)]" to A.
+B sends "[(B, 200)]" to A.
 
-    Event timeline for Node A: [(A, 1)]; [(A, 2)];
-                                 [(A, 2), (B, 200)];
-                                 [(A, 3), (B, 200)]
-    Event timeline for Node B: [(B, 199)]; [(B, 200)]
-
-        After Node A receives B's message, it updates its own vector
-        clock to be [(A, 2), (B, 200)], so the next event will have a
-        vector clock of [(A, 3), (B, 200)].
+Event timeline for Node A: [(A, 1)]; [(A, 2)];
+                           [(A, 2), (B, 200)];
+                           [(A, 3), (B, 200)]
+Event timeline for Node B: [(B, 199)]; [(B, 200)]
 ~~~~
+
+After "Node A" receives "Node B"'s message, it updates its own vector
+clock to be `[(A, 2), (B, 200)]`, so the next event will have a vector
+clock of `[(A, 3), (B, 200)]`.
 
 With vector clocks, we can finally get the ordering relations we
 wanted.  Given two events, $e$, and $f$, where $\text{VC}(e)$ is the
@@ -2455,11 +2460,11 @@ of that vector clock, we have:
   &\qquad\Big( (e < f) \Leftrightarrow (\forall k.\ \text{VC}(e)[k] \leq \text{VC}(f)[k]) \land (\exists k.\ \text{VC}(e)[k] < \text{VC}(f)[k]) \Big)
 \end{align*}
 
-By adding vector clocks to events in LTc, we gain the ability to
+By adding vector clocks to changes in LTc, we gain the ability to
 sometimes determine causal relationships among them.  This is very
-important because, in the event of a conflict, using the "most recent"
-value is a probably a good enough resolution \citep{Vog08}, and we
-would need the causal relationships to determine which that is.
+important because, in the event of diverging changes, we need to
+determine which the most recent common ancestor of two states is, and
+the vector clock causal relationship allows us to do just this.
 
 The downside of using vector clocks is that they add considerable
 overhead.  As is obvious from the vector clock update rule, they grow
