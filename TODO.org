@@ -84,6 +84,7 @@
   - [X] Get rid of the Ltc.Adapter hierarchy
   - [X] SmallCheck tests for NodeProtocol
   - [X] Receive store changes from neighbours
+  - [ ] Store changes instead of values.
   - [ ] Apply changes from neighbours
   - [X] Keep track of suspected neighbour version clock
   - [ ] ChangeSets (replaces DiffPacks)
@@ -192,6 +193,9 @@
 * TODO Check documentation
 * Final Report
   :LOGBOOK:
+  CLOCK: [2013-06-17 Mon 00:46]--[2013-06-17 Mon 02:06] =>  1:20
+  CLOCK: [2013-06-16 Sun 22:54]--[2013-06-17 Mon 00:23] =>  1:29
+  CLOCK: [2013-06-16 Sun 22:39]--[2013-06-16 Sun 22:54] =>  0:15
   CLOCK: [2013-06-16 Sun 20:41]--[2013-06-16 Sun 20:50] =>  0:09
   CLOCK: [2013-06-16 Sun 19:25]--[2013-06-16 Sun 20:41] =>  1:16
   CLOCK: [2013-06-16 Sun 18:50]--[2013-06-16 Sun 19:08] =>  0:18

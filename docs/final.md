@@ -1926,13 +1926,198 @@ method outlined above.
 
 ## Version History
 
+We have seen what data store states are, and how changes can transform
+states.  We now look at what happens when we string together the
+states and changes of a particular data store.  To illustrate, we do
+this for the data store mentioned in the previous section:
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+State 0
+   |
+   | [("foo", +22)]
+   v
+State 1
+   |
+   | [("baz", +13)]
+   v
+State 2
+   |
+   | [("foo", +1), ("bar", +42)]
+   v
+State 3
+\end{lstlisting}
+\end{tabular}
+\end{center}
+
+The states of a data store, together with the changes between them
+form the history of that data store.  It is interesting to note that
+although we assign unique identifiers to states, another way to
+identify them uniquely would be by the chain of changes leading to
+them starting from the initial state.
+
+As we previously mentioned in Section \ref{sec:strongly-typed}, LTc is
+unusual among data stores in that it allows users to get historical
+values.  We achieve this by storing the latest value associated with a
+key as-is, and storing all of the changes that led to that value.
+Thus, when a user requests a previous version of a value, we take all
+the changes between that version and the current one, reverse them,
+and apply them to the current value.  The reason we can do this is
+because, as mentioned in the previous section, changes are
+"reversible"; had we used the simple approach to representing changes,
+we would have had to store all previous values in order to support
+LTc's API.
+
+Since we were only dealing with one node and one data store, the
+history was linear.  Things get more complicated once we introduce
+multiple nodes with access to the same data.  The basic problem is
+that different nodes' views of the data diverge as they make changes.
+For instance, suppose we had two nodes both in "State 3", and each
+makes a new change:
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+ Node A                Node B
+
+State 3               State 3
+   |                     |
+   | [("bam", +1)]       | [("bam", +2)]
+   v                     v
+State 4.1             State 4.2
+\end{lstlisting}
+\end{tabular}
+\end{center}
+
+It is important to note that since LTc nodes are usually disconnected,
+neither of the two nodes above is aware of the change made by the
+other.  The two nodes will however try to propagate their changes to
+other nodes.  Suppose "Node A" succeeds in sending its `[("bam", +1)]`
+change to "Node B".  This leads to the following situation:
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+              Node B
+
+             State 3
+               /\
+[("bam", +1)] /  \ [("bam", +2)]
+             /    \
+     State 4.1    State 4.2
+\end{lstlisting}
+\end{tabular}
+\end{center}
+
+At this point, "Node B" has two current versions of the value for
+"bam", one from itself, and one from "Node A".  It has several
+possible courses of action.  The simplest solution would be to simply
+ignore the update for the other node, and somehow let it know of the
+fact.  This, however, is not in the spirit of a *distributed* data
+store.  As we discuss in Section \ref{sec:conflicts}, with LTc, "Node
+B" attempts to merge the two values, and then tries to send the merge
+result to "Node A".  The reason merging is an option is because our
+representation of changes allows it; if we were using the simple
+representation, we would be forced to simply discard one of the two
+current values.
+
+So, the history of a data store is linear if limited to a single node,
+but once we take into account other nodes, it becomes a
+connected\footnote{The fact that it is connected is important, since
+it means there is always a most recent common ancestor between any two
+states.} directed acyclic graph.
+
 ## Propagating Changes
+
+So far, we discussed how changes are represented within nodes, and
+mentioned that nodes sometimes send changes to other nodes.  We now
+give an overview of this process in LTc.
+
+Suppose we have two nodes which both hold the same data, and both can
+make changes to it independently.  The immediate problem is that,
+since neither node knows what the other is doing, they cannot know if
+there is any discrepancy in their view of the data, and if they need
+to take any action to rectify the situation.  At this point, other
+data stores would have the nodes query each other for their states,
+but, in LTc, we do not have this luxury: in addition to the large
+distances between nodes, which would make the query round trip
+prohibitively expensive, there is also the packet loss to consider
+which might prevent the two nodes from ever completing their
+cross-query.
+
+The only choice an LTc node has in this situation is to keep track of
+its best guess of the current state of the other node.  Since states
+have unique identifiers, and every node is in only one state at any
+time, this means that every node needs to keep track of its best guess
+at what the identifiers of the current states of the other nodes are.
+
+To clarify the process, if a node has no prior information about
+another, it can only safely assume that the other node has an empty
+data store.  As changes are received from the other node, the
+assumption can be updated to include all the information mentioned in
+the updates.
+
+Once a node has an estimate of what changes another node has, it only
+has to send the changes that the other node does not have.
+
+We now continue with our running example.  Suppose "Node A" was at "State
+3", and then made one further change to the data.  As far as it is
+concerned, the global situation is as follows:
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+ Node A                Node B (from A's POV)
+
+State 3               State 3
+   |
+   | [("bam", +1)]
+   v
+State 4
+\end{lstlisting}
+\end{tabular}
+\end{center}
+
+From the point of view of "Node A", it knows for certain that it is at
+"State 4", and its best guess is that "Node B" is at "State 3".  So,
+"Node A" believes that it has one change that "Node B" is missing, so
+it sends it.
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+Node A (from B's POV) Node B
+
+State 3               State 3
+   |                     |
+   | [("bam", +1)]       |
+   v                     |
+State 4 _                |
+         \__             |
+     [(..)] \__          |
+               \__       |
+                 _\|     v
+                      State 4
+\end{lstlisting}
+\end{tabular}
+\end{center}
+
+At this point, "Node B" receives the change from "Node A", applies it,
+and also updates its best guess as to what changes "Node A" has: "Node
+A" must have everything up to "State 4", because otherwise it could
+not have sent the last update.  It is important to note that, at this
+point, "Node A" cannot assume that "Node B" has received the changes,
+so it must not update its best guess of what "Node B" has.
 
 ## Partial Updates
 
 ## Conflict Resolution
 
 \label{sec:conflicts}
+
+<!-- FIXME Mention that the default merging behaviour for Ints can be
+overridden. -->
 
 We expect communication between LTc nodes to be difficult, and since
 updates can occur on each node, we expect the data sets to diverge in
@@ -2411,9 +2596,10 @@ Future Work
 <!-- Will anyone use it? -->
 <!-- What future research opportunities there are? -->
 
-<!-- FW: Expire values. -->
+<!-- FW: Expire unused values. -->
 <!-- FW: Expire history. -->
 <!-- FW: Namespaces for keys; sort of like databases in SQL lingo. -->
 <!-- FW: Upgradeable values (store the full representation of the type) -->
 <!-- FW: More ACID -->
-<!-- FW: Store changes instead of values. -->
+<!-- FW: More merging strategies. -->
+<!-- FW: Expire the cache of remote changesets. -->
