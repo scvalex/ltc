@@ -2267,8 +2267,8 @@ underlying network protocol allows for duplicating packets.  Although
 some clever heuristic might allow us to minimize the amount of
 duplicated changes, since LTc is currently based on UDP, there is no
 way for us to complete solve the problem.  That said, it is easy to
-distinguish duplicated changes, so, other than the wasted bandwidth,
-this is not a problem.
+distinguish duplicated changes, so, other than the wasted network
+resources, this is not a problem.
 
 Another problem is that changes may get corrupted in-transit.  Since
 UDP provides basic packet integrity checks, this should not be a
@@ -2292,29 +2292,35 @@ would not be difficult to implement.
 
 ## Epidemic Updating
 
-In the previous sections, we mentioned some of the issues surrounding
-the synchronization of two nodes, but we did not discuss the way
-updates are propagated through the network of LTc nodes.  In other
-words, when a node sees an update to one of its entries, how does it
+In the previous sections, we explained how synchronizations works
+between *two* nodes, but we did not discuss the way updates are
+propagated through the network of *multiple* LTc nodes.  In other
+words, when a node sees an update to one of its values, how does it
 propagate the update to all the other nodes that hold a copy of the
 data set?
 
 Because of the disconnected nature of the network, we do not have much
 choice in the matter, and updates can only be propagated on a
-node-by-node basis.  We note that this is the same problem routers
-that are in partially connected have when updating their routing
-tables.  "When instantaneous end-to-end paths are difficult or
-impossible to establish, routing protocols must take to a 'store and
-forward' approach, where data is incrementally moved and stored
-throughout the network in hopes that it will eventually reach its
-destination."  \citep{wiki:dtn-routing}
+node-by-node basis.  In other words, we cannot just connect to all
+nodes in the network, and send the updates to them.
 
-Our update propagation algorithm will be a variant of epidemic
-routing: When a node becomes "infected" by an update, it seeks out
-uninfected nodes, and infects them.  After some time has passed, an
-update is assumed to have propagated through the network, and ceases
-to be infectious. \citep{Vah00} Thus, the update executes a
-breadth-first walk of network graph.
+We note that this is the same problem routers which are in partially
+connected networks have when updating their routing tables.  "When
+instantaneous end-to-end paths are difficult or impossible to
+establish, routing protocols must take to a 'store and forward'
+approach, where data is incrementally moved and stored throughout the
+network in hopes that it will eventually reach its destination."
+\citep{wiki:dtn-routing}
+
+Our update propagation algorithm is a variant of epidemic routing:
+When a node becomes "infected" by an update, it seeks out uninfected
+nodes, and infects them \citep{Vah00}.  Specifically, a node knows
+that it is infectious towards another node, when it is in a later
+state than the other node; it stops being infectious when the other
+node catches up, or overtakes it.
+
+So, an update effectively executes a breadth-first walk of network
+graph:
 
 \begin{center}
 \begin{tabular}{c}
@@ -2325,29 +2331,33 @@ o    o    o                  infected.
 A    B    C           Day 2: B is "infected" by an update.
 o    I    o
 
-A    B    C           Day 3: C connects to B and is infected
-o    I -- I                  by the update.
+A    B    C           Day 3: B connects to C and infects
+o    I -- I                  it.
 
-A    B    C           Day 4: B does not consider the update
-o    i    I                  infections any more.
+A    B    C           Day 4: C connects to A and infects
+I    I    I                  it.
+\---------/
 
-A    B    C           Day 5: A connects to B, but does not
-o -- i    I                  receive the update.
+A    B    C           Day 5: B is contacted by A and C,
+I -- i -- I                  and sees that it is not
+                             infectious anymore.
 
    The propagation of an update through a partially
-   connected network of three nodes.  Ultimately, the
-   update does not fully propagate due to it ceasing to
-   be infectious too soon in B.
+   connected network of three nodes.
 \end{lstlisting}
 \end{tabular}
 \end{center}
 
-The algorithm outlined above is rumor mongering, and it is what LTc
-will initially use.  By changing the way a nodes selects other nodes
-to infect, and the time until an update is no longer considered
-infections, several variations of the basic algorithm
-arise. \citep{wiki:dtn-routing} Exploring which of these is best
-suited for LTc is a future path for development.
+The algorithm outlined above and used by LTc is rumor mongering, and
+it is very aggressive in attempting to disseminate changes throughout
+the network.  Note that, in our example, "Node B" thought that it was
+still infectious in "Day 4", so it would have been reasonable for it
+to contact the other nodes and attempt to infect them, thus wasting
+network resources.  A way to prevent this from happening is using less
+conservative heuristic to determine if a node is infectious to another
+or not.  In other words, a node's best guess as to what state another
+node is in could be better determined.  This is an avenue for future
+work.
 
 ## Versioning with Vector Clocks
 
@@ -2743,3 +2753,4 @@ Future Work
 <!-- FW: Some sort of rate limiting -->
 <!-- FW: In memory store. -->
 <!-- FW: Support for large changes. -->
+<!-- FW: Better than epidemic routing. -->
