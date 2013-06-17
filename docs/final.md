@@ -1526,6 +1526,45 @@ main = do
 
 ### The Dynamic View: Actor-Model Concurrency
 
+We have seen how the LTc's components fit together.  We now discuss
+how the running components (i.e. components that run inside their own
+threads) communicate with each other, and focus one particular
+example.
+
+Recall the store interface:
+
+~~~~ {.haskell}
+type EventChannel = TChan Event
+
+class Store a where
+    ...
+    addEventChannel :: a -> EventChannel -> IO ()
+    ...
+~~~~
+
+Some components wish to be notified when something happens inside the
+store they are attached to.  This is the case of the node server which
+"listens" for changes to the data so that it can propagate them to
+other node, and it is the case of the status server which keeps web
+interfaces up to date.
+
+A simple solution would have these components register an "event
+handler" with the store: whenever the store does something, it would
+invoke all event handlers registered with it.  Unfortunately, there
+are a number of issues with this approach.  Should the event handlers
+be called in parallel, or sequentially?  What should happen if an
+event handler blocks?  What if it throws an exception?  Worse yet,
+each of these questions raises even more questions when it comes to
+implementing the scheme.
+
+We adopt another solution inspired by Erlang: threads communicate with
+each other only via channels.  In our example, if a component wishes
+to be notified of events, it gives the store a
+*channel*\footnote{Specifically, we use Haskell's STM channels.},
+which will events will be later written to.  In other words, we are
+effectively giving each interested component an asynchronous queue of
+events which it can consume at its leisure.
+
 \clearpage
 
 Type Safe Interface
