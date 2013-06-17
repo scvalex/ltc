@@ -2163,13 +2163,48 @@ problem for "Node B", since it can easily tell, by the identifiers of
 the states involved, that the changes have already been applied, but
 it is a situation we would like to avoid.
 
-## Partial Updates
+## Partial Changes
 
-The next problem we consider is that of packet loss: it is likely that
-at least some of the changes that a node sends to another will be lost
-in transit.  We break down the problem into cases and discuss what LTc
-could do in each situation.
+The next problem we consider is that of packet loss: given our
+assumptions about the network, it is very likely that at least some of
+the changes that a node sends to another will be lost in transit.  We
+break down the problem into cases and discuss what LTc could do in
+each situation.
 
+## Propagation Problems
+
+We now discuss a few *practical* problems that may crop up when nodes
+propagate changes to one another.
+
+We have already mentioned that it is possible for a node to receive
+the same changes multiple times.  This can either happen because
+another node has an mistaken guess of the node's state, or because the
+underlying network protocol allows for duplicating packets.  Although
+some clever heuristic might allow us to minimize the amount of
+duplicated changes, since LTc is currently based on UDP, there is no
+way for us to complete solve the problem.  That said, it is easy to
+distinguish duplicated changes, so, other than the wasted bandwidth,
+this is not a problem.
+
+Another problem is that changes may get corrupted in-transit.  Since
+UDP provides basic packet integrity checks, this should not be a
+problem in practice.
+
+An associated problem is that LTc currently makes no effort to ensure
+the authenticity of network messages.  In other words, it is currently
+possible for nodes to impersonate each other, and there is no way to
+restrict incoming connections.
+
+The last problem of this sort is that LTc's communications are
+entirely "in the clear".  In other words, any man in the middle
+between two nodes would be able to read all the communications between
+them.
+
+The last three problems we mentioned could be solved by adding a
+cryptographic layer underneath LTc's current network layer.  Given
+that LTc's network interfaces are designed to be easily replaceable,
+and that cryptography libraries are widely available, this enhancement
+would not be difficult to implement.
 
 ## Epidemic Updating
 
