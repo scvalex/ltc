@@ -15,7 +15,11 @@ typically found in such situations.
 
 \end{abstract}
 
+\newpage\null\thispagestyle{empty}\newpage
+
 \tableofcontents
+
+\newpage\null\thispagestyle{empty}\newpage
 
 \clearpage
 
