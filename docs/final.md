@@ -2586,6 +2586,8 @@ detected, we would use Matrix Clocks \citep{Bal02}.
 Correctness
 ===========
 
+\label{sec:correctness}
+
 We have seen that LTc is a data store that can be replicated over
 multiple nodes.  Now, we claim that it is *correct*.  In this section,
 we discuss what it means for a data store to be correct, we explain
@@ -2751,16 +2753,20 @@ talks and unfinished articles.
 Evaluation
 ==========
 
-We evaluate LTc in terms of what it can do (Section
-\ref{sec:functionality}), and how well it does it (Section
-\ref{sec:performance}).  Broadly speaking, LTc should have the
-interface and behaviour of a persistent map/hashtable/dictionary, it
-should be possible to synchronize entries from one LTc node to
-another, and the synchronization should work over bad connections.
+As we near the end, we look back.  In Section \ref{sec:motivation}, we
+explained the need for LTc, a replicated data store which works even
+if the only available network channels are high latency, lossy, and
+intermittent.  In Section \ref{sec:design}, we discussed why other
+data stores are unsuitable for such environments, and motivated the
+design of LTc.  In Sections \ref{sec:implementation},
+\ref{sec:type-safety}, and \ref{sec:changes}, we described LTc's
+architecture, interface, and synchronization algorithm.  Then, in
+Section \ref{sec:correctness}, we argued that our implementation is
+correct.
 
-If all goes well, we will have developed and benchmarked novel
-synchronization methods for replicated data stores over bad
-connections.
+We now consider what LTc does well, and what it does badly.  As a
+broad plan for this evaluation, we first focus on *what* LTc does, and
+then on *how well* it does it.
 
 ## Functionality
 
