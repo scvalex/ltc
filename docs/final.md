@@ -2802,7 +2802,76 @@ in Section \ref{sec:changes}.
 We now look at how these features can be used in practice by
 discussing a few use cases and example programs.
 
-### Almost-Drop-In Replacement for Redis
+### Partial Drop-In Replacement for Redis
+
+Since LTc is a data store, the first question that comes to mind is
+how data can be accessed.  LTc is designed as an *embedded* data
+store, and we assume that a store will typically be accessed through
+the Haskell interface.  That said, we also provide an interface which
+mimics Redis's semantics and which is compatible with Redis clients.
+
+Testing out this interface is simple.  We start the LTc node with the
+Redis adapter enabled by running `./ltc redis` in the LTc
+distribution's directory.  We can than use any Redis client, such as
+the command line `redis-cli`, to connect to the LTc node and access
+its data.
+
+~~~~ {.sourceCode}
+% ./ltc redis
+Running Redis server with redis-store
+[Simple/DEBUG] open store 'redis-store'
+[Simple/DEBUG] initStore
+[RedisServer/DEBUG] serveWithPort 6379
+[RedisAdapter/DEBUG] handling command
+[Simple/DEBUG] mset [Key "mykey"]
+[RedisAdapter/DEBUG] handling command
+[Simple/DEBUG] getLatest Key "mykey"
+[Simple/DEBUG] get Key "mykey"
+~~~~
+
+~~~~ {.sourceCode}
+% redis-cli
+redis 127.0.0.1:6379> SET mykey "hello"
+OK
+redis 127.0.0.1:6379> GET mykey
+"hello"
+~~~~
+
+In order to enable the Redis adapter in custom programs, we only need
+call the `Redis.serve` function on an open store:
+
+~~~~ {.haskell}
+main :: IO ()
+main = do
+    ...
+    store <- open ...
+    _ <- Redis.serve store
+    ...
+~~~~
+
+LTc only implements a subset of the Redis commands, but it does
+implement the most common ones, and adding support for the rest would
+not be difficult.  There are, however, certain Redis commands, such as
+those pertaining to configuration, which make little sense for LTc.
+Additionally, Redis supports some features, most notably expiring
+keys, which are not supported for LTc.  Despite this, LTc supports
+those commands typically found in tutorial, so it could be considered
+an partial drop-in replacement for the Redis server.
+
+Although LTc could replace the Redis server in some cases, this would
+not be a practical of it.  This is because the two data stores were
+designed with very different goals in mind.  Redis is designed to be a
+very fast in-memory key-value store, and its commands reflect this.
+For instance, the `setrange` Redis command blits part of the string
+value of a key.  The point of this command is to quickly alter a value
+in-place; since LTc's store is persistent, when it runs `setrange`, it
+will perform several file accesses, which would not be quick at all.
+
+The main advantage of the Redis interface is that it makes LTc's data
+accessible through a well-known, if not standardized, interface.
+Since there are Redis clients for every
+language\footnote{\url{http://redis.io/clients}}, we can now claim
+that there are also LTc clients for every language.
 
 ### Decentralized Forum
 
@@ -2819,15 +2888,15 @@ else. -->
 <!-- Emphasis on how hard it would be to write with something
 else. -->
 
-### Large Amounts of Data
-
-<!-- The perils thereof. -->
-
 ## Performance
 
 \label{sec:performance}
 
 <!-- We focused on design, rather than performance tuning.  It shows. -->
+
+### Large Amounts of Data
+
+<!-- The perils thereof. -->
 
 ### Read/Write Throughput
 
@@ -2885,3 +2954,4 @@ Future Work
 <!-- FW: Support for large changes. -->
 <!-- FW: Better than epidemic routing. -->
 <!-- FW: More data stores. -->
+<!-- FW: Actual drop in replacement for Redis. -->
