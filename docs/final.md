@@ -391,6 +391,8 @@ unsuitable for the environments describe in Section
 
 ## Data Interface
 
+\label{sec:data-interface}
+
 Now that we have seen what problems existing data storage systems
 present, we explain just what sort of data store LTc is, and how these
 choices relate to data replication.  We begin with the data interface
@@ -642,6 +644,8 @@ Additionally, it makes less sense in the context of a language like
 Haskell which emphasizes the use of immutable data.
 
 ## Field Types
+
+\label{sec:field-types}
 
 Now that we know that LTc is a key-value store, the question arises:
 what sort of values can it hold?  The answer lies somewhere along the
@@ -2772,23 +2776,29 @@ then on *how well* it does it.
 
 \label{sec:functionality}
 
-In terms of functionality, LTc should expose at least the following
-commands: `set <key> <value>`, `get <key>`, and `delete <key>`.  These
-commands should have the obvious meanings, and should be atomic and
-persistent.  By persistent we mean that once they return, the changes
-have been recorded to persistent storage.  For testing, we can use a
-random tester that runs the commands with dummy data, occasionally
-killing the program, all the while checking invariants.
+In terms of functionality, LTc is an embedded key-value store.  We
+discussed the advantages and disadvantages of the key-value interface
+in Section \ref{sec:data-interface}.  We will not go over them again
+here, but the main points were that, although less rich than some
+other interfaces, most notably the SQL interfaces exposed by
+relational databases,the key-value interface is significantly easier
+to implement, and since key-value stores are widely used, the
+interface is sufficient for many applications.
 
-Additionally, LTc nodes should be able to push updates to other nodes.
-For this, LTc should expose at least a `sync-to <node-id>
-<node-location>` command that performs the to for the specified peer.
-For testing, we can use a random tester that creates two nodes,
-connects them through a channel that loses the majority of packets,
-inserts some dummy data into each node, then runs the `push` command
-repeatedly, expecting the two data sets to eventually become
-consistent.  If we complete Phase X, we would need to perform the
-above test for networks of nodes, and not just for pairs of nodes.
+The somewhat unorthodox design choice we made regarding the interface
+was to make it strongly typed, as discussed in Sections
+\ref{sec:field-types} and \ref{sec:strongly-typed}.  As previously
+mentioned, we believe that this makes the interface richer and more
+pleasant to use.  Interestingly, it does not lead to additional code
+complexity; quite the opposite, in fact, since handling one general
+case requires less code than handling several special cases.
+
+Finally, the feature that LTc provides which sets it apart from other
+data stores is its automatic replication of data over a lossy
+disconnected network.
+
+We now look at how these features can be used in practice by
+discussing a few use cases and example programs.
 
 ### Almost-Drop-In Replacement for Redis
 
