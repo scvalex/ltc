@@ -2795,7 +2795,9 @@ case requires less code than handling several special cases.
 
 Finally, the feature that LTc provides which sets it apart from other
 data stores is its automatic replication of data over a lossy
-disconnected network.
+disconnected network.  We described in detail how automatic
+replication works, and the problems associated with our implementation
+in Section \ref{sec:changes}.
 
 We now look at how these features can be used in practice by
 discussing a few use cases and example programs.
