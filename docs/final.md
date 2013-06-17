@@ -1353,7 +1353,7 @@ error.  Due to the above type class, making this error is impossible,
 since an erroneous program would not type check.  For instance, note
 that `receive` takes an `a Receiving` as its first parameter, but this
 can only obtained from `serve`; the `a Sending` obtained from
-`connect` is simply not the right type.
+`connect` is not of the right type.
 
 We end this section by mentioning a few other languages we considered.
 Since LTc is a distributed program, it would have been reasonable to
@@ -1372,95 +1372,157 @@ inferior to the Haskell one.
 
 ## Component Architecture
 
+We have seen what LTc looks like from the outside, and we now look at
+how it is organized internally.  We first look at how the
+functionality is organized in terms of components, and emphasize that
+the components are designed to be easily plugable into each other.  We
+then look at how the various components interact at runtime, and
+emphasize that they are loosely coupled.
+
 ### The Static View: Plugable Architecture
 
 \label{sec:plugable}
 
-<!-- FIXME Mention its a choice between complexity/flexibility, and
-simplicity/staticity -->
-
-<!-- FIXME Break down by plugable component: explain what each
-plugable enables. -->
-
-<!-- Mention the Redis adapter. -->
-<!-- Mention the SQLite backend. -->
-
 Because LTc is a research project, we are not entirely sure what it
-will look like in the end.  In particular, we do not know exactly what
-specific technologies and algorithms it will use, and the way they
-will work together.  In light of this, we have opted for a decoupled
+should look like\footnote{This was true when we began writing it, and
+it remains true even after we have a working implementation.}.  In
+particular, we do not know exactly what technologies and algorithms
+will work best, and the way they will work together.  In fact, as
+explained in Section \ref{sec:design}, cases can be made for different
+technologies and interfaces, since each has its own advantages and
+disadvantages.  In light of this, we have opted for a decoupled
 architecture, where components interact with one another only through
-well-defined APIs.  This architecture was heavily influenced by the
-design of \href{http://xmonad.org/}{XMonad} and
-\href{http://jaspervdj.be/hakyll/}{Hakyll}.
+well-defined APIs.  We provide flexibility by offering multiple choice
+of components for satisfying each role in an LTc system.
 
 Fundamentally, there are only a few kinds of components in LTc:
-stores, clients, and proxies.  Because LTc is written in Haskell, the
-APIs for these components is specified with type-classes.
+stores, which are responsible for storing data, adapters, which
+re-expose the store interface in different ways, and abstract network
+interfaces, which form a layer between LTc and real networks.  Because
+LTc is written in Haskell, the APIs for these components is specified
+with type-classes.
 
 Stores expose the key-value store API described in Section
-\ref{sec:kv-store}.  They are responsible for storing entries
-persistently, and for managing the change history for each value.  For
-instance, the "Ltc.Reference" store is the straightforward
-implementation of a key-value store on top of a file system, where
-each entry is represented by a file.  Although it works, it is grossly
-inefficient in terms of disk-space.  Thanks to the store abstraction,
-different implementation could be tested without affecting the rest of
-LTc's code.
+\ref{sec:kv-store}.  They are responsible for storing values
+persistently, and for managing the change history for each value.  A
+simplified version of the `Store` interface follows:
 
-Clients serve as high-level "handles" for working with stores.  They
-are short lived, usually created in response to some external event,
-and may expose a different API than underlying store.  For instance,
-in addition to the basic client which just re-exposes the store API,
-we could have a Redis client, which exposes Redis's API and is
-responsible for translating Redis API calls to store API calls.
+~~~~ {.haskell}
+class Store a where
+    data OpenParameters a :: *
 
-Proxies are abstractions around some external interface; they are both
-the only way for an external entity to interact with an LTc node, and
-the only way for an LTc node to interact with the outside world.  For
-instance, the UDP proxy is responsible for listening on an UDP port,
-spawning clients in response to received messages, and sending
-messages in response to internal events.  Other proxies would offer
-support for different protocols such as BP, or Redis.
+    open :: OpenParameters a -> IO a
+    close :: a -> IO ()
 
-\begin{center}
-\begin{tabular}{c}
-\begin{lstlisting}
-+------+  +------+
-| LTc  |  | LTc  |
-| Node |  | Node |   ...
-+------+  +------+
-   |        |
-+-- LTc node ---------------------------+
-|                                       |
-|   |  |  |     | | |           |       |
-| +--------+  +-------+     +-------+   |
-| |   UDP  |  |  BP   |     | Redis |   |
-| |  Proxy |  | Proxy |     | Proxy |   |
-| +--------+  +-------+     +-------+   |
-|         |    |               |||      |
-|          \  /             +--------+  |
-|           ||              | Redis  |  |
-|       +-------+      /--- | Client |  |
-|       | Store | ----/     +--------+  |
-|       +-------+                       |
-+---------------------------------------+
+    keys :: a -> IO (Set Key)
+    get :: (Storable b) => a -> Key -> Version -> IO (Maybe b)
+    set :: (Storable b) => a -> Key -> b -> IO Version
 
-An LTc node, connected to other LTc nodes
-through UDP and BP proxies, and which
-exposes a Redis-like interface through
-a Redis proxy.
-\end{lstlisting}
-\end{tabular}
-\end{center}
+    addEventChannel :: a -> EventChannel -> IO ()
 
-We take an unusual approach to configuring LTc nodes: we use an
-XMonad-like DSL to choose which components are active in a node; a
-more orthodox choice would have been to use XML.  The downside of our
-approach is that users need to know a bit of Haskell's syntax in order
-to configure LTc.  On the other hand, it makes the system much easier
-to tweak by advanced users, and it is the Haskell way of approaching
-this problem.
+    ...
+~~~~
+
+Our simplest implementation of this interface is built on top of the
+file system, where keys, values, changes, and other information is
+simply stored in files inside of a directory.  Although it works, it
+is grossly inefficient in terms of disk-space\footnote{On many file
+systems, the on-disk size of a file is rounded up to the nearest
+sector size multiple.  In practice, this means that a file storing a
+single $4$-byte integer may take $4096$ bytes of disk-space.}, and has
+terrible performance\footnote{Performing file IO multiple times for
+every data store access is very inefficient.  Most data stores will
+preform at most one file IO operation, and sometimes less, if they
+batch accesses.}.  However, the major advantage of this implementation
+that it is very easy to debug, which was a great help during
+development.
+
+We have previously noted that, among data stores, file systems offer
+the fewest guarantees.  Since an LTc store can built on top of a file
+system, it could also be built on top another data store which offers
+more guarantees.  In particular, LTc could be built on top of a
+traditional database, which would offer the same level of performance
+as the underlying database, and would additionally provide LTc's
+interface and replication features.  Thanks to the store abstraction,
+different store implementations can be added and tested without
+affecting the rest of LTc's code.
+
+Adapters are components that wrap around a store and re-expose its
+interface somehow.  For instance, the Redis adapter translates between
+Redis commands and LTc commands.  The idea is that an LTc store with a
+Redis adapter wrapped around it looks and acts much like a normal
+Redis server.
+
+Another notable adapter is the status server which provides a web
+interface for LTc stores.  On the one hand, it re-publishes any events
+it receives from a store to a
+\href{http://www.websocket.org/}{WebSocket}, thus allowing web
+applications to react to internal changes in the store.  On the other
+hand, it exposes a few simple operations which allows web applications
+to change stores.
+
+The last adapter we mention is the node server which provides
+replication features for LTc.  This server is responsible for keeping
+track of, and propagating changes to other nodes.  We discuss its
+behaviour in detail in Section \ref{sec:changes}.
+
+The last kind of component we look at is one we have also encountered
+in the previous section.  LTc's network interfaces abstract real
+network interfaces such as UDP or BP, and provide some extra features.
+Our reason for introducing them is two-fold.  First, since we were
+careful to only expose features common to both UDP and BP in the
+type-class, we are confident that LTc could be trivially adapted to
+working over BP, or other protocols for that matter.  Second, since
+one of the design goals of LTc was that its replication mechanism
+should work even over lossy intermittent network connections, we
+needed a simple way to test this.  For this purpose we wrote a special
+network interface which is exactly like the UDP one, except that it
+loses packets and introduces random delays.
+
+We recall that LTc is meant to be used as an embedded data store, and
+give an example program which enables most of LTc's features.
+
+The core component of the following program is the store.  We note
+that although we are using a "Simple" store, the `open` function comes
+from the interface, not the implementation.  Once the store has been
+created, we begin enabling other components on top of it: we first
+start a node server over the UDP interface which enables LTc's
+inter-node replication, we then start the Redis adapter in order to
+provide a somewhat standardized interface to the data, and we finally
+start the web interface so that we can administer the LTc node easily.
+Note that every component is replaceable, as long as the replacement
+respects the interface defined in the type classes.  Furthermore,
+every component other than the store is optional.
+
+~~~~ {.haskell}
+...
+
+main :: IO ()
+main = do
+    -- Open the store
+    let params = SimpleStoreParameters
+            { location        = "node-store"
+            , nodeName        = "Node-A"
+            })
+    store <- open params
+
+    -- Enable replication
+    node <- Node.serveFromLocation
+        (Udp.UdpLocation { Udp.host = "localhost"
+                         , Udp.port = Node.nodePort })
+        store
+        "Node-A"
+
+    -- Enable the Redis interface
+    stopRedis <- Redis.serve store
+
+    -- Enable the web interface
+    status <- Satus.serveWithPort
+                  Status.statusPort
+                  store
+                  Nothing
+    ...
+~~~~
 
 ### The Dynamic View: Actor-Model Concurrency
 
@@ -2708,6 +2770,8 @@ else. -->
 
 \label{sec:performance}
 
+<!-- We focused on design, rather than performance tuning.  It shows. -->
+
 ### Read/Write Throughput
 
 In terms of performance, we are interested in several measures.
@@ -2763,3 +2827,4 @@ Future Work
 <!-- FW: In memory store. -->
 <!-- FW: Support for large changes. -->
 <!-- FW: Better than epidemic routing. -->
+<!-- FW: More data stores. -->
