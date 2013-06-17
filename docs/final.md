@@ -2033,8 +2033,10 @@ a conflict resolution mechanism to reconcile diverging changes.
 
 \label{sec:conflicts}
 
-<!-- FIXME Mention that the default merging behaviour for Ints can be
+<!-- FIXME Mention that any default merging behaviour can be
 overridden. -->
+
+<!-- FIXME Mention that merging yields the same result either way. -->
 
 We expect communication between LTc nodes to be difficult, and since
 updates can occur on each node, we expect the data sets to diverge in
@@ -2119,7 +2121,7 @@ concerned, the global situation is as follows:
 
 State 3               State 3
    |
-   | [("bam", +1)]
+   | [(..)]
    v
 State 4
 \end{lstlisting}
@@ -2138,7 +2140,7 @@ Node A (from B's POV) Node B
 
 State 3               State 3
    |                     |
-   | [("bam", +1)]       |
+   | [(..)]              |
    v                     |
 State 4 _                |
          \__             |
@@ -2167,9 +2169,67 @@ it is a situation we would like to avoid.
 
 The next problem we consider is that of packet loss: given our
 assumptions about the network, it is very likely that at least some of
-the changes that a node sends to another will be lost in transit.  We
-break down the problem into cases and discuss what LTc could do in
-each situation.
+the changes that a node sends to another will be lost in transit.
+First, we look for the symptoms of this problem.
+
+Suppose both our nodes start off in "State 3".  "Node A" makes two
+changes to the data, and "Node B" patiently waits for them.
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+Node A                 Node B
+
+State 3               State 3
+   |
+   | [(..)]
+   v
+State 4
+   |
+   | [(..)]
+   v
+State 5
+   |
+   | [(..)]
+   v
+State 6 _
+         \__ [(..), (..), (..)]
+            \__
+               \__
+                 _\|
+
+\end{lstlisting}
+\end{tabular}
+\end{center}
+
+Once "Node A" reaches "State 6", it decides to send some changes to
+"Node B".  "Node A" sees that it is ahead of "Node B" by three changes
+and sends those.  Unfortunately, a solar flare erupts during the
+middle of the transmission, and "Node B" only receives the first and
+third change.
+
+From "Node B's" point of view, it has just received a change from
+"Node A" that transforms "State 3" into "State 4", and another that
+transforms "State 5" into "State 6".  It can go ahead and apply the
+first change, thus reaching "State 4", but it clearly cannot apply the
+third change, since it does not know how to get from its current state
+to "State 5".  Because the change propagation mechanism errs on the
+side of duplicating changes, "Node B" now knows that some of the
+changes from "Node A" were not received.
+
+What "Node B" can do at this point is limited.  First of all, it can
+cache the change that was received but not applied, since it will be
+needed later, and may not be received again.  Then, it can proactively
+request the missing changes\footnote{Note that since state identifiers
+are not actually sequential, "Node B" has no way of knowing how many
+changes it is missing.} from "Node A", but it has no way of ensuring
+that this request will reach its destination.  Alternatively, it can
+passively wait for "Node A" to notice that it is still lagging behind
+and resend the changes.
+
+For simplicity, we take the passive approach with LTc: a node normally
+waits for changes from other nodes; upon receiving changes, it applies
+those that it can, and caches the rest for later use.
 
 ## Propagation Problems
 
