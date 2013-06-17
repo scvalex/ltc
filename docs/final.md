@@ -2106,11 +2106,22 @@ State 4 _                |
 At this point, "Node B" receives the change from "Node A", applies it,
 and also updates its best guess as to what changes "Node A" has: "Node
 A" must have everything up to "State 4", because otherwise it could
-not have sent the last update.  It is important to note that, at this
-point, "Node A" cannot assume that "Node B" has received the changes,
-so it must not update its best guess of what "Node B" has.
+not have sent the last update.
+
+It is important to note that, at this point, "Node A" cannot assume
+that "Node B" has received the changes, so it must *not* update its
+best guess of what "Node B" has.  Given this, it is possible for "Node
+A" to send the same changes to "Node B" again; this would not be a
+problem for "Node B", since it can easily tell, by the identifiers of
+the states involved, that the changes have already been applied, but
+it is a situation we would like to avoid.
 
 ## Partial Updates
+
+The next problem we consider is that of packet loss: it is likely that
+at least some of the changes that a node sends to another will be lost
+in transit.  We breakdown the problem into cases and discuss what LTc
+could do in each situation.
 
 ## Conflict Resolution
 
