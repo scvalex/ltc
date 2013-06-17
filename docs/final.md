@@ -2026,7 +2026,54 @@ So, the history of a data store is linear if limited to a single node,
 but once we take into account other nodes, it becomes a
 connected\footnote{The fact that it is connected is important, since
 it means there is always a most recent common ancestor between any two
-states.} directed acyclic graph.
+states.} directed acyclic graph.  At this point, we find the need for
+a conflict resolution mechanism to reconcile diverging changes.
+
+## Conflict Resolution
+
+\label{sec:conflicts}
+
+<!-- FIXME Mention that the default merging behaviour for Ints can be
+overridden. -->
+
+We expect communication between LTc nodes to be difficult, and since
+updates can occur on each node, we expect the data sets to diverge in
+conflicting ways.  As such, conflict resolution will play a key role
+in the operation of LTc.
+
+Because conflict resolution must happen automatically in most cases,
+we make two design choices meant to increase the amount of information
+available during resolution.  First, we timestamp events with vector
+clocks, which allows us to establish causal relationships between
+them; this is the subject of Section \ref{sec:vector-clocks}.  Second,
+we store at least some change history for every field in the database,
+much like a distributed version control system.  This should allow us
+solve some conflicting changes by "merging"; this is the subject of
+Section \ref{sec:patch-theory}.
+
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+Other key-value stores     LTc key-value store with changes
+
++--------------+--------+  +--------------+--------------+
+| Key          | Value  |  | Key          | Value        |
++==============+========+  +==============+==============+
+| alex:balance |  120$  |  | alex:balance |    0$        |
++--------------+--------+  |              |  v | +200$   |
+                           |              |    200$      |
+                           |              |  v | -80$    |
+                           |              |    120$      |
+                           +--------------+--------------+
+\end{lstlisting}
+\end{tabular}
+\end{center}
+
+The use of vector clocks and storing changes are complications due to
+the scope of the problem.  Conflict resolution mechanisms employed by
+other data stores such as consensus and majority voting \citep{Vog08}
+cannot be used by LTc because of the large delays in communications
+between nodes.
 
 ## Propagating Changes
 
@@ -2120,54 +2167,68 @@ it is a situation we would like to avoid.
 
 The next problem we consider is that of packet loss: it is likely that
 at least some of the changes that a node sends to another will be lost
-in transit.  We breakdown the problem into cases and discuss what LTc
+in transit.  We break down the problem into cases and discuss what LTc
 could do in each situation.
 
-## Conflict Resolution
 
-\label{sec:conflicts}
+## Epidemic Updating
 
-<!-- FIXME Mention that the default merging behaviour for Ints can be
-overridden. -->
+In the previous sections, we mentioned some of the issues surrounding
+the synchronization of two nodes, but we did not discuss the way
+updates are propagated through the network of LTc nodes.  In other
+words, when a node sees an update to one of its entries, how does it
+propagate the update to all the other nodes that hold a copy of the
+data set?
 
-We expect communication between LTc nodes to be difficult, and since
-updates can occur on each node, we expect the data sets to diverge in
-conflicting ways.  As such, conflict resolution will play a key role
-in the operation of LTc.
+Because of the disconnected nature of the network, we do not have much
+choice in the matter, and updates can only be propagated on a
+node-by-node basis.  We note that this is the same problem routers
+that are in partially connected have when updating their routing
+tables.  "When instantaneous end-to-end paths are difficult or
+impossible to establish, routing protocols must take to a 'store and
+forward' approach, where data is incrementally moved and stored
+throughout the network in hopes that it will eventually reach its
+destination."  \citep{wiki:dtn-routing}
 
-Because conflict resolution must happen automatically in most cases,
-we make two design choices meant to increase the amount of information
-available during resolution.  First, we timestamp events with vector
-clocks, which allows us to establish causal relationships between
-them; this is the subject of Section \ref{sec:vector-clocks}.  Second,
-we store at least some change history for every field in the database,
-much like a distributed version control system.  This should allow us
-solve some conflicting changes by "merging"; this is the subject of
-Section \ref{sec:patch-theory}.
+Our update propagation algorithm will be a variant of epidemic
+routing: When a node becomes "infected" by an update, it seeks out
+uninfected nodes, and infects them.  After some time has passed, an
+update is assumed to have propagated through the network, and ceases
+to be infectious. \citep{Vah00} Thus, the update executes a
+breadth-first walk of network graph.
 
 \begin{center}
 \begin{tabular}{c}
 \begin{lstlisting}
-Other key-value stores     LTc key-value store with changes
+A    B    C           Day 1: None of the three nodes is
+o    o    o                  infected.
 
-+--------------+--------+  +--------------+--------------+
-| Key          | Value  |  | Key          | Value        |
-+==============+========+  +==============+==============+
-| alex:balance |  120$  |  | alex:balance |    0$        |
-+--------------+--------+  |              |  v | +200$   |
-                           |              |    200$      |
-                           |              |  v | -80$    |
-                           |              |    120$      |
-                           +--------------+--------------+
+A    B    C           Day 2: B is "infected" by an update.
+o    I    o
+
+A    B    C           Day 3: C connects to B and is infected
+o    I -- I                  by the update.
+
+A    B    C           Day 4: B does not consider the update
+o    i    I                  infections any more.
+
+A    B    C           Day 5: A connects to B, but does not
+o -- i    I                  receive the update.
+
+   The propagation of an update through a partially
+   connected network of three nodes.  Ultimately, the
+   update does not fully propagate due to it ceasing to
+   be infectious too soon in B.
 \end{lstlisting}
 \end{tabular}
 \end{center}
 
-The use of vector clocks and storing changes are complications due to
-the scope of the problem.  Conflict resolution mechanisms employed by
-other data stores such as consensus and majority voting \citep{Vog08}
-cannot be used by LTc because of the large delays in communications
-between nodes.
+The algorithm outlined above is rumor mongering, and it is what LTc
+will initially use.  By changing the way a nodes selects other nodes
+to infect, and the time until an update is no longer considered
+infections, several variations of the basic algorithm
+arise. \citep{wiki:dtn-routing} Exploring which of these is best
+suited for LTc is a future path for development.
 
 ## Versioning with Vector Clocks
 
@@ -2280,65 +2341,6 @@ the nodes.  Ultimately, vector clocks are on a sliding scale tradeoffs
 between overhead and scope.  If we wanted less overhead, we would use
 Lamport timestamps, and if we wanted more causal relations to be
 detected, we would use Matrix Clocks \citep{Bal02}.
-
-## Epidemic Updating
-
-In the previous sections, we mentioned some of the issues surrounding
-the synchronization of two nodes, but we did not discuss the way
-updates are propagated through the network of LTc nodes.  In other
-words, when a node sees an update to one of its entries, how does it
-propagate the update to all the other nodes that hold a copy of the
-data set?
-
-Because of the disconnected nature of the network, we do not have much
-choice in the matter, and updates can only be propagated on a
-node-by-node basis.  We note that this is the same problem routers
-that are in partially connected have when updating their routing
-tables.  "When instantaneous end-to-end paths are difficult or
-impossible to establish, routing protocols must take to a 'store and
-forward' approach, where data is incrementally moved and stored
-throughout the network in hopes that it will eventually reach its
-destination."  \citep{wiki:dtn-routing}
-
-Our update propagation algorithm will be a variant of epidemic
-routing: When a node becomes "infected" by an update, it seeks out
-uninfected nodes, and infects them.  After some time has passed, an
-update is assumed to have propagated through the network, and ceases
-to be infectious. \citep{Vah00} Thus, the update executes a
-breadth-first walk of network graph.
-
-\begin{center}
-\begin{tabular}{c}
-\begin{lstlisting}
-A    B    C           Day 1: None of the three nodes is
-o    o    o                  infected.
-
-A    B    C           Day 2: B is "infected" by an update.
-o    I    o
-
-A    B    C           Day 3: C connects to B and is infected
-o    I -- I                  by the update.
-
-A    B    C           Day 4: B does not consider the update
-o    i    I                  infections any more.
-
-A    B    C           Day 5: A connects to B, but does not
-o -- i    I                  receive the update.
-
-   The propagation of an update through a partially
-   connected network of three nodes.  Ultimately, the
-   update does not fully propagate due to it ceasing to
-   be infectious too soon in B.
-\end{lstlisting}
-\end{tabular}
-\end{center}
-
-The algorithm outlined above is rumor mongering, and it is what LTc
-will initially use.  By changing the way a nodes selects other nodes
-to infect, and the time until an update is no longer considered
-infections, several variations of the basic algorithm
-arise. \citep{wiki:dtn-routing} Exploring which of these is best
-suited for LTc is a future path for development.
 
 \clearpage
 
@@ -2545,17 +2547,20 @@ above test for networks of nodes, and not just for pairs of nodes.
 
 ### Almost-Drop-In Replacement for Redis
 
-### Writing a Address Book Example
+### Decentralized Forum
 
 <!-- Emphasis on how hard it would be to write with something
 else. -->
 
-### Writing a Rock Paper Scissors Example
+### Decentralized Rock Paper Scissors
 
 <!-- Emphasis on how hard it would be to write with something
 else. -->
 
-<!-- Generalize to Bidding War -->
+### Decentralized Auction House
+
+<!-- Emphasis on how hard it would be to write with something
+else. -->
 
 ### Large Amounts of Data
 
@@ -2614,3 +2619,8 @@ Future Work
 <!-- FW: More ACID -->
 <!-- FW: More merging strategies. -->
 <!-- FW: Expire the cache of remote changesets. -->
+<!-- FW: Message integrity checks. -->
+<!-- FW: Message authenticity checks. -->
+<!-- FW: Some sort of rate limiting -->
+<!-- FW: In memory store. -->
+<!-- FW: Support for large changes. -->
