@@ -1973,8 +1973,9 @@ Since we were only dealing with one node and one data store, the
 history was linear.  Things get more complicated once we introduce
 multiple nodes with access to the same data.  The basic problem is
 that different nodes' views of the data diverge as they make changes.
-For instance, suppose we had two nodes both in "State 3", and each
-makes a new change:
+For instance, suppose we had two nodes\footnote{We always talk about
+\emph{two} nodes because interactions between nodes always happen in
+pairs.} both in "State 3", and each makes a new change:
 
 \begin{center}
 \begin{tabular}{c}
@@ -2029,53 +2030,76 @@ it means there is always a most recent common ancestor between any two
 states.} directed acyclic graph.  At this point, we find the need for
 a conflict resolution mechanism to reconcile diverging changes.
 
-## Conflict Resolution
+## Merging
 
 \label{sec:conflicts}
 
-<!-- FIXME Mention that any default merging behaviour can be
-overridden. -->
+Given our assumptions about the network, we expect communication
+between nodes to be difficult, and we expect nodes to make diverging
+changes to their data.  These changes can be either
+conflicting\footnote{Note that, unlike DVCSs, we consider it a
+conflict even if the two nodes change different subsets of the data.
+In Git parlance, what we call ``non-conflicting merge'' would be
+``fast-forward merge''.}, when the two nodes change the data
+simultaneously, or non-conflicting, when one node changes the data
+while the other does not.
 
-<!-- FIXME Mention that merging yields the same result either way. -->
+The simpler case is when we have a non-conflicting merge: suppose
+"Node A" has changed from "State 3" to "State 4", while "Node B" has
+remained in "State 3".  When "Node A" sends the change, "Node B" can
+apply it directly and reach "State 4".  Although there is no need to
+merge values in this case, we still refer to the process as merging
+since it involves combining a version history with some changes.
 
-We expect communication between LTc nodes to be difficult, and since
-updates can occur on each node, we expect the data sets to diverge in
-conflicting ways.  As such, conflict resolution will play a key role
-in the operation of LTc.
-
-Because conflict resolution must happen automatically in most cases,
-we make two design choices meant to increase the amount of information
-available during resolution.  First, we timestamp events with vector
-clocks, which allows us to establish causal relationships between
-them; this is the subject of Section \ref{sec:vector-clocks}.  Second,
-we store at least some change history for every field in the database,
-much like a distributed version control system.  This should allow us
-solve some conflicting changes by "merging"; this is the subject of
-Section \ref{sec:patch-theory}.
+The trickier case is when we have a conflicting merge: suppose that,
+as described in the previous section, both nodes have made a change to
+"State 3", and "Node A" has sent its change to "Node B".
 
 \begin{center}
 \begin{tabular}{c}
 \begin{lstlisting}
-Other key-value stores     LTc key-value store with changes
+              Node B
 
-+--------------+--------+  +--------------+--------------+
-| Key          | Value  |  | Key          | Value        |
-+==============+========+  +==============+==============+
-| alex:balance |  120$  |  | alex:balance |    0$        |
-+--------------+--------+  |              |  v | +200$   |
-                           |              |    200$      |
-                           |              |  v | -80$    |
-                           |              |    120$      |
-                           +--------------+--------------+
+              State 3
+               /|\
+[("bam", +1)] / | \ [("bam", +2)]
+             /  |  \
+     State 4.1  |  State 4.2
+             \  |  /
+              \ | /
+               \|/
+                v [("bam", +3)]
+              State 5
 \end{lstlisting}
 \end{tabular}
 \end{center}
 
-The use of vector clocks and storing changes are complications due to
-the scope of the problem.  Conflict resolution mechanisms employed by
-other data stores such as consensus and majority voting \citep{Vog08}
-cannot be used by LTc because of the large delays in communications
-between nodes.
+At this point, "Node B" has to combine the two changes that lead to
+"State 4.1" and "State 4.2" into a single change that leads to "State
+5".  It does this by taking all the changes the led to the two
+diverging states and combines them.  If, as in our example, both nodes
+made changes to the same value, the diffs to the value are also
+combined.  Finally, it applies the combined merged changes to the most
+recent common ancestor, in our case "State 3", and thus obtains "State
+5".
+
+In our example, "Node A" sends its change to "Node B", but not the
+other way around.  In this case, "Node B" handles the merge, and sends
+the both its diverging change to "State 4.2", and the combined change
+to "State 5" back to "Node A".  An possible problem occurs if,
+originally, both "Node A" and "Node B" send their diverging changes to
+each other; in this case, both nodes would perform the merge, and then
+attempt to send the new changes to each other, thus repeating the
+process.  We avoid the problem by careful use of state identifiers and
+of merging algorithms: the combination of "State 4.1" and "State 4.2"
+is given the same identifier, regardless of which way the merge is
+performed; similarly, the changes made by the merge are the same in
+both cases.
+
+We end the section on merging by mentioning that diffing and merging
+are implemented as a type-class in LTc.  As such, LTc's merging can
+easily be extended to custom data types, and its default behaviour can
+be overridden.
 
 ## Propagating Changes
 
