@@ -2615,9 +2615,7 @@ replication, the values in the data store are somehow unexpected.
 Note that the first of the two items we would like to prove is a
 negative---we are attempting to prove that something does not happen.
 Since this is hard to do in practice, we will settle for tests that
-show that it does not happen in the common cases.  On the other hand,
-the second item is a positive, so we will give a mathematical proof
-for it.
+show that it does not happen in the common cases.
 
 ## Empirical Correctness
 
@@ -2656,9 +2654,9 @@ certain.
 ### Random Testing
 
 The problem with unit tests is that crafting complicated scenarios is
-long and boring process which the author would rather avoid.  This
-explains why the majority of LTc tests are not unit tests.  Instead,
-we have focused our efforts on random testing.
+a long and boring process which developers, the author included, would
+rather avoid.  This explains why the majority of LTc tests are not
+unit tests.  Instead, we have focused our efforts on random testing.
 
 By random testing, we mean that "properties are described as Haskell
 functions, and can be automatically tested on random input"
@@ -2667,7 +2665,7 @@ functions, and can be automatically tested on random input"
 framework to write these tests.
 
 For each random test, we usually take a new LTc data store, and we
-then apply a random sequence of set commands to it, all the while
+then apply a random sequence of `set` commands to it, all the while
 checking various properties.  As with unit testing, we are usually
 interested that data written to the data store is later accessible,
 even if it is superseded by newer data.  Once these tests are done,
@@ -2681,14 +2679,14 @@ semantics.
 
 ### Exhaustive Testing
 
-Although random testing forms the backbone of LTc tests, and the
+Although random testing forms the backbone of LTc's tests, and the
 author expects it to catch the most bugs, there are a few deficiencies
-in the approach.  A large list is included in the SmallCheck paper
+with the approach.  A large list is included in the SmallCheck paper
 \citep{smallcheck}, but we are interested in one in particular: most
 errors are revealed by small test cases, but random testing does not
 favour them, and instead wastes time on unnecessarily large test
 cases.  This is a problem for LTc particularly, since the tests make
-changes to the on-disk data store which, in turn, are time-expensive.
+changes to the on-disk data store which is a time-expensive process.
 
 We attempt to remedy this problem by using
 \href{http://hackage.haskell.org/package/smallcheck}{SmallCheck}, an
@@ -2700,46 +2698,18 @@ we gain certainty that LTc is not doing anything surprising.
 
 In addition to checking variants of the properties previously
 mentioned, we also use exhaustive testing for the encoders and
-decoders for the network protocols we use: LTc's inter-node protocol,
+decoders of the network protocols we use: LTc's inter-node protocol,
 and the Redis wire protocol.  Of course, in Redis's case, this does
 not mean we are actually handling it correctly, but at least we know
 that we are handling it consistently.
 
-## Provable Correctness
-
-We now prove that LTc's replication mechanism does not corrupt data.
-
-<!-- Explain the structure of our proof: global properties/local
-properties -->
-
-### Global Properties
-
-<!-- This is what we want to prove. -->
-
-### Local Properties
-
-<!-- This is what we konw. -->
-
-### Proof
-
-### Patch Theory
+## Patch Theory
 
 \label{sec:patch-theory}
 
-As mentioned in Section \ref{sec:conflicts}, we expect parallel
-updates to the data sets on different nodes to cause conflicts.
-Relational databases data stores usually solve this issue by
-coordinating the nodes such that conflicts cannot appear in the first
-place.  Because of the disconnected nature of LTc, this is not an
-option, so LTc nodes have to deal with conflicts as they appear.
-DVCSs such as git face a similar problem, which they solve by
-attempting a textual merge of the conflicting changes, and falling
-back to manual intervention.  NoSQL data stores usually adopt an
-automated version of previous scheme; for instance, CouchDB detects
-conflicts, but lets the user application decide how the merging should
-be done. \citep{And10} Because both these approaches work well in
-practice, in LTc, we first attempt to solve conflict through automatic
-merging, and fallback to application specific conflict resolution.
+So far, we have focused on empirically testing LTc to see if it breaks
+certain properties.  We would like to go further and *prove*
+properties about LTc.  For this we need a formalization of the system.
 
 Among DVCSs, \href{http://darcs.net/}{Darcs} is the only one with a
 mathematical formalism underlying its behaviour.  This formalism is
@@ -2749,10 +2719,7 @@ concepts such as patches, and changes, and the properties these may
 have.  For instance, some patches have inverses, and some pairs of
 patches are commutative; if all the patches participating in a
 conflict have these two properties, it is always possible to perform
-an automatic merge.  As other DVCSs have shown, it is possible to
-write a working system without any formalization, but for an
-experimental system such as LTc, we believe that a formalism will be
-indispensable.
+an automatic merge.
 
 Unfortunately, Patch Theory is very much an open area of research;
 there are no published works on the topic, but the
