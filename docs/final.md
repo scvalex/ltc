@@ -1927,8 +1927,8 @@ of states and changes to those states, how changes are propagated
 between nodes and how various problematic changes are handled, and
 finish by briefly discussing some concerns regarding our
 implementation, focusing, in particular, on how states are versioned
-and what inter-node propagation of changes looks like when there are
-multiple nodes involved.
+and what inter-node propagation of changes looks like when multiple
+nodes are involved.
 
 ## States and Changes
 
@@ -1990,7 +1990,7 @@ These four are states in which the data store finds itself in.  One
 way to uniquely identify these states is by the keys and associated
 values stored within.  We will refer to these by names such as "State
 N", where "State 0" is the initial state which always refers to the
-empty data store, and any subsequent states are obtained my setting
+empty data store, and any subsequent states are obtained by setting
 values on existing states.  For simplicity, we refer to states here by
 integers, but, in reality, LTc uses a somewhat more complicated scheme
 as detailed in Section \ref{sec:vector-clocks}.
@@ -2008,14 +2008,13 @@ the immediate problem with this approach becomes apparent if the
 values are not integers, but large texts.  Then, assuming that the
 \href{http://linux.die.net/man/1/diff}{diffs} between the texts
 associated with any key are usually smaller than the full texts, it
-would be less wasteful to use diffs to represent changes, rather than
-updated values.
+would be less wasteful to use diffs to represent changes.
 
 This brings us to the second way of representing changes, namely by
 diffs to the modified values.  For instance, the changes that turn
 "State 2" into "State 3" would now be `[("foo", +1), ("bar", +42)]`;
-here, we consider the diff between to integers to simply be the
-increment between them, and that a non-existing key has $0$ implicitly
+here, we consider the diff between two integers to be the increment
+between them, and that a non-existing key has $0$ implicitly
 associated with it.  In order to use this change to make "State 3", we
 would take the value of "foo" from "State 2", and add `+1` to it;
 similarly, we would take the value of "bar" from "State 2", see that
@@ -2041,7 +2040,7 @@ method outlined above.
 
 ## Version History
 
-We have seen what data store states are, and how changes can transform
+We have seen what data store states are, and how changes transform
 states.  We now look at what happens when we string together the
 states and changes of a particular data store.  To illustrate, we do
 this for the data store mentioned in the previous section:
@@ -2131,9 +2130,9 @@ At this point, "Node B" has two current versions of the value for
 possible courses of action.  The simplest solution would be to simply
 ignore the update for the other node, and somehow let it know of the
 fact.  This, however, is not in the spirit of a *distributed* data
-store.  As we discuss in Section \ref{sec:conflicts}, with LTc, "Node
-B" attempts to merge the two values, and then tries to send the merge
-result to "Node A".  The reason merging is an option is because our
+store.  As we discuss in the next section, with LTc, "Node B" attempts
+to merge the two values, and then tries to send the merge result to
+"Node A".  The reason merging is an option is because our
 representation of changes allows it; if we were using the simple
 representation, we would be forced to simply discard one of the two
 current values.
@@ -2142,8 +2141,8 @@ So, the history of a data store is linear if limited to a single node,
 but once we take into account other nodes, it becomes a
 connected\footnote{The fact that it is connected is important, since
 it means there is always a most recent common ancestor between any two
-states.} directed acyclic graph.  At this point, we find the need for
-a conflict resolution mechanism to reconcile diverging changes.
+states.} directed acyclic graph.  At this point, we need a conflict
+resolution mechanism to reconcile diverging changes.
 
 ## Merging
 
@@ -2154,7 +2153,7 @@ between nodes to be difficult, and we expect nodes to make diverging
 changes to their data.  These changes can be either
 conflicting\footnote{Note that, unlike DVCSs, we consider it a
 conflict even if the two nodes change different subsets of the data.
-In Git parlance, what we call ``non-conflicting merge'' would be
+In Git parlance, what we call a ``non-conflicting merge'' would be a
 ``fast-forward merge''.}, when the two nodes change the data
 simultaneously, or non-conflicting, when one node changes the data
 while the other does not.
@@ -2192,8 +2191,8 @@ as described in the previous section, both nodes have made a change to
 At this point, "Node B" has to combine the two changes that lead to
 "State 4.1" and "State 4.2" into a single change that leads to "State
 5".  It does this by taking all the changes the led to the two
-diverging states and combines them.  If, as in our example, both nodes
-made changes to the same value, the diffs to the value are also
+diverging states and combining them.  If, as in our example, both
+nodes made changes to the same value, the diffs to the value are also
 combined.  Finally, it applies the combined merged changes to the most
 recent common ancestor, in our case "State 3", and thus obtains "State
 5".
@@ -2201,15 +2200,15 @@ recent common ancestor, in our case "State 3", and thus obtains "State
 In our example, "Node A" sends its change to "Node B", but not the
 other way around.  In this case, "Node B" handles the merge, and sends
 the both its diverging change to "State 4.2", and the combined change
-to "State 5" back to "Node A".  An possible problem occurs if,
-originally, both "Node A" and "Node B" send their diverging changes to
-each other; in this case, both nodes would perform the merge, and then
-attempt to send the new changes to each other, thus repeating the
-process.  We avoid the problem by careful use of state identifiers and
-of merging algorithms: the combination of "State 4.1" and "State 4.2"
-is given the same identifier, regardless of which way the merge is
-performed; similarly, the changes made by the merge are the same in
-both cases.
+to "State 5" back to "Node A".  A possible problem occurs if,
+originally, both "Node A" and "Node B" had sent their diverging
+changes to each other; in this case, both nodes would perform the
+merge, and then attempt to send the new changes to each other, thus
+repeating the process.  We avoid the problem by careful use of state
+identifiers and of merging algorithms: the combination of "State 4.1"
+and "State 4.2" is given the same identifier, regardless of which way
+the merge is performed; similarly, the changes made by the merge are
+the same in both cases.
 
 We end the section on merging by mentioning that diffing and merging
 are implemented as a type class in LTc.  As such, LTc's merging can
@@ -2218,9 +2217,9 @@ be overridden.
 
 ## Propagating Changes
 
-So far, we discussed how changes are represented within nodes, and
-mentioned that nodes sometimes send changes to other nodes.  We now
-give an overview of this process in LTc.
+So far, we have discussed how changes are represented within nodes,
+and mentioned that nodes sometimes send changes to other nodes.  We
+now give an overview of this process in LTc.
 
 Suppose we have two nodes which both hold the same data, and both can
 make changes to it independently.  The immediate problem is that,
@@ -2302,7 +2301,7 @@ best guess of what "Node B" has.  Given this, it is possible for "Node
 A" to send the same changes to "Node B" again; this would not be a
 problem for "Node B", since it can easily tell, by the identifiers of
 the states involved, that the changes have already been applied, but
-it is a situation we would like to avoid.
+this is a situation we would like to avoid.
 
 ## Partial Changes
 
@@ -2311,7 +2310,7 @@ assumptions about the network, it is very likely that at least some of
 the changes that a node sends to another will be lost in transit.
 First, we look for the symptoms of this problem.
 
-Suppose both our nodes start off in "State 3".  "Node A" makes two
+Suppose both our nodes start off in "State 3".  "Node A" makes three
 changes to the data, and "Node B" patiently waits for them.
 
 \begin{center}
@@ -2342,10 +2341,10 @@ State 6 _
 \end{center}
 
 Once "Node A" reaches "State 6", it decides to send some changes to
-"Node B".  "Node A" sees that it is ahead of "Node B" by three changes
-and sends those.  Unfortunately, a solar flare erupts during the
-middle of the transmission, and "Node B" only receives the first and
-third change.
+"Node B".  "Node A" sees that it is ahead of "Node B" by three
+changes, and sends those.  Unfortunately, a solar flare erupts during
+the middle of the transmission, and "Node B" only receives the first
+and third change.
 
 From "Node B's" point of view, it has just received a change from
 "Node A" that transforms "State 3" into "State 4", and another that
@@ -2363,7 +2362,7 @@ request the missing changes\footnote{Note that since state identifiers
 are not actually sequential, "Node B" has no way of knowing how many
 changes it is missing.} from "Node A", but it has no way of ensuring
 that this request will reach its destination.  Alternatively, it can
-passively wait for "Node A" to notice that it is still lagging behind
+passively wait for "Node A" to notice that it is still lagging behind,
 and resend the changes.
 
 For simplicity, we take the passive approach with LTc: a node normally
@@ -2374,8 +2373,8 @@ those that it can, and caches the rest for later use.
 
 \label{sec:propagation-problems}
 
-We now discuss a few *practical* problems that may crop up when nodes
-propagate changes to one another.
+We now discuss a few *practical* problems that crop up when nodes
+propagate changes to each other.
 
 We have already mentioned that it is possible for a node to receive
 the same changes multiple times.  This can either happen because
