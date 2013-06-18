@@ -1132,11 +1132,11 @@ discussed in Section \ref{sec:changes}.
 \label{sec:implementation}
 
 So far, we have seen what our reasons for writing LTc were, and what
-design decisions we have made.  We will now discuss LTc is actually
-implemented.  We begin with an outside view that treats an LTc system
-as a blackbox, we briefly mention our choice of programming language,
-we describe LTc's internal architecture, and we finish by discussing a
-few design issues that cropped up during implementation.
+design decisions we have made.  We will now discuss how LTc is
+actually implemented.  We begin with an outside view that treats an
+LTc system as a blackbox, we briefly mention our choice of programming
+language, we describe LTc's internal architecture, and we finish by
+discussing a few design issues that cropped up during implementation.
 
 ## Outside View
 
@@ -1152,7 +1152,7 @@ node started by the debugging tool `ltc` looks like:
 
 ~~~~ {.sourceCode}
 % ps -aux | grep ltc
-scvalex   6807  2.0  0.4  55956 15948 pts/4    S+   10:19   0:00 ./ltc node
+scvalex 6807 2.0 0.4 55956 15948 pts/4 S+ 10:19 0:00 ./ltc node
 ~~~~
 
 "Big" databases usually run as separate server processes.  This is
@@ -1161,9 +1161,9 @@ shared database.  The downside of this approach is that it requires
 additional effort to setup a database, and more programming effort
 because a client/server protocol is needed.  We believe that the costs
 of a separate server process outweigh the benefits in LTc's case, so
-we used the simpler approach.
+we use the simpler approach.
 
-On disk, an LTc database looks like an opaque directory.  By opaque,
+On disk, an LTc data store looks like an opaque directory.  By opaque,
 we mean that we do not expect anyone other than an LTc process to have
 any need to look into it.  For instance, after running a test node
 with the file system backend for some time with `ltc node`, we get an
@@ -1197,9 +1197,7 @@ The individual files each have their use; for instance,
 of the on-disk data store, which would enable us to perform automatic
 upgrades whenever the on-disk structure needs changing; the
 `node-store-0/keys/*` files hold records containing type information
-and the changes made to each key in the data store.  For a full
-description of these files, see the documentation for `Ltc.Store` in
-Appendix \ref{sec:user-guide}.
+and the changes made to each key in the data store.
 
 From a network point of view, LTc usually listens on two ports: an UDP
 port around $3582$ for replication, and an HTTP port around $5000$ for
@@ -1231,8 +1229,8 @@ A bunch\footnote{We intentionally avoid the use of the word "cluster"
 which is usually associated with tight synchronous coupling of nodes.}
 of LTc nodes that hold the same data does not require any particular
 network layout, and would not have any distinctive features.  The only
-condition is for every node to be addressable and reachable by some
-other node via UDP.
+condition is for every node to be addressable and reachable by at
+least one other node via UDP.
 
 ## Haskell
 
@@ -1279,7 +1277,7 @@ such tasks.
 \href{http://www.haskell.org/ghc/docs/7.6.2/html/users_guide/type-families.html}{Indexed
 type families}, and, in particular, associated data types
 \citep{type-families}, allowed us to express the dependencies between
-some types clearly, and thus avoid the somewhat obscure type-class
+some types clearly, and thus avoid the somewhat obscure type class
 machinery that were traditionally required.  We discuss the impact of
 using these extensions in more detail in Section
 \ref{sec:type-safety}, where we focus on type safety.
@@ -1403,16 +1401,16 @@ will work best, and the way they will work together.  In fact, as
 explained in Section \ref{sec:design}, cases can be made for different
 technologies and interfaces, since each has its own advantages and
 disadvantages.  In light of this, we have opted for a decoupled
-architecture, where components interact with one another only through
-well-defined APIs.  We provide flexibility by offering multiple choice
-of components for satisfying each role in an LTc system.
+architecture, where components interact with each other only through
+well-defined APIs.  We provide flexibility by offering multiple
+choices of components for satisfying each role in an LTc system.
 
 Fundamentally, there are only a few kinds of components in LTc:
 stores, which are responsible for storing data, adapters, which
 re-expose the store interface in different ways, and abstract network
 interfaces, which form a layer between LTc and real networks.  Because
-LTc is written in Haskell, the APIs for these components is specified
-with type-classes.
+LTc is written in Haskell, the APIs for these components are specified
+with type classes.
 
 Stores expose the key-value store API described in Section
 \ref{sec:kv-store}.  They are responsible for storing values
@@ -1426,7 +1424,7 @@ class Store a where
     open :: OpenParameters a -> IO a
     close :: a -> IO ()
 
-    keys :: a -> IO (Set Key)
+    keys :: a -> String -> IO (Set Key)
     get :: (Storable b) => a -> Key -> Version -> IO (Maybe b)
     set :: (Storable b) => a -> Key -> b -> IO Version
 
@@ -1450,14 +1448,14 @@ that it is very easy to debug, which was a great help during
 development.
 
 We have previously noted that, among data stores, file systems offer
-the fewest guarantees.  Since an LTc store can built on top of a file
-system, it could also be built on top another data store which offers
-more guarantees.  In particular, LTc could be built on top of a
-traditional database, which would offer the same level of performance
-as the underlying database, and would additionally provide LTc's
-interface and replication features.  Thanks to the store abstraction,
-different store implementations can be added and tested without
-affecting the rest of LTc's code.
+the fewest guarantees.  Since an LTc store can be built on top of a
+file system, it could also be built on top another data store which
+offers more guarantees.  In particular, LTc could be built on top of a
+traditional database; it would then offer the same level of
+performance as the underlying database, and the whole system would
+additionally provide LTc's interface and replication features.  Thanks
+to the store abstraction, different store implementations can be added
+and tested without affecting the rest of LTc's code.
 
 Adapters are components that wrap around a store and re-expose its
 interface somehow.  For instance, the Redis adapter translates between
@@ -1483,13 +1481,13 @@ in the previous section.  LTc's network interfaces abstract real
 network interfaces such as UDP or BP, and provide some extra features.
 Our reason for introducing them is two-fold.  First, since we were
 careful to only expose features common to both UDP and BP in the
-type-class, we are confident that LTc could be trivially adapted to
-working over BP, or other protocols for that matter.  Second, since
-one of the design goals of LTc was that its replication mechanism
-should work even over lossy intermittent network connections, we
-needed a simple way to test this.  For this purpose we wrote a special
-network interface which is exactly like the UDP one, except that it
-loses packets and introduces random delays.
+type class, we are confident that LTc could be trivially adapted to
+working over BP, or other similar protocols for that matter.  Second,
+since one of the design goals of LTc was that its replication
+mechanism should work even over lossy intermittent network
+connections, we needed a simple way to test this.  For this purpose we
+wrote a special network interface which is exactly like the UDP one,
+except that it loses packets and introduces random delays.
 
 We recall that LTc is meant to be used as an embedded data store, and
 give an example program which enables most of LTc's features.
@@ -1497,13 +1495,13 @@ give an example program which enables most of LTc's features.
 The core component of the following program is the store.  We note
 that although we are using a "Simple" store, the `open` function comes
 from the interface, not the implementation.  Once the store has been
-created, we begin enabling other components on top of it: we first
+created, we begin enabling other components on top of it.  We first
 start a node server over the UDP interface which enables LTc's
-inter-node replication, we then start the Redis adapter in order to
-provide a somewhat standardized interface to the data, and we finally
+inter-node replication.  We then start the Redis adapter in order to
+provide a somewhat standardized interface to the data.  We finally
 start the web interface so that we can administer the LTc node easily.
 Note that every component is replaceable, as long as the replacement
-respects the interface defined in the type classes.  Furthermore,
+respects the interface defined by the type classes.  Furthermore,
 every component other than the store is optional.
 
 ~~~~ {.haskell}
@@ -1557,8 +1555,8 @@ class Store a where
 Some components wish to be notified when something happens inside the
 store they are attached to.  This is the case of the node server which
 "listens" for changes to the data so that it can propagate them to
-other node, and it is the case of the status server which keeps web
-interfaces up to date.
+other node, and it is the case of the status server which keeps the
+web interface up to date.
 
 A simple solution would have these components register an "event
 handler" with the store: whenever the store does something, it would
@@ -1569,11 +1567,11 @@ event handler blocks?  What if it throws an exception?  Worse yet,
 each of these questions raises even more questions when it comes to
 implementing the scheme.
 
-We adopt another solution inspired by Erlang: threads communicate with
-each other only via channels.  In our example, if a component wishes
-to be notified of events, it gives the store a
-*channel*\footnote{Specifically, we use Haskell's STM channels.},
-which will events will be later written to.  In other words, we are
+We adopt a solution inspired by Erlang: threads communicate with each
+other only via channels.  In our example, if a component wishes to be
+notified of events, it gives the store a
+*channel*\footnote{Specifically, we use Haskell's STM channels.}, to
+which events will be later written.  In other words, we are
 effectively giving each interested component an asynchronous queue of
 events which it can consume at its leisure.
 
@@ -1881,7 +1879,7 @@ do not change.
 The next issue that we mentioned was the manual deconstruction and
 reconstruction of the `Person` records when inserting and getting
 values.  For LTc, we require that values have a `Generic` instance.
-This type-class is part of the
+This type class is part of the
 \href{http://www.haskell.org/ghc/docs/7.6.2/html/users_guide/generic-programming.html}{GHC
 Generics} framework, and allows us to get a "universal" representation
 of any value.  We can then use this representation to automatically
@@ -2214,7 +2212,7 @@ performed; similarly, the changes made by the merge are the same in
 both cases.
 
 We end the section on merging by mentioning that diffing and merging
-are implemented as a type-class in LTc.  As such, LTc's merging can
+are implemented as a type class in LTc.  As such, LTc's merging can
 easily be extended to custom data types, and its default behaviour can
 be overridden.
 
