@@ -479,6 +479,7 @@ findVersion vsn kr = find (\kv -> getVersion kv == vsn) (getTip kr : getHistory 
 writeEventChannels :: Simple -> Event -> IO ()
 writeEventChannels store event = do
     eventChannels <- readMVar (getEventChannels store)
+    -- FIXME If the TChan is closed, it should be removed.
     mapM_ (atomically . flip writeTChan event) eventChannels
 
 -- | If the store is not open, throw 'StoreClosed'.
