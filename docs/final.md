@@ -2779,12 +2779,12 @@ discussing a few use cases and example programs.
 ### Partial Drop-In Replacement for Redis
 
 Since LTc is a data store, the first question that comes to mind is
-how data can be accessed.  LTc is designed as an *embedded* data
+how can the data be accessed.  LTc is designed as an *embedded* data
 store, and we assume that a store will typically be accessed through
 the Haskell interface.  That said, we also provide an interface which
 mimics Redis's semantics and which is compatible with Redis clients.
 
-Testing out this interface is simple.  We start the LTc node with the
+Testing out this interface is simple.  We start an LTc node with the
 Redis adapter enabled by running `./ltc redis` in the LTc
 distribution's directory.  We can than use any Redis client, such as
 the command line `redis-cli`, to connect to the LTc node and access
@@ -2811,7 +2811,7 @@ redis 127.0.0.1:6379> GET mykey
 "hello"
 ~~~~
 
-In order to enable the Redis adapter in custom programs, we only need
+In order to enable the Redis adapter in custom programs, we need only
 call the `Redis.serve` function on an open store:
 
 ~~~~ {.haskell}
@@ -2828,9 +2828,9 @@ implement the most common ones, and adding support for the rest would
 not be difficult.  There are, however, certain Redis commands, such as
 those pertaining to configuration, which make little sense for LTc.
 Additionally, Redis supports some features, most notably expiring
-keys, which are not supported for LTc.  Despite this, LTc supports
-those commands typically found in tutorial, so it could be considered
-an partial drop-in replacement for the Redis server.
+keys, which are not supported for LTc.  Despite this, LTc supports the
+commands typically found in tutorial, so it could be considered an
+partial drop-in replacement for the Redis server.
 
 Although LTc could replace the Redis server in some cases, this would
 not be a practical of it.  This is because the two data stores were
@@ -2909,8 +2909,8 @@ make cheating harder, but that is beyond the scope of this section.}.
 The code for this are the four lines in the middle; the rest is just
 boilerplate to setup LTc, and the logic which determines who won.
 
-We are abusing LTc somewhat in this case, since we are using it as a
-messaging system, rather than as a data store.  On the other hand, it
+We are abusing LTc somewhat in this example, since we are using it as
+a messaging system, rather than as a data store.  On the other hand,
 working with data is generally easier than working with message
 queues, so our use of LTc is justified.
 
@@ -2962,7 +2962,7 @@ for values from other nodes to reach us, and react as needed.
 ### Decentralized Forum
 
 In Section \ref{sec:disaster}, we described disaster stricken areas as
-one of the environments LTc is tailored for.  We now consider an
+one of the environments that LTc is tailored for.  We now consider an
 example of a program that would be useful in such a situation: a
 decentralized forum\footnote{Every disaster movie features the
 protagonists passing a wall with pictures and notes.  Our
@@ -2974,7 +2974,7 @@ store behind it, functions in multiple disconnected locations at once.
 Whenever two of these instances of the website come into contact, they
 should exchange whatever data they have.
 
-This decentralized forum example highlights two more features of LTc's
+This decentralized forum example highlights two features of LTc's
 replication mechanism which our previous game example overlooked.  The
 first is that replication works even if nodes are not always
 reachable.  The second is that replication happens through *all* the
@@ -3001,7 +3001,7 @@ getThreadMessages :: (Store s) => s -> ThreadId -> IO [Message]
 getThreadMessages store tid = do
     let keyPat = "thread:" ++ show tid ++ "messages:.*"
     msgKeys <- keys store keyPat
-    mapM (getExn store) (Set.toList msgKeys)
+    map fst <$> mapM (getLatestExn store) (Set.toList msgKeys)
 ~~~~
 
 In order to post a message, we just insert it into the data store with
@@ -3020,16 +3020,16 @@ postMessage store tid msg = do
 ~~~~
 
 Since LTc handles the details automatically, our code can focus on the
-problem specific parts of the forum.  As a result it looks simple and
-clean.
+problem specific parts of the forum.  As a result, the code looks
+simple and clean.
 
 ## Performance
 
 \label{sec:performance}
 
-Performance-wise, LTc rates very poorly.  The main reason for this was
+Performance-wise, LTc does very poorly.  The main reason for this was
 our focus on its design.  As such, LTc is currently optimised for
-debugging and development, rather than real world applications.
+debugging and development, rather than for real world applications.
 
 As an example of this in action, consider the on-disk format of one of
 the files used by the data store:
@@ -3067,22 +3067,22 @@ Since LTc's current data store is modeled after Git, it is
 unsurprising that they behaved similarly.  In terms of disk space,
 LTc's data store was $2.9$Mb at the end, while Git's repository was
 $2.3$Mb.  We assume the Git repository was smaller because Git
-archives and compresses old changesets, which LTc does not.  In terms
+archives and compresses old changesets, while LTc does not.  In terms
 of access speed, they were indistinguishable, both walking through the
-entire history in approximately $5$s.
+entire history in approximately $12$s.
 
 However, this experiment was unusually favourable to LTc, and there
 are many pathological cases.  To give a simple example, consider a
 data store which contains `[("foo", 1)]`, and we repeatedly increment
-the value associated with `"foo"`.  On most systems, each increment
+the value associated with `"foo"`.  On many systems, each increment
 will result in a new $4$ Kb\footnote{The minimum on-disk size of a
-file on most systems.} file being created, and it is easy to see how
+file on many systems.} file being created, and it is easy to see how
 disk usage will quickly get out of hand.
 
-The solution to his problem is to implement a better data store, in
-particular, one that does not rely on the file system as much.  A
-simple way of doing so would be to build upon another existing data
-store such as `acid-state` or an SQL database.
+The solution to this problem is to implement a better data store
+component, in particular, one that does not rely on the file system as
+much.  A simple way of doing so would be to build upon another
+existing data store such as `acid-state` or an SQL database.
 
 ### Write Throughput
 
@@ -3093,8 +3093,8 @@ similar data stores.
 
 When writing simple integers, LTc performs approximately $27$ writes
 per second.  For comparison, SQLite, a widely used embedded database,
-performs approximately $76$ writes per second.  So, it is about $2.8$
-times faster.
+performs approximately $76$ writes per second.  So, SQLite is about
+$2.8$ times faster.
 
 Again, we attribute this problem to the completely unoptimized data
 store, and we believe that replacing it would at least bring LTc on
@@ -3132,11 +3132,11 @@ made, they all effectively use the same two replication mechanisms.
 The other big surprise came when we rewrote LTc to support storing
 values of any type, rather than just values of a few predefined types.
 Doing the former is much easier than the latter, and we are not sure
-why the approach is rarely used in commercial data stores.b
+why the approach is rarely used in commercial data stores.
 
 Needless to say, the author learned many things during the course of
-this project, but if he had to single out what particular item to take
-away, it would be that Hofstadter's Law is an understatement.
+this project, but if he had to single a particular item to take away,
+it would be that Hofstadter's Law is an understatement.
 
 > "Hofstadter's Law: It always takes longer than you expect, even when
 > you take into account Hofstadter's Law."
@@ -3147,7 +3147,7 @@ away, it would be that Hofstadter's Law is an understatement.
 
 Our original reason for developing LTc was that there is a need for
 such a program.  The situation has not changed, and the author intends
-to use LTc, and to continue working development on it.
+to use LTc, and to continue development on it.
 
 Furthermore, as we have shown in Section \ref{sec:functionality}, LTc
 simplifies writing some programs with distributed state considerably.
