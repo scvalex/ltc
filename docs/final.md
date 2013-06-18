@@ -2879,10 +2879,39 @@ Since there are Redis clients for every
 language\footnote{\url{http://redis.io/clients}}, we can now claim
 that there are also LTc clients for every language.
 
-### Decentralized Rock Paper Scissors
+### Rock Paper Scissors
 
-<!-- Emphasis on how hard it would be to write with something
-else. -->
+~~~~ {.haskell}
+playRpsRound :: NetworkLocation UdpInterface -> IO ()
+playRpsRound opponent = do
+    -- Open the local store.
+    store <- open (OpenParameters
+                       { location = "rps-store"
+                       , nodeName = "rps-client"
+                       })
+
+    -- Connect to the host node.
+    node <- Node.serve store "rps-client"
+    Node.addNeighbour node "rps-host" opponent
+
+    -- Make a choice of rock, paper, or scissors.
+    choice <- read <$> getLine
+    _ <- set store "player:2:choice" (choice :: RPS)
+
+    -- Block until other player makes their choice and get it.
+    waitForSetKey store "player:1:choice"
+    Just (otherChoice, _) <- getLatest store "player:1:choice"
+
+    -- Decide round.
+    case (choice, otherChoice) of
+        (Rock, Paper)     -> putStrLn "You lose."
+        (Rock, Scissors)  -> putStrLn "You win."
+        (Paper, Rock)     -> putStrLn "You win."
+        (Paper, Scissors) -> putStrLn "You lose."
+        (Scissors, Rock)  -> putStrLn "You lose."
+        (Scissors, Paper) -> putStrLn "You win."
+        _                 -> putStrLn "You tie."
+~~~~
 
 ### Decentralized Forum
 
