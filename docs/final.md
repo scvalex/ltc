@@ -2372,6 +2372,8 @@ those that it can, and caches the rest for later use.
 
 ## Propagation Problems
 
+\label{sec:propagation-problems}
+
 We now discuss a few *practical* problems that may crop up when nodes
 propagate changes to one another.
 
@@ -3092,35 +3094,62 @@ the total size of the entries that needed synchronization.
 Conclusions
 ===========
 
-<!-- What I achieved. -->
-<!-- What I learned. -->
+During the course of this project, we have done several things.  We
+noticed that, under certain conditions, network channels are high
+latency, lossy, and exhibit intermittent connectivity, and determined
+that many programs will fail to function under these circumstances.
+We focused on the problem of data replication, we looked into the many
+alternative design choices available, and we selected the ones which
+best matched our network model and which could be implemented in the
+time we had available.  In particular, we realized that we would need
+several features traditionally associated with distributed version
+control systems in order to support our replication requirements.
+Finally, we implemented LTc, a replicated data store for high-latency
+disconnected environments.
 
-> Hofstadter's Law: It always takes longer than you expect, even when
-> you take into account Hofstadter's Law.
+The author was surprised by a few things during the course of the
+project.  The first and largest surprise was that, although data
+stores differ wildly in terms of interface, features, and guarantees
+made, they all effectively use the same two replication mechanisms.
+The other big surprise came when we rewrote LTc to support storing
+values of any type, rather than just values of a few predefined types.
+Doing the former is much easier than the latter, and we are not sure
+why the approach is rarely used in commercial data stores.b
 
-<!-- What I found easy. -->
-<!-- What I found hard. -->
+Needless to say, the author learned many things during the course of
+this project, but if he had to single out what particular item to take
+away, it would be that Hofstadter's Law is an understatement.
 
-### Future Work
+> "Hofstadter's Law: It always takes longer than you expect, even when
+> you take into account Hofstadter's Law."
 
-<!-- What future does this program have? -->
-<!-- Will I continue working on it? -->
-<!-- Will anyone use it? -->
-<!-- What future research opportunities there are? -->
+## Future Work
 
-<!-- FW: Expire unused values. -->
-<!-- FW: Expire history. -->
-<!-- FW: Namespaces for keys; sort of like databases in SQL lingo. -->
-<!-- FW: Upgradeable values (store the full representation of the type) -->
-<!-- FW: More ACID -->
-<!-- FW: More merging strategies. -->
-<!-- FW: Expire the cache of remote changesets. -->
-<!-- FW: Message integrity checks. -->
-<!-- FW: Message authenticity checks. -->
-<!-- FW: Some sort of rate limiting -->
-<!-- FW: In memory store. -->
-<!-- FW: Support for large changes. -->
-<!-- FW: Better than epidemic routing. -->
-<!-- FW: More data stores. -->
-<!-- FW: Actual drop in replacement for Redis. -->
-<!-- FW: Version clock explosion! -->
+Our original reason for developing LTc was that there is a need for
+such a program.  The situation has not changed, and the author intends
+to use LTc, and to continue working development on it.
+
+Furthermore, as we have shown in Section \ref{sec:functionality}, LTc
+simplifies writing some programs with distributed state considerably.
+We conclude that LTc is likely to have a future even in situations
+where its network model is too pessimistic.
+
+Unfortunately, there are several problems that need to be addressed
+before LTc becomes suitable for serious use.
+
+ * The performance problems mentioned in Section \ref{sec:performance}
+   can all be traced to the implementation of LTc's data store.
+   Replacing it with one based on an existing data store is a simple
+   change which would alleviate said problems immediately.
+   Implementing a custom data store would also be an option, but we
+   are not confident that we would do a better job than existing data
+   stores.
+
+ * The communications problems mentioned in Section
+   \ref{sec:propagation-problems}, in particular message integrity,
+   authenticity, and secrecy, could all be solved by adding a
+   cryptography layer underneath the current network interfaces.
+
+For a more long term objective, the behaviour of networks of LTc nodes
+needs to be observed in practice, and the heuristics we use when
+propagating changes need to be tuned.
