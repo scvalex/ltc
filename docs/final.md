@@ -2881,6 +2881,10 @@ that there are also LTc clients for every language.
 
 ### Rock Paper Scissors
 
+As our next example, we will implement the game "Rock Paper Scissors"
+using LTc.  We first show the *entire* code for one of the players and
+then explain what is going on.
+
 ~~~~ {.haskell}
 playRpsRound :: NetworkLocation UdpInterface -> IO ()
 playRpsRound opponent = do
@@ -2912,6 +2916,30 @@ playRpsRound opponent = do
         (Scissors, Paper) -> putStrLn "You win."
         _                 -> putStrLn "You tie."
 ~~~~
+
+"Rock Paper Scissors" is a simple two-player game.  A round consists
+of each player making a choice of "rock", "paper", or "scissors" in
+secret, followed by both players simultaneously revealing their
+choices to each other.  The winner of the round is the player with the
+"better" choice as determined by the following rules: "paper beats
+rock", "rock beats scissors", and "scissors beats paper".
+
+When implementing the game, we distinguish between the "host" player
+which creates the game and waits for an opponent, and the "challenger"
+player, which somehow knows about the host, and joins the game they
+created.  The code above is for the "challenger" player.
+
+<!-- The single waitForSetKey/getLatest could be replaced by a
+cycle. -->
+
+<!-- We are abusing LTc and using it as a messaging system. -->
+
+<!-- It is definitely possible to cheat. -->
+
+<!-- Note how surprisingly short the code is. -->
+
+<!-- Writing this particular example would not be difficult with a
+decent messaging library, but more complicated examples would. -->
 
 ### Decentralized Forum
 

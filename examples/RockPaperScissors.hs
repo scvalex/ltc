@@ -74,6 +74,7 @@ playRpsRound opponent = do
         (Scissors, Paper) -> putStrLn "You win."
         _                 -> putStrLn "You tie."
 
+-- FIXME waitForSetKey is so general, it should be part of LTc.
 waitForSetKey :: (Store s) => s -> Key -> IO ()
 waitForSetKey store key = do
     evChan <- newTChanIO
