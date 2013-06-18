@@ -206,9 +206,9 @@ sort of data it can hold, what guarantees it makes, and over what
 kinds of networks it can synchronize.
 
 We begin this section by discussing how other data stores keep
-replicated copies of the data synchronized.  We then move on to
-answering the above questions, and discuss why each approach was
-chosen in favour of its alternatives.
+replicated copies of their data synchronized.  We then move on to
+answering the above questions, and discuss, in each case, why our
+approach was chosen in favour of the alternatives.
 
 ## Replicating Other Data Stores
 
@@ -216,7 +216,7 @@ chosen in favour of its alternatives.
 
 As mentioned in Section \ref{sec:motivation}, our main reason for
 writing LTc is because other data stores make certain strong
-assumptions about the communications medium which make
+assumptions about the communications medium, which makes
 synchronization over high-latency lossy channels hard.  We will now
 look at how several data stores synchronize and see why exactly their
 approach is problematic.
@@ -229,10 +229,11 @@ Traditional relational databases such as
 MySQL\footnote{\url{https://www.mysql.com/}},
 PostgreSQL\footnote{\url{http://www.postgresql.org/}}, and Oracle
 Database\footnote{\url{http://www.oracle.com/uk/products/database/overview/index.html}}
-generally offer two different kinds of replication: master-slave
-replication, where changes are only made on one master node, which
-then propagates them to slave nodes, and clustering, where changes can
-be made on any node, which are then propagated to every other node.
+generally offer two kinds of replication: master-slave replication,
+where changes are only made on one master node, which then propagates
+them to slave nodes, and clustering, where changes can be made on any
+node, but the changes then need to happen on all or most of the nodes
+at once.
 
 MySQL describes its replication mechanism as "asynchronous"
 \citep{mysql:replication}, by which it means that the master node is
@@ -249,8 +250,8 @@ connections, it would not work over lossy ones.
 MySQL clustering works by replicating the data across multiple nodes,
 and making sure that changes on any node happen on all the other nodes
 as well.  To achieve this, the clustered nodes need access to each
-other to ensure that none commit changes unless all of them do
-\citep{mysql:clustering-overview}.  So, all the nodes need to be
+other to ensure that none commit to making changes unless all of them
+do \citep{mysql:clustering-overview}.  So, all the nodes need to be
 connected to the same low-latency network
 \citep{mysql:clustering-requirements}.
 
@@ -280,9 +281,10 @@ systems such as JMS\footnote{Java Message Service} or
 AMQP\footnote{Advanced Message Queuing Protocol}, and is a
 generalization of the approaches of MySQL and PostgreSQL.  Oracle
 Streams provides a mechanism for Oracle databases to publish and to
-subscribe to events \citep{oracle:streams}.  Although this scheme
-could work in an asynchronous fashion, it still requires stable
-lossless connections between databases.
+subscribe to events such as changes to the data
+\citep{oracle:streams}.  Although this scheme could work in an
+asynchronous fashion, it still requires stable lossless connections
+between databases.
 
 Oracle Database's clustering
 solution\footnote{\url{http://www.oracle.com/technetwork/products/clustering/overview/index.html}}
@@ -323,10 +325,10 @@ multiple writable nodes.  This achieves the same effect as clustering
 in traditional databases.  Additionally, since CouchDB versions the
 documents inserted into it, it avoids the wasteful retransmission that
 Redis does.  Unfortunately, getting the stream of changes requires
-synchronous lossless connections between nodes.  That said, the
-authors do not believe that this requirement is essential to the
-replication scheme, and LTc's replication is similar, but designed to
-work over lossy asynchronous connections.
+synchronous lossless connections between nodes.  That said, the author
+does not believe that this requirement is essential to the replication
+scheme, and LTc's replication is similar, but designed to work over
+lossy asynchronous connections.
 
 For completeness, we also mention
 \href{http://www.mongodb.org/}{MongoDB}, the other widely used
@@ -337,10 +339,10 @@ a similar scheme fraught with the same problems
 
 ### Distributed Version Control Systems
 
-The last kind of data store we will consider are Distributed Version
+The last kind of data store we consider are Distributed Version
 Control Systems.  Such programs gained much traction among developers
 in the last decade due to their unique features.  Unlike traditional
-version control systems which had some centralized server which
+version control systems which had a centralized server which
 developers needed to communicate with in order to commit and pull
 changes, DVCSs replicated the entire source code repository among
 every participating developer.  This allowed multiple developers to
@@ -352,42 +354,40 @@ At first glance, DVCS such as \href{http://git-scm.com/}{Git},
 \href{http://darcs.net/}{Darcs} have exactly the features we are
 looking for: they are distributed data stores where nodes are normally
 disconnected, and partial or full synchronization can be performed
-whenever nodes become reachable.  Unfortunately, they were designed
-with a very specific purpose in mind, and artifacts of this makes them
-unusable for our needs.
+whenever nodes become reachable.  Unfortunately, these programs were
+designed with a very specific purpose in mind, and artifacts of this
+makes them unusable for our needs.
 
-The largest problem, by far, is that the synchronization mechanism
+The biggest problem, by far, is that the synchronization mechanism
 between replicated copies is designed to run over what developers
 would normally use: low latency SSH or HTTP connections.  The emphasis
-here is on "low latency" as the synchronization protocols of the DVCSs
-mentioned above all require multiple round trips during a single
-synchronization \citep{Chacon09} \citep{mercurial}.
+here is on "low latency", as the protocols used by the DVCSs mentioned
+above all require multiple round trips during a single synchronization
+\citep{Chacon09} \citep{mercurial}.
 
 Another lesser problem is that the synchronization mechanism between
 two nodes usually expects to have all the necessary information about
 the copies of the data in both nodes.  Practically, this is achieved
 by the having one node query the other for its state.  Although this
 approach is clearly not suitable for our use cases, this is not a
-fundamental problem as each node could simply memoize the state of the
-other nodes.
+fundamental problem as each node could simply memoize the states of
+the other nodes.
 
 ### Conclusion
 
 In this section, we have looked at how some traditional SQL databases,
-NoSQL data stores, and distributed version control systems handle
-replication of data across nodes.  We have seen that they generally
-follow one of two schemes: the first is based around the idea of
-propagating changes to the data between nodes such that they all apply
-the same operations, and the second is based around the idea of
-blocking write operations until all nodes commit to making the change.
-Although only the latter scheme is inherently synchronous, in
-practice, either due to assumptions about the network medium, or as an
-artifact of the environment in which they were written, both schemes
-tend to be implemented in synchronous ways.  Furthermore, all
-implementations invariably assume the existence of lossless
-connections between nodes.  These two characteristics make them
-unsuitable for the environments describe in Section
-\ref{sec:scenarios}.
+NoSQL data stores, and DVCSs handle replication of data across nodes.
+We have seen that they generally follow one of two schemes: the first
+is based around the idea of propagating changes to the data between
+nodes such that they all apply the same operations, and the second is
+based around the idea of blocking change operations until all nodes
+commit to making the change.  Although only the latter scheme is
+inherently synchronous, in practice, either due to assumptions about
+the network medium, or as an artifact of the environment in which they
+were written, both schemes tend to be implemented in synchronous ways.
+Furthermore, all implementations invariably assume the availability of
+lossless connections between nodes.  These two characteristics make
+them unsuitable for the environments we are considering.
 
 ## Data Interface
 
@@ -401,10 +401,10 @@ LTc exposes.
 When people talk about "relational", "NoSQL", or "object" databases,
 they are referring to the ways users can access stored data.
 Traditionally, the main paradigm has been relational, but with the
-advent of the Web over the past decade, key-value stores have been
-gaining increased popularity.  In the following two subsections, we
-briefly present the two paradigms, and explain why we chose key-value
-for LTc.
+recent advent of the Web, key-value stores have been gaining increased
+popularity.  A third way of accessing data is through a native
+object-like interface.  In the following subsections, we briefly
+present these paradigms, and explain why we chose key-value for LTc.
 
 ### Relational
 
@@ -454,7 +454,8 @@ column, $1$, has already been used on the other row.  The last
 insertion into `languages` fails because the value for the `user`
 column, $3$, has not been used as the `id` of any row in `users`.
 
-Having populated the tables with some values, we display them:
+Having populated the tables with values, we display them by running a
+few general queries:
 
 ~~~~ {.sourceCode}
 sqlite> SELECT * FROM users;
@@ -473,8 +474,8 @@ mike|french
 ~~~~
 
 The first two commands are unsurprising: they merely display the
-`users` and `languages` table.  The third command, however,
-illustrates a key feature of relational databases, the ability to
+`users` and `languages` tables.  The third command, however,
+illustrates a key feature of relational databases: the ability to
 combine tables in queries.  Here, we combine (or join) the two tables
 on the `id` column in `users` and the `user` column in `languages`.
 Since the foreign key constraint holds, we know that all rows in the
@@ -483,7 +484,7 @@ Since the foreign key constraint holds, we know that all rows in the
 A difficulty in implementing relational databases is ensuring that
 constraints are not broken by changes to the data.  Although this is
 not particularly difficult to guarantee if the entire database is on a
-single machine, it becomes much harder in a distributed context.
+single machine, it becomes much harder to do in a distributed context.
 
 We have seen in Section \ref{sec:other-traditional-databases} that, in
 practice, relational databases generally have two data replication
@@ -492,8 +493,9 @@ scheme and involves sending a stream of changes from the master node
 to the slaves.  It is easy to see now why this stream must be
 lossless: if the master applies any change which the slaves do not
 receive, they will end up checking constraints against a different
-data set than the master, and may find failures where there are none;
-so, it would be impossible to check consistency on the slaves.
+data set than the master, and may find constraint failures where there
+are none; so, it would be impossible to check consistency on the
+slaves.
 
 Since LTc's replication needs to work over lossy connections, LTc
 cannot support the kinds of constraints that are central to relational
@@ -508,13 +510,13 @@ which has gained much traction in recent years: key-value stores.
 Unlike relational databases which store tables of interconnected data,
 key-value stores only associate keys with values, and the individual
 values are entirely independent.  In terms of their interface, they
-are more like the map or dictionary data structures present in every
+are more like the map or dictionary data structures present in most
 programming language's standard library than relational databases.
 
 Key-value stores have gained prominence in recent years and are now
 used throughout the industry.  To list a few examples: Redis is used
-by Twitter, GitHub, StackOverflow \citep{redis:who-uses}; CouchDB is
-used by Engine Yard, and Credit Suisse \citep{couchdb:in-the-wild};
+by Twitter, GitHub, and StackOverflow \citep{redis:who-uses}; CouchDB
+is used by Engine Yard, and Credit Suisse \citep{couchdb:in-the-wild};
 MongoDB is used by SAP, MTV, and Disney
 \citep{mongodb:production-deployments}.
 
@@ -544,7 +546,7 @@ All the above operations insert data into the data store: `set`
 associates the key in its first argument with the value in its second
 argument; `sadd` adds its second argument to the set keyed by its
 first argument.  Note that the key "user:1:name" is just string; the
-logic that it means "the field name of user 1" is handled solely by
+logic that it means "the field 'name' of user 1" is handled solely by
 the application logic.  The resulting data store looks like this:
 
 \begin{center}
@@ -634,7 +636,7 @@ users[2] = user2
 transaction.commit()
 ~~~~
 
-The non boilerplate part of the above code are the $7$ lines which
+The non-boilerplate part of the above code are the $7$ lines which
 create and add the users.  We note how these lines do *not* look like
 usual database handling code.  In fact, they look like normal Python.
 
@@ -686,15 +688,15 @@ contents}, in particular, only store binary strings \footnote{Note
 that permissions and ownership data do not refer to the contents of
 the file, but rather to how the file can be used.}.  The advantage of
 viewing values as opaque binary blobs is that it makes the storage
-system as general as possible: anything that can be serialized can be
-stored and no modification to the storage system is required.  The
+system as general as possible: anything that can be serialized, can be
+stored, and no modification to the storage system is required.  The
 downside is that it puts the burden of type safety squarely on the
 user's shoulders; the end result is as expected: many programs use
 heuristics to determine the types of the contents of files, and the
 heuristics often give wrong results\footnote{The author cannot count
 the number of times he has had to manually tell his text editor that
 it is looking at a Prolog file, and not a Perl file, even though they
-both use the same extension}.
+both use the same extension.}.
 
 Redis takes a similar approach: it can store strings, sets of strings,
 and lists of strings \citep{redis:types}.  Additionally, it sometimes
@@ -729,7 +731,7 @@ CouchDB \citep{mongodb:bson-types}.
 From a type-safety point of view, supporting some primitive types is
 better than nothing, and indeed, it is often "good enough" since it
 covers the most common use cases, but it still requires users to
-manually disassemble their types into primitive components before
+manually disassemble their values into primitive components before
 inserting them into the data store, and to manually reassemble them
 when extracting.
 
@@ -738,8 +740,8 @@ when extracting.
 Finally, some systems support storing any data types.  The fine print
 is that only data types with some specific characteristics are
 supported: they usually have to be serializable, and their
-representations have to be finite\footnote{this usually rules out
-storing functions and infinite data types}.
+representations have to be finite\footnote{This usually rules out
+storing functions and infinite values.}.
 
 Object databases are the most famous examples of systems that support
 storing any data type.  For instance, ZODB, is capable of storing
@@ -752,10 +754,10 @@ layer for applications.  ZODB, mentioned above, is the persistence
 layer for Zope\footnote{\url{http://zope.org/}} and several associated
 content management systems widely used on the Internet.
 
-Since this is the most general approach, is also the approach LTc
-takes.  We discuss the implications of this decision in detail in
-Section \ref{sec:strongly-typed}, but, roughly speaking, any Haskell
-value that can be serialized and diffed can be stored in LTc.
+Since this is the most general approach, it is also the approach LTc
+takes.  We discuss the details of this decision in Section
+\ref{sec:strongly-typed}, but, roughly speaking, any Haskell value
+that can be serialized and diffed, can be stored in LTc.
 
 ## Consistency Guarantees
 
@@ -766,15 +768,14 @@ involved.
 
 ### The CAP Problem
 
-In general, one of the ways to characterize a distributed data store
-is in terms of Eric Brewer's CAP Theorem \citep{Gil02}.  The CAP
-theorem roughly states that a distributed service cannot provide all
-three of the following guarantees: consistency, availability, and
-partition tolerance.  By consistency, we mean that all nodes have the
-same data.  By availability, we mean that all nodes are capable of
-responding to requests at any time.  By partition tolerance, we mean
-that the system continues to function even if some nodes become
-unreachable.
+One of the ways to characterize a distributed data store is in terms
+of Eric Brewer's CAP Theorem \citep{Gil02}.  The CAP Theorem roughly
+states that a distributed service cannot provide all three of the
+following guarantees: Consistency, Availability, and Partition
+Tolerance.  By consistency, we mean that all nodes have the same data.
+By availability, we mean that all nodes are capable of responding to
+requests at any time.  By partition tolerance, we mean that the system
+continues to function even if some nodes become unreachable.
 
 \begin{center}
 \begin{tabular}{c}
@@ -806,7 +807,7 @@ algorithm, but other more sophisticated algorithms
 exist. \url{https://en.wikipedia.org/w/index.php?title=Special:Cite&page=Two-phase_commit_protocol&id=559848750}}.
 This implies that if even one of the other nodes is unreachable, no
 changes can be made.  In other words, the clustering mechanism for
-relational databases is not partition tolerant.
+relational databases prevents them from being available at all times.
 
 Although we described the above problem in terms of a clustered
 database, it effectively boils down to a decision problem: when one
@@ -838,7 +839,7 @@ to a certain extent.
 For instance, consider how replication works with relational databases
 or with NoSQL data stores: there is usually one or more master nodes
 which accept both write and read requests, one or more slave nodes
-which only accept read requests, and the master nodes forward write
+which only accept read requests, and the master nodes forwards write
 requests to the slaves.  If a network partition occurs between slave
 and master nodes, it is usually safe for both to continue operation,
 with the caveat that the slaves may be serving stale data.
@@ -851,33 +852,33 @@ system that is Available and Partition Tolerant.
 Of course, a truly inconsistent system would not be very useful.  A
 simple way to build such a system would be to setup several completely
 independent nodes: each node would always be available, and since no
-node is aware of any other nodes, network partitions would not affect
-them; the downside would be that any advantage we might have been
-trying to gain by distributing the data would be lost.  But suppose we
-could guarantee that the system were *eventually* consistent.  That
-is, suppose we could guarantee that, in the absence of writes, the
-system will eventually reach a state where all the nodes have the same
-data.  Then the system would be useful again.
+node is aware of any other, network partitions would not affect them;
+the downside would be that any advantage we might have gained by
+distributing the data would be lost.  But suppose we could guarantee
+that the system were *eventually* consistent.  That is, suppose we
+could guarantee that, in the absence of writes, the system will
+eventually reach a state where all the nodes have the same data.  Then
+the system would be useful again.
 
 This is the approach taken by CouchDB and its user manual illustrates
 many of the difficulties that arise.  The biggest of them is the
 existence of conflicts.  Note that, when relaxing any of the other
 guarantees, it would not have been possible for nodes to make
-conflicting changes to the database, but if we guarantee availability
-and partition tolerance, it must be possible for nodes to make changes
+conflicting changes to the data, but if we guarantee availability and
+partition tolerance, it must be possible for nodes to make changes
 independently of each other.  This introduces the need for conflict
 resolution in the data store semantics, which in turn introduces the
 need to keep track of previous versions of the data.
 
 We previously mentioned that network partitions occur in practice.
-With LTc, we take this observation further: not only do network
-partitions happen, the network *is* partitioned.  As such, must
-support partition tolerance.
+With LTc, we take this observation further: not only can network
+partitions happen, we assume that the network *is* partitioned.  As
+such, must support partition tolerance.
 
 Since communication between nodes can be very slow, guaranteeing
 consistency would mean that most operations have to be equally slow.
 For LTc, we relax the strict consistency guarantee and use *eventual
-consistency*.
+consistency* instead.
 
 So, LTc is an eventually consistent, always available, and partition
 tolerant system.  In this sense, LTc has more in common with
@@ -889,7 +890,7 @@ relational databases.
 So far, we have seen that LTc is a an ecAP distributed data store
 which can hold any serializable Haskell value.  Now we describe the
 levels of atomicity operations on individual data stores may have, and
-then define the level LTc uses.
+then define the level that LTc uses.
 
 On one end of the spectrum, operations could have no atomicity
 whatsoever: writes may be interrupted halfway through, reads may
@@ -931,8 +932,8 @@ access to shared files across networks" \citep{rfc1094}, actually has
 slightly different semantics than most local file systems: when
 appending to a file, it first enlarges the file by zeroing out the new
 space, and only afterwards writes the new data.  This means that, if
-you are tailing a file over NFS, you see spurious zeros which are
-never part of the file itself.
+we `tail` a file over NFS, we see spurious zeros which are never part
+of the file itself.
 
 Although file systems usually provide few atomicity guarantees, the
 few that they do provide are enough to build upon.  For instance, we
@@ -946,7 +947,7 @@ The next step along the spectrum would be to support atomic single
 reads and writes.  In other words, writing a single item to and
 reading a single item from the data store is guaranteed to be an
 uninterruptible atomic operation.  In practice, data stores usually go
-one step further and support atomically writing and reading multiple
+one step further and support atomically writing and reading *multiple*
 items at once.
 
 Most NoSQL data stores usually make these or similar guarantees.  For
@@ -965,20 +966,21 @@ enough to manually implement Software Transactional Memory
 \citep{stm}, if desired.
 
 For LTc, we provide both the ability to atomically set and get
-multiple values, and versions for values.  Since both Redis and
-CouchDB are widely used in production, we believe that these
-guarantees and features are enough for a wide range of applications.
+multiple values atomically, and versions for values.  Since both Redis
+and CouchDB are widely used in industry, we believe that these
+guarantees and features are sufficient for a wide range of
+applications.
 
 ### ACID
 
 For completeness, we also mention ACID transactions, which
 \citep{ACID} defines as having the following four characteristics:
-atomicity, consistency, isolation, durability.
+Atomicity, Consistency, Isolation, and Durability.
 
-LTc does *not* support any transactions.  In particular, it does not
+LTc does *not* support transactions.  In particular, it does not
 support atomically reading a value, processing it, and writing it
 back.  Although this makes LTc less useful, it does allow us to focus
-on the data store, and on the synchronization protocols, both of which
+on the data store and on the synchronization protocols, both of which
 would be greatly complicated by the addition of transactions.
 
 ## Delay-Tolerant Network Model
@@ -994,13 +996,15 @@ As mentioned in Section \ref{sec:motivation}, LTc's synchronization
 mechanism is meant to work even on networks where packet round-trip
 times are prohibitively large, where nodes are not always reachable,
 and where end-to-end connectivity may be impossible.  The approach LTc
-takes with regards to communication is not new, and is called
+takes with regards to communication is not new and is called
 Delay-Tolerant Networking\footnote{or, \emph{Disruption}-Tolerant
-Networking as DARPA likes to call it} (DTN).  Although research in DTN
-has been done since the first computer networks were built, the pace
-has increased greatly in the last decade.  More relevant to LTc, the
-\href{https://www.ietf.org/}{IETF} has now published two RFCs about
-the architecture of DTN systems, and the protocol used by them.
+Networking as DARPA likes to call it}.  Although research in DTN has
+been done since the first computer networks were built, the pace has
+increased greatly in the last decade.  More relevant to LTc,
+\href{https://www.ietf.org/}{IETF}, the organization usually
+responsible for producing standards about network systems and
+protocols, has now published two RFCs about the architecture of DTN
+systems and the protocol used by them.
 
 RFC 4838 \citep{rfc4838} outlines the reasons for developing DTN and
 describes the high-level architecture of such networks.  Usefully, it
@@ -1035,7 +1039,7 @@ identifies the tacit assumptions made by most networked programs:
 As described in mentioned in Section \ref{sec:motivation}, and
 described in Section \ref{sec:scenarios}, there are several
 environments where the previous assumptions do not hold.  Protocols
-that make these assumptions will not function as expected in such
+that make these assumptions will not function as expected in these
 environments, and programs relying on them will fail.  In particular,
 this is the case for distributed data stores which perform many
 network operations during synchronization.
@@ -1097,23 +1101,25 @@ round-trips is UDP\footnote{``I have this awesome joke about UDP, but
 I don't care if you get it or not.''}, which "provides a minimal,
 unreliable, best-effort, message-passing transport". \citep{rfc5405}
 
-Defining the LTc's synchronization protocol on top of UDP poses
+Defining LTc's synchronization protocol on top of UDP poses
 significant problems.  First, UDP makes no guarantee that a sent
 packet will be received by the destination.  More problematically,
 there is no way for the source to tell if a packet was lost or not.
 Worse yet, even assuming a perfect connection that does not lose
 packets, if the destination does not process them quickly enough, its
-UDP buffer will spill over causing lost packets.  So, LTc's
+UDP buffer will spill over, causing lost packets.  So, LTc's
 synchronization mechanism must be able to make forward progress even
 if only partial updates are available.  Second, UDP makes no guarantee
 that sent packets will be received in order.  This is problematic
 because the order of updates is important.  Finally, UDP makes no
 guarantee that a sent packet will not be received multiple times.
 Again, this is problematic because updates should only be applied
-once.  If we were using BP, which was designed with systems like LTc
-in mind, it would solve or alleviate all these problems.  Since we
-have little choice in the matter, we have worked around the
-limitations of UDP as discussed in Section \ref{sec:changes}.
+once.
+
+If we were using BP, which was designed with systems like LTc in mind,
+it would solve or alleviate all these problems.  Since we have little
+choice in the matter, we have worked around the limitations of UDP as
+discussed in Section \ref{sec:changes}.
 
 \clearpage
 
@@ -2873,12 +2879,12 @@ Since there are Redis clients for every
 language\footnote{\url{http://redis.io/clients}}, we can now claim
 that there are also LTc clients for every language.
 
-### Decentralized Forum
+### Decentralized Rock Paper Scissors
 
 <!-- Emphasis on how hard it would be to write with something
 else. -->
 
-### Decentralized Rock Paper Scissors
+### Decentralized Forum
 
 <!-- Emphasis on how hard it would be to write with something
 else. -->
