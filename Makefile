@@ -32,6 +32,7 @@ test: build
 
 p:
 	permamake.sh $(shell find src/ -name '*.hs') \
+	             $(shell find examples/ -name '*.hs') \
 	             $(shell find test/ -name '*.hs') \
 	             ltc-tool.hs \
 	             *.cabal \

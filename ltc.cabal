@@ -94,6 +94,13 @@ Executable ltc
                         transformers,
                         unix
 
+Executable ltc-rps
+  Ghc-options:          -Wall
+  Extensions:           ScopedTypeVariables, OverloadedStrings
+  Main-is:              examples/RockPaperScissors.hs
+  Build-depends:        base >= 4 && < 5,
+                        ltc
+
 Test-suite store
   Hs-Source-Dirs:       test
   Main-Is:              StoreProps.hs
