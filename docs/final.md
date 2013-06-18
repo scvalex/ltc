@@ -3060,33 +3060,85 @@ clean.
 
 \label{sec:performance}
 
-<!-- We focused on design, rather than performance tuning.  It shows. -->
+Performance-wise, LTc rates very poorly.  The main reason for this was
+our focus on its design.  As such, LTc is currently optimised for
+debugging and development, rather than real world applications.
 
-### Large Amounts of Data
+As an example of this in action, consider the on-disk format of one of
+the files used by the data store:
 
-<!-- The perils thereof. -->
+~~~~ {.sourceCode}
+(KR
+ ((getKeyName (Key foo))
+  (getValueType
+   (TypeRep
+    (...)
+  (getTip
+   (KeyVersion
+    ((getVersion (VectorClock ((clock ((alita 1))))))
+     (getValueHash 200a3953c8e715185adb0d78a1e35483e84cf422))))
+  (getHistory ())))
+~~~~
 
-### Read/Write Throughput
+As we can see, it is a human-readable S-Expression, which makes it
+ideal for debugging, but also means that reading and writing it from
+software will be significantly slower than an equivalent binary
+representation.
 
-In terms of performance, we are interested in several measures.
-First, we need to know the throughput of the key-value store.
-Specifically, we need to find the number of reads and writes per
-second it can sustain on magnetic disks and solid-state drives.
-Although this is not strictly the project's focus, it seems a waste
-not to measure, and it may be useful in interpreting the following
-measures.
+We discuss the major problems and suggest solutions for them in the
+following sections.
 
-### Round Trips vs. Deteriorating Links *
+### Non-Trivial Amounts of Data
 
-Second, we need to determine the number of times two nodes need to
-synchronize in order to reach consistency, when connected over
-channels of decreasing quality.
+We attempted to store non trivial amounts of data into an LTc store.
+More specifically, we stored LTc's very own Git repository inside of
+an LTc data store: we began with the empty repository and an empty
+data store; we then iterated through the commits, inserting the
+contents of the files into the data store.
 
-### Protocol Overhead
+Since LTc's current data store is modeled after Git, it is
+unsurprising that they behaved similarly.  In terms of disk space,
+LTc's data store was $2.9$Mb at the end, while Git's repository was
+$2.3$Mb.  We assume the Git repository was smaller because Git
+archives and compresses old changesets, which LTc does not.  In terms
+of access speed, they were indistinguishable, both walking through the
+entire history in approximately $5$s.
 
-Third, we need to measure the synchronization protocol's overhead,
-defined as the size of the data sent, and possibly lost, divided by
-the total size of the entries that needed synchronization.
+However, this experiment was unusually favourable to LTc, and there
+are many pathological cases.  To give a simple example, consider a
+data store which contains `[("foo", 1)]`, and we repeatedly increment
+the value associated with `"foo"`.  On most systems, each increment
+will result in a new $4$ Kb\footnote{The minimum on-disk size of a
+file on most systems.} file being created, and it is easy to see how
+disk usage will quickly get out of hand.
+
+The solution to his problem is to implement a better data store, in
+particular, one that does not rely on the file system as much.  A
+simple way of doing so would be to build upon another existing data
+store such as `acid-state` or an SQL database.
+
+### Write Throughput
+
+In terms of performance, we are particularly interested in the write
+throughput of LTc.  In other words, we would like to know how many
+writes per second LTc can perform, and how it compares to other
+similar data stores.
+
+When writing simple integers, LTc performs approximately $27$ writes
+per second.  For comparison, SQLite, a widely used embedded database,
+performs approximately $76$ writes per second.  So, it is about $2.8$
+times faster.
+
+Again, we attribute this problem to the completely unoptimized data
+store, and we believe that replacing it would at least bring LTc on
+par with other data stores.
+
+## Summary
+
+We summarize our evaluation by saying that, feature-wise, LTc is
+generally a success, but performance-wise, it does poorly.  However,
+we believe that the performance problems are simply due to the
+implementation of one component of LTc, and not due to its design.
 
 \clearpage
 
@@ -3123,6 +3175,8 @@ away, it would be that Hofstadter's Law is an understatement.
 > you take into account Hofstadter's Law."
 
 ## Future Work
+
+\label{sec:future-work}
 
 Our original reason for developing LTc was that there is a need for
 such a program.  The situation has not changed, and the author intends
