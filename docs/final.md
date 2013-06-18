@@ -2926,30 +2926,76 @@ rock", "rock beats scissors", and "scissors beats paper".
 
 When implementing the game, we distinguish between the "host" player
 which creates the game and waits for an opponent, and the "challenger"
-player, which somehow knows about the host, and joins the game they
-created.  The code above is for the "challenger" player.
+player, which somehow knows about the "host", and joins the game they
+created.  The code above is for the "challenger" player.  The code for
+the "host" is identical, except that the names of the nodes are
+reversed, and the `Node.addNeighbour` line is omitted.
 
-<!-- The single waitForSetKey/getLatest could be replaced by a
-cycle. -->
+Conceptually, our implementation is very simple: each player adds an
+entry to the store which contains its choice, and then waits for the
+entry from the other node to reach it\footnote{Our implementation of
+the game makes it very easy to cheat: we need only wait for the other
+player's choice \emph{before} making our own, and then making the
+choice that beats theirs.  A more complicated implementation could
+make cheating harder, but that is beyond the scope of this section.}.
+The code for this are the four lines in the middle; the rest is just
+boilerplate to setup LTc, and the logic which determines who won.
 
-<!-- We are abusing LTc and using it as a messaging system. -->
+We are abusing LTc somewhat in this case, since we are using it as a
+messaging system, rather than as a data store.  On the other hand, it
+working with data is generally easier than working with message
+queues, so our use of LTc is justified.
 
-<!-- It is definitely possible to cheat. -->
+Considering that this code is half the implementation of a multiplayer
+game, albeit a simple one, the code is surprisingly short and
+straightforward.  In this case, LTc is providing us with
+serialization, messaging, and persistent storage of results.
+Implementing these tasks manually would be possible, and it would not
+even be hard for such a simple example, but it would detract
+substantially from the readability of the code.
 
-<!-- Note how surprisingly short the code is. -->
+Although writing such a simple example without LTc would not be hard,
+the difficulty of the task grows substantially if we complicate the
+example even a little.  For instance, suppose we wanted to support
+multiple rounds.  We only need to add one line to our example code
+to run the game logic in a loop.
 
-<!-- Writing this particular example would not be difficult with a
-decent messaging library, but more complicated examples would. -->
+~~~~ {.haskell}
+    ....
+    Node.addNeighbour node "rps-host" opponent
+
+    forever $ do
+        -- Make a choice of rock, paper, or scissors.
+        choice <- read <$> getLine
+        ....
+~~~~
+
+If we were implementing the example without LTc, we would now have to
+worry about duplicated and out-of-order messages.  Additionally, we
+would have to consider a way of storing the history of choices.
+
+Another side-effect of using LTc's replication mechanism in our
+example is that we get support for "spectators" for free: other nodes
+can connect to either of our two nodes, and will then get all the
+stored values and the changes to them\footnote{A current weakness of
+LTc's implementation is that it has no automatic support for checking
+the origin of changes.  In our case, ``spectators'' could easily
+interfere with a game in progress by changing the choices recorded in
+the store.}.  Supporting "spectators" manually makes the task much
+more difficult than before; it would effectively require us to
+implement an entire messaging system.
+
+We end this section by identifying the pattern of code used here: we
+first setup LTc by opening a store, starting a node server for
+replication, and adding neighboring nodes, if any; we then focus on
+the application logic where we write values to the data store, wait
+for values from other nodes to reach us, and react as needed.
 
 ### Decentralized Forum
 
-<!-- Emphasis on how hard it would be to write with something
-else. -->
+<!-- Disaster stricken areas. -->
 
-### Decentralized Auction House
-
-<!-- Emphasis on how hard it would be to write with something
-else. -->
+<!-- Emphasis on intermittent connectivity. -->
 
 ## Performance
 
@@ -2995,8 +3041,7 @@ Conclusions
 
 \clearpage
 
-Future Work
-===========
+### Future Work
 
 <!-- What future does this program have? -->
 <!-- Will I continue working on it? -->
