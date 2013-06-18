@@ -141,7 +141,64 @@ $body$
 \section{User Guide}
 \label{sec:user-guide}
 
-%% README: How to setup and run?
-%% Haddock docs
+The following is a reformatted version of the \texttt{README.md} from
+the source code repository.
+\href{https://github.com/scvalex/ltc/blob/master/README.md}{\emph{That}}
+file is almost certainly more up-to-date than the following text at
+any time.
+
+\subsection{Build}
+
+LTc requires \texttt{ghc} and \texttt{cabal-install} to start
+building, and downloads the rest of the dependencies as it needs them.
+
+The simplest way to build LTc is through the \texttt{Makefile}:
+
+\begin{verbatim}
+% make
+\end{verbatim}
+
+Alternatively, you can explicitly call \texttt{cabal-install}:
+
+\begin{verbatim}
+% cabal install --enable-tests
+\end{verbatim}
+
+A few tests are always run after every build by the \texttt{Makefile}.
+In order to run the full test suite, use one of the following commands:
+
+\begin{verbatim}
+% make test
+% cabal test
+\end{verbatim}
+
+\subsection{Run}
+
+The simplest way to run LTc is through the debugging program
+\texttt{ltc}. For instance, to start a node with the Redis adapter
+enabled, run:
+
+\begin{verbatim}
+% ./ltc redis
+\end{verbatim}
+
+You can now connect to the node with any compatible Redis client.
+
+Alternatively, you can start a test node with the web interface enabled
+by running:
+
+\begin{verbatim}
+% ./ltc node
+\end{verbatim}
+
+You can now see the web interface at \url{http://localhost:5000}.
+
+See the help options for the \texttt{ltc} program for details.
+
+\subsection{Embed}
+
+LTc is normally meant to be used as an embedded data store, but an
+example use is beyond the scope of this readme. See \texttt{ltc-tool.hs}
+and the programs in \texttt{examples/} for code samples.
 
 \end{document}
