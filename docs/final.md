@@ -17,6 +17,17 @@ typically found in such situations.
 
 \newpage\null\thispagestyle{empty}\newpage
 
+\renewcommand{\abstractname}{Acknowledgements}
+\begin{abstract}
+
+I would like to thank Susan Eisenbach and Tristan Allwood for taking
+the time out of their busy schedules to discuss this project during
+countless meetings.
+
+\end{abstract}
+
+\newpage\null\thispagestyle{empty}\newpage
+
 \tableofcontents
 
 \newpage\null\thispagestyle{empty}\newpage
