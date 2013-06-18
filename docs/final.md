@@ -1582,11 +1582,11 @@ Type Safe Interface
 
 \label{sec:type-safety}
 
-LTc is written in Haskell, and the we have discussed the advantages of
-this in Section \ref{sec:haskell}.  We will not repeat the points
-here, but we will expand on one of them, namely type safety.  In
-particular, we now focus on type safety in the context of
-serialization and, especially, deserialization of data.
+LTc is written in Haskell, and the we discussed the advantages of this
+in Section \ref{sec:haskell}.  We will not repeat the points here, but
+we will expand on one of them, namely type safety.  In particular, we
+now focus on type safety in the context of serialization and,
+especially, deserialization of data.
 
 Consider the archetypal serialization function, `show`:
 
@@ -1595,9 +1595,9 @@ show :: Show a => a -> String
 ~~~~
 
 Its type describes it well: `show` is a function that takes a value of
-some type which can be "shown" to a string, and gives you back the
-value's string representation.  So far, so good, but consider its
-inverse, `read`:
+some type which can be "shown" to a string, and returns the value's
+string representation.  So far, so good, but consider its inverse,
+`read`:
 
 ~~~~ {.haskell}
 read :: Read a => String -> a
@@ -1610,9 +1610,9 @@ type\footnote{Technically, \texttt{read} can only make up values of
 types which have \texttt{Read} instances, but that covers all the
 types in the standard libraries, and the compiler can generate the
 instances automatically for any user defined types.  So, for the
-purpose of the discussion, we assume that all types have \texttt{Read}
-instances.}.  This effectively throws type safety out the window, as
-can be seen from the following simple example:
+purpose of the discussion, we pretend that all types have
+\texttt{Read} instances.}.  This effectively throws type safety out
+the window, as can be seen from the following simple example:
 
 ~~~~ {.sourceCode}
 λ > let n = 42 :: Int
@@ -1775,7 +1775,7 @@ possible.
 \label{sec:strongly-typed}
 
 We now write the above example with LTc.  First off, LTc requires the
-types of values inserted into it to have certain instances.
+types of values inserted into it to have certain type class instances.
 
 ~~~~ {.haskell}
 {-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
@@ -1857,9 +1857,9 @@ alongside the value*, and *changing the type associated with a key is
 not permitted*.  Concretely, when we insert a value of type `Person`
 in the data store, the
 \href{http://hackage.haskell.org/packages/archive/base/latest/doc/html/Data-Typeable.html\#t:TypeRep}{\texttt{TypeRep}}
-of `Person` is also stored with the value; when we try a key already
-associated with the `Person` type with a value with the modified
-`Person`, we get an error.  There are still problems with this
+of `Person` is also stored with the value; when we try to set a key
+already associated with the `Person` type to a value of the modified
+`Person` type, we get an error.  There are still problems with this
 approach: first, these errors can only be signaled at runtime, since
 they require accessing the on-disk database; second, although we
 cannot update a key with the wrong type, we can still insert a new key
@@ -1867,14 +1867,14 @@ with the wrong type.  That said, we do not believe these problems are
 fixable, unless we declare the types associated with all the keys in
 advance, which would be far to cumbersome.
 
-We briefly mentioned the `TypeRep` of a type above, but it deserves
+We briefly referenced the `TypeRep` of a type above, but it deserves
 further mention.  We can get the `TypeRep` of `Person` because
 `Person` has a `Typeable` instance which is generated automatically by
 the compiler \citep{syb}.  Despite its name, the `TypeRep` is more of
-a hash of the type, than an actual representation of it; we know that
-if two `TypeRep`s are different, they originated from different types.
-We only use `TypeRep`s to ensure that the types associated with keys
-do not change.
+a hash of the type, than an actual representation of it.  We know
+that, if two `TypeRep`s are different, they originated from different
+types.  We only use `TypeRep`s to ensure that the types associated
+with keys do not change.
 
 The next issue that we mentioned was the manual deconstruction and
 reconstruction of the `Person` records when inserting and getting
@@ -1904,8 +1904,8 @@ declarations, `acid-state` attempts to keep everything "under the
 hood" by wrapping the boilerplate in
 \href{http://www.haskell.org/ghc/docs/7.4.2/html/users_guide/template-haskell.html}{Template
 Haskell} macros.  On the other hand, this difference could just be an
-artifact of the times, since when `acid-state` was originally written,
-GHC Generics were not yet available.
+artifact of the times, since, when `acid-state` was originally
+written, GHC Generics were not yet available.
 
 \clearpage
 
@@ -3094,6 +3094,10 @@ Conclusions
 
 <!-- What I achieved. -->
 <!-- What I learned. -->
+
+> Hofstadter's Law: It always takes longer than you expect, even when
+> you take into account Hofstadter's Law.
+
 <!-- What I found easy. -->
 <!-- What I found hard. -->
 
