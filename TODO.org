@@ -193,6 +193,7 @@
 * TODO Check documentation
 * Final Report
   :LOGBOOK:
+  CLOCK: [2013-06-18 Tue 05:27]--[2013-06-18 Tue 06:17] =>  0:50
   CLOCK: [2013-06-18 Tue 04:30]--[2013-06-18 Tue 05:09] =>  0:39
   CLOCK: [2013-06-18 Tue 03:03]--[2013-06-18 Tue 03:17] =>  0:14
   CLOCK: [2013-06-18 Tue 02:11]--[2013-06-18 Tue 02:57] =>  0:46

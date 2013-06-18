@@ -138,6 +138,8 @@ work.
 
 ### Disaster-Stricken Areas
 
+\label{sec:disaster}
+
 The problems mentioned above are not limited to such esoteric
 situations like interplanetary communications.  A more mundane setting
 for them are disaster stricken areas.  Consider a city hit by an
@@ -2904,7 +2906,7 @@ playRpsRound opponent = do
 
     -- Block until other player makes their choice and get it.
     waitForSetKey store "player:1:choice"
-    Just (otherChoice, _) <- getLatest store "player:1:choice"
+    (otherChoice, _) <- getLatestExn store "player:1:choice"
 
     -- Decide round.
     case (choice, otherChoice) of
@@ -2987,15 +2989,73 @@ implement an entire messaging system.
 
 We end this section by identifying the pattern of code used here: we
 first setup LTc by opening a store, starting a node server for
-replication, and adding neighboring nodes, if any; we then focus on
+replication, and adding neighbouring nodes, if any; we then focus on
 the application logic where we write values to the data store, wait
 for values from other nodes to reach us, and react as needed.
 
 ### Decentralized Forum
 
-<!-- Disaster stricken areas. -->
+In Section \ref{sec:disaster}, we described disaster stricken areas as
+one of the environments LTc is tailored for.  We now consider an
+example of a program that would be useful in such a situation: a
+decentralized forum\footnote{Every disaster movie features the
+protagonists passing a wall with pictures and notes.  Our
+decentralized forum aims to make that wall obsolete.}.
 
-<!-- Emphasis on intermittent connectivity. -->
+To clarify, we want a website on which users can post public messages
+organized as threads.  Furthermore, this website, or rather the data
+store behind it, functions in multiple disconnected locations at once.
+Whenever two of these instances of the website come into contact, they
+should exchange whatever data they have.
+
+This decentralized forum example highlights two more features of LTc's
+replication mechanism which our previous game example overlooked.  The
+first is that replication works even if nodes are not always
+reachable.  The second is that replication happens through *all* the
+nodes involved.  To clarify the game example, it would not have
+mattered who the players and spectators were connected to, as long as
+they could reach and be reached by at least one participating node.
+It is worth reiterating our point here: LTc provides these features
+for "free" and implementing them from scratch or on top of other
+systems would be considerably more difficult.
+
+We now move on to writing the code.  We do not include the boilerplate
+for setting up a node as it is unchanged from last time.  The only
+complication is that the set of neighbouring node is harder to
+determine.  We also do not consider the forum's web interface since it
+is unrelated to LTc.  Instead, we focus on the two core functions of
+the forum: getting messages, and posting new messages.
+
+In order to get the messages of a thread, we first ask the store the
+for the set of keys that look like they belong to messages of the
+thread, and then we get the values associated with those keys.
+
+~~~~ {.haskell}
+getThreadMessages :: (Store s) => s -> ThreadId -> IO [Message]
+getThreadMessages store tid = do
+    let keyPat = "thread:" ++ show tid ++ "messages:.*"
+    msgKeys <- keys store keyPat
+    mapM (getExn store) (Set.toList msgKeys)
+~~~~
+
+In order to post a message, we just insert it into the data store with
+a key which matches the pattern used in `getThreadMessages`.  The only
+slight complication is that we need to ensure that message keys are
+unique, but this can easily be done by assigning something specific to
+the message, such as a hash of its contents, to the `messageId`
+field.
+
+~~~~ {.haskell}
+postMessage :: (Store s) => s -> ThreadId -> Message -> IO ()
+postMessage store tid msg = do
+    let key = "thread:" ++ show tid ++
+              "messages:" ++ show (messageId msg)
+    set store key msg
+~~~~
+
+Since LTc handles the details automatically, our code can focus on the
+problem specific parts of the forum.  As a result it looks simple and
+clean.
 
 ## Performance
 
@@ -3039,8 +3099,6 @@ Conclusions
 <!-- What I found easy. -->
 <!-- What I found hard. -->
 
-\clearpage
-
 ### Future Work
 
 <!-- What future does this program have? -->
@@ -3063,3 +3121,4 @@ Conclusions
 <!-- FW: Better than epidemic routing. -->
 <!-- FW: More data stores. -->
 <!-- FW: Actual drop in replacement for Redis. -->
+<!-- FW: Version clock explosion! -->

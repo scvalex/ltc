@@ -479,7 +479,7 @@ findVersion vsn kr = find (\kv -> getVersion kv == vsn) (getTip kr : getHistory 
 writeEventChannels :: Simple -> Event -> IO ()
 writeEventChannels store event = do
     eventChannels <- readMVar (getEventChannels store)
-    -- FIXME If the TChan is closed, it should be removed.
+    -- FIXME Is there any way to signal that a TChan is "closed"?
     mapM_ (atomically . flip writeTChan event) eventChannels
 
 -- | If the store is not open, throw 'StoreClosed'.
