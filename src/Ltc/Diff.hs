@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric, FlexibleContexts, TypeFamilies #-}
 {-# LANGUAGE StandaloneDeriving, FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | This module provides the types and functions for working with changes to values.  See
 -- the documentation for 'Diffable' for more information.
@@ -11,6 +12,7 @@ module Ltc.Diff (
     ) where
 
 import Data.ByteString.Lazy.Char8 ( ByteString )
+import Data.Default ( Default(..) )
 import Data.List ( groupBy )
 import Data.Serialize ( Serialize(..) )
 import Data.Set ( Set )
@@ -25,7 +27,7 @@ import qualified Data.Set as S
 
 -- | 'Diffable' is a way of creating, manipulating, and applying diffs.  The diffs created
 -- here have the properties mentioned in the documentation for the class functions.
-class (Eq (Diff a), Show (Diff a), Sexpable (Diff a), Serialize (Diff a))
+class (Default a, Eq (Diff a), Show (Diff a), Sexpable (Diff a), Serialize (Diff a))
       => Diffable a where
     data Diff a :: *
 
@@ -94,6 +96,9 @@ deriving instance Generic (Diff ByteString)
 instance Serialize (Diff ByteString)
 
 instance Sexpable (Diff ByteString)
+
+instance Default ByteString where
+    def = ""
 
 --------------------------------
 -- Diffable Set

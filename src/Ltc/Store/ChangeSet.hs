@@ -9,6 +9,7 @@ module Ltc.Store.ChangeSet (
     ) where
 
 import Data.ByteString.Char8 ( ByteString )
+import Data.Default ( def )
 import Data.Map ( Map )
 import Data.Serialize ( Serialize, encode, decode )
 import GHC.Generics ( Generic )
@@ -115,16 +116,21 @@ getApplyWireDiff _ = \store key wireDiff -> do
     mtyp <- keyType store key
     case mtyp of
         Nothing -> do
-            -- The key does not exist.
-            -- FIXME If the key does not exist, we should just insert it.
-            return False
+            -- The key does not exist, so just assume 'def' for the previous value.
+            let v = def :: a
+            applyWireDiff store key v wireDiff
         Just typ -> do
             if typ == getWireDiffType wireDiff
                 then do
                     (v :: a, _) <- getLatestExn store key
-                    let Right diff = decode (getWireDiffDiff wireDiff)
-                    _ <- set store key (applyDiff v diff)
-                    return True
+                    applyWireDiff store key v wireDiff
                 else do
                     -- The key has the wrong type.
                     return False
+  where
+    -- | Apply the 'WireDiff' to the given value and set the given key to it.
+    applyWireDiff :: (Store s) => s -> Key -> a -> WireDiff -> IO Bool
+    applyWireDiff store key v wireDiff = do
+        let Right diff = decode (getWireDiffDiff wireDiff)
+        _ <- set store key (applyDiff v diff)
+        return True

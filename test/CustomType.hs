@@ -5,6 +5,7 @@ module Main where
 
 import Common ( cleanEnvironment, testParameters )
 import Control.Applicative ( (<$>) )
+import Data.Default ( Default(..) )
 import Data.Monoid ( mempty )
 import Data.Serialize ( Serialize )
 import Data.Typeable ( Typeable )
@@ -52,6 +53,9 @@ instance Diffable Foo where
 instance Serialize (Diff Foo)
 
 instance Sexpable (Diff Foo)
+
+instance Default Foo where
+    def = Foo { bar = def }
 
 -- | Write a value of a custom type, read it back, and check that we got back the right
 -- value.

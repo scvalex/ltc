@@ -5,6 +5,7 @@ module Main where
 
 import Control.Applicative
 import Control.Concurrent.STM
+import Data.Default
 import Data.Typeable
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
@@ -35,6 +36,9 @@ instance Diffable RPS where
         if x1 == x2 then y else error "cannot apply diff to RPS"
 
     reverseDiff (ReplaceDiff x y) = ReplaceDiff y x
+
+instance Default RPS where
+    def = Rock
 
 instance Sexpable (Diff RPS)
 

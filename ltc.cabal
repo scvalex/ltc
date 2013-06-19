@@ -32,6 +32,7 @@ Library
                         bytestring,
                         cereal,
                         containers,
+                        data-default,
                         directory,
                         filepath,
                         hslogger,
@@ -100,6 +101,7 @@ Executable ltc-rps
   Main-is:              examples/RockPaperScissors.hs
   Build-depends:        base >= 4 && < 5,
                         cereal,
+                        data-default,
                         ltc,
                         sexp,
                         stm
@@ -181,6 +183,7 @@ Test-suite customtype
   Build-Depends:        base >= 4 && < 5,
                         bytestring,
                         cereal,
+                        data-default,
                         directory,
                         HUnit,
                         ltc,
