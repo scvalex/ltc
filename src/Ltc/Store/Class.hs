@@ -57,7 +57,7 @@ class Store a where
 
     -- | Get the type of the values associated with a key.  A key cannot be associated
     -- with values of different types.
-    keyType :: a -> Key -> IO (Maybe TypeRep)
+    keyType :: a -> Key -> IO (Maybe Type)
 
     -- | Set the value associated with a key.  If 'close' was already called on this
     -- store, throw 'StoreClosed'.

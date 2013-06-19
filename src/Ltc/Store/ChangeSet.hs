@@ -1,15 +1,19 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Ltc.Store.ChangeSet (
-        ChangeSet(..), getChangeSetFromTo
+        -- * Changesets
+        ChangeSet(..), getChangeSetFromTo,
+
+        -- * Serializable diffs
+        WireDiff, getWireDiffFromTo, getApplyWireDiff
     ) where
 
 import Data.ByteString.Char8 ( ByteString )
 import Data.Map ( Map )
-import Data.Serialize ( Serialize, encode )
+import Data.Serialize ( Serialize, encode, decode )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable )
-import Ltc.Store.Class ( Store )
+import Ltc.Store.Class ( Store(..), getLatestExn )
 import Ltc.Store.Types ( Key, Storable, Version
                        , Type, typeOf )
 import Ltc.Diff ( Diffable(..) )
@@ -102,3 +106,25 @@ getWireDiffFromTo before after =
     in WireDiff { getWireDiffType = typeOf before
                 , getWireDiffDiff = encode diff
                 }
+
+-- | Get a function that could apply a 'WireDiff' of the given type.
+getApplyWireDiff :: forall a s. (Storable a, Store s)
+                 => a           -- ^ dummy value to fix the type
+                 -> (s -> Key -> WireDiff -> IO Bool)
+getApplyWireDiff _ = \store key wireDiff -> do
+    mtyp <- keyType store key
+    case mtyp of
+        Nothing -> do
+            -- The key does not exist.
+            -- FIXME If the key does not exist, we should just insert it.
+            return False
+        Just typ -> do
+            if typ == getWireDiffType wireDiff
+                then do
+                    (v :: a, _) <- getLatestExn store key
+                    let Right diff = decode (getWireDiffDiff wireDiff)
+                    _ <- set store key (applyDiff v diff)
+                    return True
+                else do
+                    -- The key has the wrong type.
+                    return False
