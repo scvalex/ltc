@@ -162,12 +162,12 @@ main = do
   where
     openParameters :: String -> String -> Int -> Bool -> OpenParameters Simple
     openParameters d hostname idx shouldCreate =
-        OpenParameters { location        = d
-                       , useCompression  = False
-                       , nodeName        = makeNodeName hostname idx
-                       , createIfMissing = shouldCreate
-                       , forceOpen       = not shouldCreate
-                       }
+        SimpleParameters { location        = d
+                         , useCompression  = False
+                         , nodeName        = makeNodeName hostname idx
+                         , createIfMissing = shouldCreate
+                         , forceOpen       = not shouldCreate
+                         }
 
     makeNodeName :: String -> Int -> BL.ByteString
     makeNodeName hostname idx = BL.pack (printf "%s-%d" hostname idx)

@@ -45,11 +45,12 @@ rmrf fp = do
 ----------------------
 
 testParameters :: OpenParameters Simple
-testParameters = OpenParameters { location        = "test-store"
-                                , useCompression  = False
-                                , nodeName        = pack hostname
-                                , createIfMissing = True
-                                , forceOpen       = False
-                                }
+testParameters =
+    SimpleParameters { location        = "test-store"
+                     , useCompression  = False
+                     , nodeName        = pack hostname
+                     , createIfMissing = True
+                     , forceOpen       = False
+                     }
   where
     hostname = unsafePerformIO getHostName

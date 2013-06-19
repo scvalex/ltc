@@ -51,7 +51,7 @@ hostRpsRound _store = do
 playRpsRound :: NetworkLocation UdpInterface -> IO ()
 playRpsRound opponent = do
     -- Open the local store.
-    store <- open (OpenParameters
+    store <- open (SimpleParameters
                        { location = "rps-store"
                        , nodeName = "rps-client"
                        })

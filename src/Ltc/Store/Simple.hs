@@ -144,7 +144,7 @@ instance Sexpable KeyRecord
 
 instance Store Simple where
     -- | Store configuration.
-    data OpenParameters Simple = OpenParameters
+    data OpenParameters Simple = SimpleParameters
         { -- | The store directory.
           location        :: FilePath
           -- | Whether files should be gzip'd.
