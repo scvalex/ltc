@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeFamilies, TupleSections, DeriveGeneric, FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies, TupleSections, DeriveGeneric #-}
+{-# Language FlexibleContexts, FlexibleInstances #-}
 
 -- | Imagine desiging a key-value store on top of the file system.
 -- The 'Simple' store is basically that, with a few added
@@ -59,6 +60,7 @@ import qualified Control.Exception as CE
 import Control.Monad ( when, unless, forM )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
+import Data.Default ( Default(..) )
 import Data.Digest.Pure.SHA ( sha1, showDigest, integerDigest )
 import Data.Foldable ( find, foldlM )
 import Data.Set ( Set )
@@ -183,6 +185,14 @@ instance Store Simple where
     keys store = doKeys store
 
     addEventChannel store eventChannel = doAddEventChannel store eventChannel
+
+instance Default (OpenParameters Simple) where
+    def = SimpleParameters { location        = "ltc-store"
+                           , useCompression  = False
+                           , nodeName        = "my-node"
+                           , createIfMissing = True
+                           , forceOpen       = False
+                           }
 
 doOpen :: OpenParameters Simple -> IO Simple
 doOpen params = do
