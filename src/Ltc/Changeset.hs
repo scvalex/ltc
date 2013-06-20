@@ -6,16 +6,14 @@ module Ltc.Changeset (
         Changes(..), changesFromList, wireDiffForKeyExn,
 
         -- * Serializable diffs
-        WireDiff, wireDiffFromTo, getApplyWireDiff, diffFromWireDiff
+        WireDiff, wireDiffFromTo, diffFromWireDiff
     ) where
 
 import Data.ByteString.Char8 ( ByteString )
-import Data.Default ( def )
 import Data.Map ( Map )
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..), parse, printHum )
-import Ltc.Store.Class ( Store(..), getLatestExn )
 import Ltc.Store.Types ( Key, Storable, Version
                        , Type, typeOf )
 import Ltc.Diff ( Diffable(..) )
@@ -94,33 +92,6 @@ wireDiffFromTo before after =
     in WireDiff { getWireDiffType = typeOf before
                 , getWireDiffDiff = BL.toStrict (printHum (toSexp diff))
                 }
-
--- | Get a function that could apply a 'WireDiff' of the given type.
-getApplyWireDiff :: forall a s. (Storable a, Store s)
-                 => a           -- ^ dummy value to fix the type
-                 -> (s -> Key -> WireDiff -> IO Bool)
-getApplyWireDiff _ = \store key wireDiff -> do
-    mtyp <- keyType store key
-    case mtyp of
-        Nothing -> do
-            -- The key does not exist, so just assume 'def' for the previous value.
-            let v = def :: a
-            applyWireDiff store key v wireDiff
-        Just typ -> do
-            if typ == getWireDiffType wireDiff
-                then do
-                    (v :: a, _) <- getLatestExn store key
-                    applyWireDiff store key v wireDiff
-                else do
-                    -- The key has the wrong type.
-                    return False
-  where
-    -- | Apply the 'WireDiff' to the given value and set the given key to it.
-    applyWireDiff :: (Store s) => s -> Key -> a -> WireDiff -> IO Bool
-    applyWireDiff store key v wireDiff = do
-        let Just diff = diffFromWireDiff wireDiff
-        _ <- set store key (applyDiff v diff)
-        return True
 
 -- | Get a typed diff from a 'WireDiff'.  Fails if the parsing fails (i.e. if there is a
 -- type mismatch).

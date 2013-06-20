@@ -192,6 +192,8 @@ instance Store Simple where
 
     keyVersions store key = doKeyVersions store key
 
+    changesetsAfter store version = doChangesetsAfter store version
+
     keyType store key = doKeyType store key
 
     set store key value = doSet store key value
@@ -346,6 +348,17 @@ doKeyVersions store key = do
             changeset <- readChangesetExn (locationChangesetHash store chash)
             return (getAfterVersion changeset))
 
+doChangesetsAfter :: Simple -> Version -> IO [Changeset]
+doChangesetsAfter store version = do
+    Changelog changesets <- readChangelogExn store
+    let changesetPaths =
+            map (locationChangesetHash store) $
+            map snd $
+            takeWhile (\(otherVersion, _) -> not (otherVersion `VC.causes` version))
+                      changesets
+    changesets' <- mapM readChangesetExn changesetPaths
+    return (reverse changesets')
+
 doKeyType :: Simple -> Key -> IO (Maybe TypeRep)
 doKeyType store key = do
     debugM tag (printf "keyType %s" (show key))
@@ -381,7 +394,7 @@ doMSet store cmds = lockStore store $ do
     -- Read the key records (the store is locked so there's no risk of them being updated
     -- by something else).
     mkrs <- forM (zip cmds vhashes) $ \(cmd@(SetCmd key _), vhash) -> do
-        mkr <- readKeyRecord (locationKey store key)
+        mkr <- readKeyRecordExn (locationKey store key)
         return (mkr, cmd, vhash)
 
     -- Compute the 'Changeset' from the store state to the new one (the store is locked,
@@ -417,9 +430,8 @@ doMSet store cmds = lockStore store $ do
                 return $ (cmd, krOld { getTip     = tip
                                      , getHistory = chash : getHistory krOld
                                      })
-    changelog <- readChangelog store
-    let changelog' = let Changelog changesets = changelog
-                     in Changelog ((clock', chash) : changesets)
+    Changelog changesets <- readChangelogExn store
+    let changelog' = Changelog ((clock', chash) : changesets)
     atomicWriteFiles store $
         (locationChangelog (getBase store), printHum (toSexp changelog')) :
         (flip map krs' $ \(SetCmd key _, kr) ->
@@ -465,10 +477,10 @@ doAddEventChannel store eventChannel = do
 -- Helpers
 ----------------------
 
--- | Wrapper around 'readKeyRecord'.
+-- | Wrapper around 'readKeyRecordExn'.
 withKeyRecord :: FilePath -> (KeyRecord -> IO (Maybe a)) -> IO (Maybe a)
 withKeyRecord path f = do
-    mkr <- readKeyRecord path
+    mkr <- readKeyRecordExn path
     case mkr of
         Nothing -> return Nothing
         Just kr -> f kr
@@ -491,8 +503,8 @@ parseWithHandler path handleErr = do
 
 -- | Read a key record from disk.  If the key doesn't exist, return
 -- 'Nothing'.  If the key record is corrupt, fail.
-readKeyRecord :: FilePath -> IO (Maybe KeyRecord)
-readKeyRecord path = do
+readKeyRecordExn :: FilePath -> IO (Maybe KeyRecord)
+readKeyRecordExn path = do
     keyExists <- doesFileExist path
     if keyExists
           then do
@@ -509,8 +521,8 @@ readChangesetExn path = do
                                         , ccsReason     = reason })
 
 -- | Read the store's 'Changelog'.
-readChangelog :: Simple -> IO Changelog
-readChangelog store = do
+readChangelogExn :: Simple -> IO Changelog
+readChangelogExn store = do
     parseWithHandler (locationChangelog (getBase store)) $ \reason -> do
         CE.throw (CorruptChangelogError reason)
 

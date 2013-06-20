@@ -22,6 +22,7 @@ import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Set ( Set )
 import Data.Typeable ( Typeable, TypeRep )
 import Ltc.Store.Event ( EventChannel )
+import Ltc.Changeset ( Changeset )
 import qualified Control.Exception as CE
 
 ----------------------
@@ -55,6 +56,9 @@ class Store a where
 
     -- | Get all versions of the values associated with the given key, most-recent-first.
     keyVersions :: a -> Key -> IO (Maybe [Version])
+
+    -- | Get all the 'Changeset's after the given version.
+    changesetsAfter :: a -> Version -> IO [Changeset]
 
     -- | Get the type of the values associated with a key.  A key cannot be associated
     -- with values of different types.
