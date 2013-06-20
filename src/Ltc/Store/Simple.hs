@@ -460,6 +460,20 @@ withKeyRecord path f = do
         Nothing -> return Nothing
         Just kr -> f kr
 
+-- FIXME parseOrError should be part of sexp.
+parseWithHandler :: (Sexpable a) => FilePath -> (String -> IO a) -> IO a
+parseWithHandler path handleErr = do
+    text <- BL.readFile path
+    case parse text of
+        Left err ->
+            handleErr (show err)
+        Right [s] ->
+            case fromSexp s of
+                Nothing -> handleErr "invalid sexp"
+                Just kr -> return kr
+        Right _ ->
+            handleErr "multiple sexps"
+
 -- | Read a key record from disk.  If the key doesn't exist, return
 -- 'Nothing'.  If the key record is corrupt, fail.
 readKeyRecord :: FilePath -> IO (Maybe KeyRecord)
@@ -467,35 +481,17 @@ readKeyRecord path = do
     keyExists <- doesFileExist path
     if keyExists
           then do
-              text <- BL.readFile path
-              let mkErr reason = CorruptKeyFileError { keyFilePath = path
-                                                     , ckfReason  = reason }
-              case parse text of
-                  Left err ->
-                      CE.throw (mkErr (show err))
-                  Right [s] ->
-                      case fromSexp s of
-                          Nothing -> CE.throw (mkErr "invalid sexp")
-                          Just kr -> return (Just kr)
-                  Right _ ->
-                      CE.throw (mkErr "multiple sexps")
+              Just <$> parseWithHandler path (\reason -> do
+                  CE.throw (CorruptKeyFileError { keyFilePath = path
+                                                , ckfReason  = reason }))
           else return Nothing
 
 -- | Read a 'ChangeSet' from disk.
 readChangeSetExn :: FilePath -> IO ChangeSet
 readChangeSetExn path = do
-    text <- BL.readFile path
-    let mkErr reason = CorruptChangeSetError { changeSetPath = path
-                                             , ccsReason     = reason }
-    case parse text of
-        Left err ->
-            CE.throw (mkErr (show err))
-        Right [s] ->
-            case fromSexp s of
-                Nothing        -> CE.throw (mkErr "invalid sexp")
-                Just changeSet -> return changeSet
-        Right _ ->
-            CE.throw (mkErr "multiple sexps")
+    parseWithHandler path $ \reason -> do
+        CE.throw (CorruptChangeSetError { changeSetPath = path
+                                        , ccsReason     = reason })
 
 -- | Write the given 'ByteString' to the file atomically.  Overwrite any previous content.
 -- The 'Simple' reference is needed in order to find the temporary directory (we can't use
