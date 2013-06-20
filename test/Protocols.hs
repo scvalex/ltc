@@ -6,7 +6,6 @@ module Main where
 import Control.Applicative ( (<$>) )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Function ( on )
-import Data.Map ( Map )
 import Data.Monoid ( mempty )
 import Data.Set ( Set )
 import Data.String ( fromString )
@@ -15,9 +14,9 @@ import Ltc.Network.Interface.Null ( NullInterface, NetworkLocation(..) )
 import Ltc.Network.NodeProtocol ( NodeEnvelope(..), NodeMessage(..) )
 import Ltc.Network.RedisProtocol ( RedisMessage(..) )
 import Ltc.Store ( Version, Key )
-import Ltc.Store.VersionControl ( DiffPack, KeyHistory )
+import Ltc.Changeset ( Changeset, Changes, changesFromList
+                     , WireDiff, wireDiffFromDiff )
 import qualified Data.ByteString.Char8 as BS
-import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Ltc.Network.NodeProtocol as P
 import qualified Ltc.Network.RedisProtocol as R
@@ -47,16 +46,15 @@ instance (Monad m) => Serial m (NetworkLocation NullInterface) where
 
 instance (Monad m) => Serial m NodeMessage
 
-instance (Monad m) => Serial m DiffPack
+instance (Monad m) => Serial m Changeset
 
 instance (Monad m) => Serial m Version
 
-instance (Monad m) => Serial m (Map Key KeyHistory) where
-    series = M.fromList <$> series
+instance (Monad m) => Serial m Changes where
+    series = changesFromList <$> series
 
-instance (Monad m) => Serial m (Key, KeyHistory)
-
-instance (Monad m) => Serial m KeyHistory
+instance (Monad m) => Serial m WireDiff where
+    series = (wireDiffFromDiff :: Diff Integer -> WireDiff) <$> series
 
 instance (Monad m) => Serial m ByteString where
     series = fromString <$> series

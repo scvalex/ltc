@@ -6,7 +6,8 @@ module Ltc.Changeset (
         Changes(..), changesFromList, wireDiffForKeyExn,
 
         -- * Serializable diffs
-        WireDiff, wireDiffFromTo, diffFromWireDiff
+        WireDiff, wireDiffFromTo,
+        wireDiffFromDiff, diffFromWireDiff
     ) where
 
 import Data.ByteString.Char8 ( ByteString )
@@ -88,10 +89,14 @@ instance Sexpable WireDiff
 -- | Get a serializable diff between two 'Storable' values.
 wireDiffFromTo :: (Storable a) => a -> a -> WireDiff
 wireDiffFromTo before after =
-    let diff = diffFromTo before after
-    in WireDiff { getWireDiffType = typeOf before
-                , getWireDiffDiff = BL.toStrict (printHum (toSexp diff))
-                }
+    wireDiffFromDiff (diffFromTo before after)
+
+-- | Get an untyped 'WireDiff' from a typed 'Diff'.
+wireDiffFromDiff :: forall a. (Storable a) => Diff a -> WireDiff
+wireDiffFromDiff diff =
+    WireDiff { getWireDiffType = typeOf (undefined :: a)
+             , getWireDiffDiff = BL.toStrict (printHum (toSexp diff))
+             }
 
 -- | Get a typed diff from a 'WireDiff'.  Fails if the parsing fails (i.e. if there is a
 -- type mismatch).
