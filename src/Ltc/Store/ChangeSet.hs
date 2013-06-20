@@ -3,22 +3,24 @@
 module Ltc.Store.ChangeSet (
         -- * Changesets
         ChangeSet(..), getChangeSetFromTo,
-        Changes(..),
+        Changes(..), changesFromList, wireDiffForKeyExn,
 
         -- * Serializable diffs
-        WireDiff, wireDiffFromTo, getApplyWireDiff
+        WireDiff, wireDiffFromTo, getApplyWireDiff, diffFromWireDiff
     ) where
 
 import Data.ByteString.Char8 ( ByteString )
 import Data.Default ( def )
 import Data.Map ( Map )
-import Data.Serialize ( Serialize, encode, decode )
+import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
-import Language.Sexp ( Sexpable )
+import Language.Sexp ( Sexpable(..), parse, printHum )
 import Ltc.Store.Class ( Store(..), getLatestExn )
 import Ltc.Store.Types ( Key, Storable, Version
                        , Type, typeOf )
 import Ltc.Diff ( Diffable(..) )
+import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.Map as M
 import System.Log.Logger ( debugM )
 import Text.Printf ( printf )
 
@@ -35,12 +37,12 @@ tag = "ChangeSet"
 ----------------------
 
 data ChangeSet = Update { getBeforeUpdateVersion :: Version
-                        , getAfterUpdateVersion  :: Version
-                        , getUpdateChanges       :: Changes
+                        , getAfterVersion        :: Version
+                        , getChanges             :: Changes
                         }
                | Merge { getBeforeMergeVersions :: (Version, Version)
-                       , getAfterMergeVersion   :: Version
-                       , getMergeChanges        :: Changes
+                       , getAfterVersion        :: Version
+                       , getChanges             :: Changes
                        }
                deriving ( Show, Generic )
 
@@ -52,10 +54,10 @@ instance Sexpable ChangeSet
 instance Eq ChangeSet where
     u1@(Update {}) == u2@(Update {}) =
         getBeforeUpdateVersion u1 == getBeforeUpdateVersion u2
-        && getAfterUpdateVersion u1 == getAfterUpdateVersion u2
+        && getAfterVersion u1 == getAfterVersion u2
     m1@(Merge {}) == m2@(Merge {}) =
         getBeforeMergeVersions m1 == getBeforeMergeVersions m2
-        && getAfterMergeVersion m1 == getAfterMergeVersion m2
+        && getAfterVersion m1 == getAfterVersion m2
     _ == _ =
         False
 
@@ -65,8 +67,8 @@ getChangeSetFromTo :: (Store s) => s -> Version -> Version -> IO ChangeSet
 getChangeSetFromTo store fromVsn toVsn = do
     changes <- getChangesFromTo store fromVsn toVsn
     return (Update { getBeforeUpdateVersion = fromVsn
-                   , getAfterUpdateVersion  = toVsn
-                   , getUpdateChanges       = changes
+                   , getAfterVersion        = toVsn
+                   , getChanges             = changes
                    })
 
 ----------------------
@@ -80,6 +82,10 @@ instance Serialize Changes
 
 instance Sexpable Changes
 
+-- | Make 'Changes' out of a list of 'Key'-'WireDiff' pairs.
+changesFromList :: [(Key, WireDiff)] -> Changes
+changesFromList = Changes . M.fromList
+
 -- | Get all the changes to a 'Store' that move it from the former state to the latter
 -- state.
 getChangesFromTo :: (Store s) => s -> Version -> Version -> IO Changes
@@ -87,6 +93,14 @@ getChangesFromTo _store fromVsn toVsn = do
     debugM tag (printf "getChangesFromTo %s %s" (show fromVsn) (show toVsn))
     let _ = wireDiffFromTo (23 :: Integer) 42
     return undefined
+
+-- | Get the 'WireDiff' associated with a 'Key' in a 'Changes'.  Throw an error if the
+-- 'Key' does not have an entry in the given 'Changes'.
+wireDiffForKeyExn :: Changes -> Key -> WireDiff
+wireDiffForKeyExn (Changes m) key =
+    case M.lookup key m of
+        Nothing       -> error "entry f or key not found in Changes"
+        Just wireDiff -> wireDiff
 
 ----------------------
 -- WireDiff
@@ -106,7 +120,7 @@ wireDiffFromTo :: (Storable a) => a -> a -> WireDiff
 wireDiffFromTo before after =
     let diff = diffFromTo before after
     in WireDiff { getWireDiffType = typeOf before
-                , getWireDiffDiff = encode diff
+                , getWireDiffDiff = BL.toStrict (printHum (toSexp diff))
                 }
 
 -- | Get a function that could apply a 'WireDiff' of the given type.
@@ -132,6 +146,14 @@ getApplyWireDiff _ = \store key wireDiff -> do
     -- | Apply the 'WireDiff' to the given value and set the given key to it.
     applyWireDiff :: (Store s) => s -> Key -> a -> WireDiff -> IO Bool
     applyWireDiff store key v wireDiff = do
-        let Right diff = decode (getWireDiffDiff wireDiff)
+        let Just diff = diffFromWireDiff wireDiff
         _ <- set store key (applyDiff v diff)
         return True
+
+-- | Get a typed diff from a 'WireDiff'.  Fails if the parsing fails (i.e. if there is a
+-- type mismatch).
+diffFromWireDiff :: (Diffable a) => WireDiff -> Maybe (Diff a)
+diffFromWireDiff wireDiff =
+    case parse (BL.fromStrict (getWireDiffDiff wireDiff)) of
+        Right [s] -> fromSexp s
+        _         -> Nothing

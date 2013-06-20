@@ -66,22 +66,25 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Default ( Default(..) )
 import Data.Digest.Pure.SHA ( sha1, showDigest, integerDigest )
-import Data.Foldable ( find, foldlM )
-import qualified Data.Map as M
+import Data.Foldable ( foldlM )
 import Data.Set ( Set )
 import Data.Typeable ( TypeRep, typeOf )
 import GHC.Generics ( Generic )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, parseExn, printHum )
-import Ltc.Store.ChangeSet ( ChangeSet(..), Changes(..), wireDiffFromTo )
+import Ltc.Diff ( Diffable(..) )
+import Ltc.Store.ChangeSet ( ChangeSet(..)
+                           , changesFromList
+                           , wireDiffForKeyExn, wireDiffFromTo, diffFromWireDiff )
 import Ltc.Store.Class ( Store(..), SetCmd(..)
                        , Storable, ValueHash
                        , Version, ChangeSetHash
                        , Key(..), KeyHash
                        , NodeName
                        , TypeMismatchError(..), CorruptStoreError(..), CorruptKeyFileError(..)
-                       , StoreClosed(..), CorruptValueFileError(..), NodeNameMismatchError(..) )
+                       , StoreClosed(..), CorruptValueFileError(..), NodeNameMismatchError(..)
+                       , CorruptChangeSetError(..) )
 import Ltc.Store.Event ( EventChannel, Event(..), SetEvent(..) )
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents, removeFile )
@@ -141,7 +144,7 @@ data KeyRecord = KR
     { getKeyName   :: Key
     , getValueType :: TypeRep
     , getTip       :: KeyVersion
-    , getHistory   :: [KeyVersion]
+    , getHistory   :: [ChangeSetHash]
     } deriving ( Generic )
 
 instance Sexpable KeyRecord
@@ -263,18 +266,20 @@ doGet store key version = do
             when (getValueType kr /= typeOf (undefined :: a)) $
                 CE.throw (TypeMismatchError { expectedType = typeOf (undefined :: a)
                                             , foundType    = getValueType kr })
-            case findVersion version kr of
-                Nothing -> do
-                    return Nothing
-                Just kvsn -> do
-                    let valueFile = locationValueHash store (getValueHash kvsn)
-                    s <- (if getUseCompression store then Z.decompress else id)
-                         <$> BL.readFile valueFile
-                    case valueFromBinary s of
-                        Nothing -> CE.throw (CorruptValueFileError {
-                                                  valueFilePath = valueFile,
-                                                  cvfReason     = "unparsable" })
-                        Just v -> return (Just v)
+
+            -- Read the tip value
+            let valueFile = locationValueHash store (getValueHash (getTip kr))
+            s <- (if getUseCompression store then Z.decompress else id)
+                 <$> BL.readFile valueFile
+            let val = case valueFromBinary s of
+                    Nothing -> CE.throw (CorruptValueFileError {
+                                              valueFilePath = valueFile,
+                                              cvfReason     = "unparsable" })
+                    Just v -> v
+
+            -- Walk back through the history looking for the earliest version that was
+            -- before or equal to the given version.
+            Just <$> findVersion val (getHistory kr)
   where
     getEvent =
         let Key k = key
@@ -288,6 +293,28 @@ doGet store key version = do
             Left (err, _) -> fail err
             Right [sexp]  -> fromSexp sexp
             Right _       -> fail "wrong number of sexps"
+
+    findVersion :: a -> [ChangeSetHash] -> IO a
+    findVersion val [] =
+        return val
+    findVersion val (chash : history) = do
+        changeSet <- readChangeSetExn (locationChangeSetHash store chash)
+        case changeSet of
+            Update {} -> do
+                if not (getAfterVersion changeSet `VC.causes` version)
+                    then do
+                        let wireDiff = wireDiffForKeyExn (getChanges changeSet) key
+                        -- The only way for 'diffFromWireDiff' to fail is if the type is
+                        -- wrong, but it cannot be at this point in the execution.
+                        let Just diff = diffFromWireDiff wireDiff
+                        let rdiff = reverseDiff diff
+                        let val' = applyDiff val rdiff
+                        findVersion val' history
+                    else do
+                        return val
+            Merge {} ->
+                -- FIXME Implement getting history past merges.
+                error "walking back through merges not supported"
 
 doGetLatest :: (Storable a) => Simple -> Key -> IO (Maybe (a, Version))
 doGetLatest store key = do
@@ -306,7 +333,9 @@ doKeyVersions :: Simple -> Key -> IO (Maybe [Version])
 doKeyVersions store key = do
     debugM tag (printf "keyVersions %s" (show key))
     withKeyRecord (locationKey store key) $ \kr -> do
-        return . Just . map getVersion $ getTip kr : getHistory kr
+        Just <$> forM (getHistory kr) (\chash -> do
+            changeSet <- readChangeSetExn (locationChangeSetHash store chash)
+            return (getAfterVersion changeSet))
 
 doKeyType :: Simple -> Key -> IO (Maybe TypeRep)
 doKeyType store key = do
@@ -349,13 +378,13 @@ doMSet store cmds = lockStore store $ do
     -- Compute the 'ChangeSet' from the store state to the new one (the store is locked,
     -- so values can't be updated by something else while we're here).  Having superfluous
     -- changesets lying around is not a problem.
-    changes <- Changes . M.fromList <$> forM cmds (\(SetCmd key newVal) -> do
+    changes <- changesFromList <$> forM cmds (\(SetCmd key newVal) -> do
         mOldVal <- doGetLatest store key
         let oldVal = maybe def fst mOldVal
         return (key, wireDiffFromTo oldVal newVal))
     let changeSet = Update { getBeforeUpdateVersion = clock
-                           , getAfterUpdateVersion  = clock'
-                           , getUpdateChanges       = changes }
+                           , getAfterVersion        = clock'
+                           , getChanges             = changes }
     let serializedChangeSet = printHum (toSexp changeSet)
     let chash = BL.pack (showDigest (sha1 serializedChangeSet))
     atomicWriteFile store (locationChangeSetHash store chash) serializedChangeSet
@@ -370,14 +399,14 @@ doMSet store cmds = lockStore store $ do
                 (cmd, KR { getKeyName   = key
                          , getValueType = typeOf value
                          , getTip       = tip
-                         , getHistory   = []
+                         , getHistory   = [chash]
                          })
             Just krOld -> do
                 when (getValueType krOld /= typeOf value) $ do
                     CE.throw (TypeMismatchError { expectedType = getValueType krOld
                                                 , foundType    = typeOf value })
                 return $ (cmd, krOld { getTip     = tip
-                                     , getHistory = getTip krOld : getHistory krOld
+                                     , getHistory = chash : getHistory krOld
                                      })
     atomicWriteFiles store $
         flip map krs' $ \(SetCmd key _, kr) ->
@@ -452,6 +481,22 @@ readKeyRecord path = do
                       CE.throw (mkErr "multiple sexps")
           else return Nothing
 
+-- | Read a 'ChangeSet' from disk.
+readChangeSetExn :: FilePath -> IO ChangeSet
+readChangeSetExn path = do
+    text <- BL.readFile path
+    let mkErr reason = CorruptChangeSetError { changeSetPath = path
+                                             , ccsReason     = reason }
+    case parse text of
+        Left err ->
+            CE.throw (mkErr (show err))
+        Right [s] ->
+            case fromSexp s of
+                Nothing        -> CE.throw (mkErr "invalid sexp")
+                Just changeSet -> return changeSet
+        Right _ ->
+            CE.throw (mkErr "multiple sexps")
+
 -- | Write the given 'ByteString' to the file atomically.  Overwrite any previous content.
 -- The 'Simple' reference is needed in order to find the temporary directory (we can't use
 -- @/tmp@ because that may be on a different partition and 'renameFile' doesn't work in
@@ -501,10 +546,6 @@ initStore params = do
 -- the key is stored in the @keys/@ folder.
 keyHash :: Key -> KeyHash
 keyHash (Key k) = BL.pack (showDigest (sha1 k))
-
--- | Find the 'KeyVersion' with the given 'Version'.
-findVersion :: Version -> KeyRecord -> Maybe KeyVersion
-findVersion vsn kr = find (\kv -> getVersion kv == vsn) (getTip kr : getHistory kr)
 
 -- | Write event to all event channels
 writeEventChannels :: Simple -> Event -> IO ()
