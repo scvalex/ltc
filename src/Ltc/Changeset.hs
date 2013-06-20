@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Ltc.Store.ChangeSet (
+module Ltc.Changeset (
         -- * Changesets
-        ChangeSet(..), getChangeSetFromTo,
+        Changeset(..),
         Changes(..), changesFromList, wireDiffForKeyExn,
 
         -- * Serializable diffs
@@ -21,22 +21,12 @@ import Ltc.Store.Types ( Key, Storable, Version
 import Ltc.Diff ( Diffable(..) )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map as M
-import System.Log.Logger ( debugM )
-import Text.Printf ( printf )
 
 ----------------------
--- Debugging
+-- Changeset container
 ----------------------
 
--- | Debugging tag for this module
-tag :: String
-tag = "ChangeSet"
-
-----------------------
--- ChangeSet container
-----------------------
-
-data ChangeSet = Update { getBeforeUpdateVersion :: Version
+data Changeset = Update { getBeforeUpdateVersion :: Version
                         , getAfterVersion        :: Version
                         , getChanges             :: Changes
                         }
@@ -46,12 +36,12 @@ data ChangeSet = Update { getBeforeUpdateVersion :: Version
                        }
                deriving ( Show, Generic )
 
-instance Serialize ChangeSet
+instance Serialize Changeset
 
-instance Sexpable ChangeSet
+instance Sexpable Changeset
 
--- ChangeSets are uniquely identified by their versions.
-instance Eq ChangeSet where
+-- Changesets are uniquely identified by their versions.
+instance Eq Changeset where
     u1@(Update {}) == u2@(Update {}) =
         getBeforeUpdateVersion u1 == getBeforeUpdateVersion u2
         && getAfterVersion u1 == getAfterVersion u2
@@ -60,16 +50,6 @@ instance Eq ChangeSet where
         && getAfterVersion m1 == getAfterVersion m2
     _ == _ =
         False
-
--- | Get the 'Update' 'ChangeSet' that moves a store from the formerstate to the latter
--- state.
-getChangeSetFromTo :: (Store s) => s -> Version -> Version -> IO ChangeSet
-getChangeSetFromTo store fromVsn toVsn = do
-    changes <- getChangesFromTo store fromVsn toVsn
-    return (Update { getBeforeUpdateVersion = fromVsn
-                   , getAfterVersion        = toVsn
-                   , getChanges             = changes
-                   })
 
 ----------------------
 -- Changes
@@ -85,14 +65,6 @@ instance Sexpable Changes
 -- | Make 'Changes' out of a list of 'Key'-'WireDiff' pairs.
 changesFromList :: [(Key, WireDiff)] -> Changes
 changesFromList = Changes . M.fromList
-
--- | Get all the changes to a 'Store' that move it from the former state to the latter
--- state.
-getChangesFromTo :: (Store s) => s -> Version -> Version -> IO Changes
-getChangesFromTo _store fromVsn toVsn = do
-    debugM tag (printf "getChangesFromTo %s %s" (show fromVsn) (show toVsn))
-    let _ = wireDiffFromTo (23 :: Integer) 42
-    return undefined
 
 -- | Get the 'WireDiff' associated with a 'Key' in a 'Changes'.  Throw an error if the
 -- 'Key' does not have an entry in the given 'Changes'.

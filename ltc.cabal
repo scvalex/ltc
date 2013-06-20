@@ -54,6 +54,7 @@ Library
                         websockets-snap,
                         zlib
   Exposed-modules:
+                        Ltc.Changeset,
                         Ltc.Diff,
                         Ltc.Monkey,
                         Ltc.Network.Interface,
@@ -69,7 +70,6 @@ Library
                         Ltc.Network.StatusServer,
                         Ltc.Network.Types,
                         Ltc.Store,
-                        Ltc.Store.ChangeSet,
                         Ltc.Store.Class,
                         Ltc.Store.Event,
                         Ltc.Store.Simple,

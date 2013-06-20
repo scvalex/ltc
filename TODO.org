@@ -47,6 +47,7 @@
   - [X] Graph sets/gets
 * TODO UDP Connections
   :LOGBOOK:
+  CLOCK: [2013-06-20 Thu 22:22]--[2013-06-20 Thu 23:05] =>  0:43
   CLOCK: [2013-06-20 Thu 16:00]--[2013-06-20 Thu 17:29] =>  1:29
   CLOCK: [2013-06-20 Thu 15:15]--[2013-06-20 Thu 15:57] =>  0:42
   CLOCK: [2013-06-20 Thu 00:11]--[2013-06-20 Thu 01:05] =>  0:54
@@ -87,7 +88,7 @@
   - [X] Get rid of the Ltc.Adapter hierarchy
   - [X] SmallCheck tests for NodeProtocol
   - [X] Receive store changes from neighbours
-  - [ ] Store changes instead of values.
+  - [X] Store changes instead of values.
   - [ ] Apply changes from neighbours
   - [X] Keep track of suspected neighbour version clock
   - [ ] ChangeSets (replaces DiffPacks)

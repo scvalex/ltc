@@ -9,7 +9,7 @@ module Ltc.Store.Class (
         CorruptKeyFileError(..), CorruptValueFileError(..),
         CorruptStoreError(..), StoreClosed(..),
         NoVersionsFor(..), NoValueFor(..), NoValueForLatest(..),
-        CorruptChangeSetError(..),
+        CorruptChangesetError(..), CorruptChangelogError(..),
 
         module Ltc.Store.Types
     ) where
@@ -156,9 +156,8 @@ data CorruptValueFileError = CorruptValueFileError
 
 instance Exception CorruptValueFileError
 
-data CorruptStoreError = CorruptStoreError
-    { csReason :: String
-    } deriving ( Show, Typeable )
+data CorruptStoreError = CorruptStoreError String
+                       deriving ( Show, Typeable )
 
 instance Exception CorruptStoreError
 
@@ -182,9 +181,14 @@ data StoreClosed = StoreClosed
 
 instance Exception StoreClosed
 
-data CorruptChangeSetError = CorruptChangeSetError
-    { changeSetPath :: FilePath
+data CorruptChangesetError = CorruptChangesetError
+    { changesetPath :: FilePath
     , ccsReason     :: String
     } deriving ( Show, Typeable )
 
-instance Exception CorruptChangeSetError
+instance Exception CorruptChangesetError
+
+data CorruptChangelogError = CorruptChangelogError String
+                           deriving ( Show, Typeable )
+
+instance Exception CorruptChangelogError

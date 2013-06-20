@@ -43,7 +43,7 @@ main = defaultMainWithOpts
        -- , testProperty "exportImportId" propExportImportId
        ] options
   where
-    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 20000000) }) }
+    options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 30000000) }) }
 
 --------------------------------
 -- Unit tests

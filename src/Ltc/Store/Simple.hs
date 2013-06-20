@@ -13,11 +13,12 @@
 -- ├── format
 -- ├── version
 -- ├── clock
+-- ├── changelog
 -- ├── nodeName
 -- ├── clean-shutdown
 -- ├── tmp/
 -- ├── keys/
--- ├── changes/
+-- ├── changesets/
 -- └── values/
 -- @
 --
@@ -29,6 +30,9 @@
 --
 -- @DB_DIR/clock@ is the latest version clock seen by the store.  This is probably also
 -- the version of the latest value written to disk, but this is not necessary.
+--
+-- @DB_DIR/changelog@ is a list of all the versions and associated 'Changeset's of this
+-- store.
 --
 -- @DB_DIR/clean-shutdown@ is only present if 1) the store is closed, and 2) the store was
 -- shutdown cleanly.
@@ -44,7 +48,7 @@
 -- S-Expression which contains meta information about the value of the
 -- key.
 --
--- @DB_DIR/changes@ is a directory that contains a file for each change made to the
+-- @DB_DIR/changesets@ is a directory that contains a file for each change made to the
 -- key-value store.
 --
 -- @DB_DIR/values@ is a directory that contains a file for each value
@@ -73,18 +77,18 @@ import GHC.Generics ( Generic )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, parseExn, printHum )
+import Ltc.Changeset ( Changeset(..)
+                     , changesFromList
+                     , wireDiffForKeyExn, wireDiffFromTo, diffFromWireDiff )
 import Ltc.Diff ( Diffable(..) )
-import Ltc.Store.ChangeSet ( ChangeSet(..)
-                           , changesFromList
-                           , wireDiffForKeyExn, wireDiffFromTo, diffFromWireDiff )
 import Ltc.Store.Class ( Store(..), SetCmd(..)
                        , Storable, ValueHash
-                       , Version, ChangeSetHash
+                       , Version, ChangesetHash
                        , Key(..), KeyHash
                        , NodeName
                        , TypeMismatchError(..), CorruptStoreError(..), CorruptKeyFileError(..)
                        , StoreClosed(..), CorruptValueFileError(..), NodeNameMismatchError(..)
-                       , CorruptChangeSetError(..) )
+                       , CorruptChangesetError(..), CorruptChangelogError(..) )
 import Ltc.Store.Event ( EventChannel, Event(..), SetEvent(..) )
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents, removeFile )
@@ -109,7 +113,7 @@ formatString :: String
 formatString = "simple"
 
 storeVsn :: Int
-storeVsn = 6
+storeVsn = 7
 
 ----------------------
 -- Types
@@ -144,10 +148,15 @@ data KeyRecord = KR
     { getKeyName   :: Key
     , getValueType :: TypeRep
     , getTip       :: KeyVersion
-    , getHistory   :: [ChangeSetHash]
+    , getHistory   :: [ChangesetHash]
     } deriving ( Generic )
 
 instance Sexpable KeyRecord
+
+data Changelog = Changelog [(Version, ChangesetHash)]
+               deriving ( Generic )
+
+instance Sexpable Changelog
 
 ----------------------
 -- Store interface
@@ -212,7 +221,7 @@ doOpen params = do
     when (not storeExists) $ do
         if createIfMissing params
             then initStore params
-            else CE.throw (CorruptStoreError { csReason = "missing" })
+            else CE.throw (CorruptStoreError "missing")
 
     -- Check that the requested node name is the same as the one on disk.
     nn <- BL.readFile (locationNodeName (location params))
@@ -223,7 +232,7 @@ doOpen params = do
     -- Check that the store's format version is the same as the one in this executable.
     vsn <- BL.readFile (locationVersion (location params))
     when (vsn /= BL.pack (show storeVsn)) $
-        CE.throw (CorruptStoreError { csReason = "different version" })
+        CE.throw (CorruptStoreError "different version")
 
     cleanShutdown <- doesFileExist (locationCleanShutdown (location params))
     if cleanShutdown
@@ -294,16 +303,16 @@ doGet store key version = do
             Right [sexp]  -> fromSexp sexp
             Right _       -> fail "wrong number of sexps"
 
-    findVersion :: a -> [ChangeSetHash] -> IO a
+    findVersion :: a -> [ChangesetHash] -> IO a
     findVersion val [] =
         return val
     findVersion val (chash : history) = do
-        changeSet <- readChangeSetExn (locationChangeSetHash store chash)
-        case changeSet of
+        changeset <- readChangesetExn (locationChangesetHash store chash)
+        case changeset of
             Update {} -> do
-                if not (getAfterVersion changeSet `VC.causes` version)
+                if not (getAfterVersion changeset `VC.causes` version)
                     then do
-                        let wireDiff = wireDiffForKeyExn (getChanges changeSet) key
+                        let wireDiff = wireDiffForKeyExn (getChanges changeset) key
                         -- The only way for 'diffFromWireDiff' to fail is if the type is
                         -- wrong, but it cannot be at this point in the execution.
                         let Just diff = diffFromWireDiff wireDiff
@@ -334,8 +343,8 @@ doKeyVersions store key = do
     debugM tag (printf "keyVersions %s" (show key))
     withKeyRecord (locationKey store key) $ \kr -> do
         Just <$> forM (getHistory kr) (\chash -> do
-            changeSet <- readChangeSetExn (locationChangeSetHash store chash)
-            return (getAfterVersion changeSet))
+            changeset <- readChangesetExn (locationChangesetHash store chash)
+            return (getAfterVersion changeset))
 
 doKeyType :: Simple -> Key -> IO (Maybe TypeRep)
 doKeyType store key = do
@@ -375,19 +384,19 @@ doMSet store cmds = lockStore store $ do
         mkr <- readKeyRecord (locationKey store key)
         return (mkr, cmd, vhash)
 
-    -- Compute the 'ChangeSet' from the store state to the new one (the store is locked,
+    -- Compute the 'Changeset' from the store state to the new one (the store is locked,
     -- so values can't be updated by something else while we're here).  Having superfluous
     -- changesets lying around is not a problem.
     changes <- changesFromList <$> forM cmds (\(SetCmd key newVal) -> do
         mOldVal <- doGetLatest store key
         let oldVal = maybe def fst mOldVal
         return (key, wireDiffFromTo oldVal newVal))
-    let changeSet = Update { getBeforeUpdateVersion = clock
+    let changeset = Update { getBeforeUpdateVersion = clock
                            , getAfterVersion        = clock'
                            , getChanges             = changes }
-    let serializedChangeSet = printHum (toSexp changeSet)
-    let chash = BL.pack (showDigest (sha1 serializedChangeSet))
-    atomicWriteFile store (locationChangeSetHash store chash) serializedChangeSet
+    let serializedChangeset = printHum (toSexp changeset)
+    let chash = BL.pack (showDigest (sha1 serializedChangeset))
+    atomicWriteFile store (locationChangesetHash store chash) serializedChangeset
 
     -- Update the key records, or create new ones if they are missing.
     krs' <- forM mkrs $ \(mkrOld, cmd@(SetCmd key value), vhash) -> do
@@ -408,9 +417,13 @@ doMSet store cmds = lockStore store $ do
                 return $ (cmd, krOld { getTip     = tip
                                      , getHistory = chash : getHistory krOld
                                      })
+    changelog <- readChangelog store
+    let changelog' = let Changelog changesets = changelog
+                     in Changelog ((clock', chash) : changesets)
     atomicWriteFiles store $
-        flip map krs' $ \(SetCmd key _, kr) ->
-            (locationKey store key, printHum (toSexp kr))
+        (locationChangelog (getBase store), printHum (toSexp changelog')) :
+        (flip map krs' $ \(SetCmd key _, kr) ->
+          (locationKey store key, printHum (toSexp kr)))
 
     writeEventChannels store (msetEvent vals)
     return clock'
@@ -461,6 +474,8 @@ withKeyRecord path f = do
         Just kr -> f kr
 
 -- FIXME parseOrError should be part of sexp.
+-- | Read a S-Expression-encoded value from a file, or invoke the given handler if an
+-- error occurs.
 parseWithHandler :: (Sexpable a) => FilePath -> (String -> IO a) -> IO a
 parseWithHandler path handleErr = do
     text <- BL.readFile path
@@ -486,12 +501,18 @@ readKeyRecord path = do
                                                 , ckfReason  = reason }))
           else return Nothing
 
--- | Read a 'ChangeSet' from disk.
-readChangeSetExn :: FilePath -> IO ChangeSet
-readChangeSetExn path = do
+-- | Read a 'Changeset' from disk.
+readChangesetExn :: FilePath -> IO Changeset
+readChangesetExn path = do
     parseWithHandler path $ \reason -> do
-        CE.throw (CorruptChangeSetError { changeSetPath = path
+        CE.throw (CorruptChangesetError { changesetPath = path
                                         , ccsReason     = reason })
+
+-- | Read the store's 'Changelog'.
+readChangelog :: Simple -> IO Changelog
+readChangelog store = do
+    parseWithHandler (locationChangelog (getBase store)) $ \reason -> do
+        CE.throw (CorruptChangelogError reason)
 
 -- | Write the given 'ByteString' to the file atomically.  Overwrite any previous content.
 -- The 'Simple' reference is needed in order to find the temporary directory (we can't use
@@ -531,12 +552,13 @@ initStore params = do
     writeFile (locationVersion base) (show storeVsn)
     let initialClock = VC.insert (nodeName params) (0 :: Int) VC.empty
     BL.writeFile (locationClock base) (printHum (toSexp initialClock))
+    BL.writeFile (locationChangelog base) (printHum (toSexp (Changelog [])))
     BL.writeFile (locationNodeName base) (nodeName params)
     writeFile (locationCleanShutdown base) ""
     createDirectory (locationTemporary base)
     createDirectory (locationValues base)
     createDirectory (locationKeys base)
-    createDirectory (locationChanges base)
+    createDirectory (locationChangesets base)
 
 -- | The hash of a key.  This hash is used as the filename under which
 -- the key is stored in the @keys/@ folder.
@@ -569,9 +591,9 @@ lockStore store act = withMVar (getLock store) (const act)
 locationValueHash :: Simple -> ValueHash -> FilePath
 locationValueHash store hash = locationValues (getBase store) </> BL.unpack hash
 
--- | The location of a 'ChangeSet'.
-locationChangeSetHash :: Simple -> ChangeSetHash -> FilePath
-locationChangeSetHash store hash = locationChanges (getBase store) </> BL.unpack hash
+-- | The location of a 'Changeset'.
+locationChangesetHash :: Simple -> ChangesetHash -> FilePath
+locationChangesetHash store hash = locationChangesets (getBase store) </> BL.unpack hash
 
 -- | The location of a key's record.
 locationKey :: Simple -> Key -> FilePath
@@ -598,8 +620,11 @@ locationValues base = base </> "values"
 locationKeys :: FilePath -> FilePath
 locationKeys base = base </> "keys"
 
-locationChanges :: FilePath -> FilePath
-locationChanges base = base </> "changes"
+locationChangesets :: FilePath -> FilePath
+locationChangesets base = base </> "changesets"
+
+locationChangelog :: FilePath -> FilePath
+locationChangelog base = base </> "changelog"
 
 locationNodeName :: FilePath -> FilePath
 locationNodeName base = base </> "nodeName"
