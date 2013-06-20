@@ -9,6 +9,9 @@ module Ltc.Store.Types (
         Storable, ValueHash,
         Type, typeOf,
 
+        -- * Changes
+        ChangeSetHash,
+
         -- * Node types
         NodeName,
 
@@ -48,6 +51,7 @@ instance IsString Key where
 -- FIXME Make KeyHash, ValueHjash, NodeName, and Version abstract types
 type KeyHash = ByteString
 type ValueHash = ByteString
+type ChangeSetHash = ByteString
 type NodeName = ByteString
 
 type Version = VectorClock NodeName Int

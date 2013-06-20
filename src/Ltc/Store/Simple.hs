@@ -17,6 +17,7 @@
 -- ├── clean-shutdown
 -- ├── tmp/
 -- ├── keys/
+-- ├── changes/
 -- └── values/
 -- @
 --
@@ -43,6 +44,9 @@
 -- S-Expression which contains meta information about the value of the
 -- key.
 --
+-- @DB_DIR/changes@ is a directory that contains a file for each change made to the
+-- key-value store.
+--
 -- @DB_DIR/values@ is a directory that contains a file for each value
 -- present in the key-value store.  The values in these files may be
 -- gzipped.  These files are referenced by files in the @DB_DIR/keys@
@@ -63,15 +67,17 @@ import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Default ( Default(..) )
 import Data.Digest.Pure.SHA ( sha1, showDigest, integerDigest )
 import Data.Foldable ( find, foldlM )
+import qualified Data.Map as M
 import Data.Set ( Set )
 import Data.Typeable ( TypeRep, typeOf )
 import GHC.Generics ( Generic )
 import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, parseExn, printHum )
+import Ltc.Store.ChangeSet ( ChangeSet(..), Changes(..), wireDiffFromTo )
 import Ltc.Store.Class ( Store(..), SetCmd(..)
                        , Storable, ValueHash
-                       , Version
+                       , Version, ChangeSetHash
                        , Key(..), KeyHash
                        , NodeName
                        , TypeMismatchError(..), CorruptStoreError(..), CorruptKeyFileError(..)
@@ -100,7 +106,7 @@ formatString :: String
 formatString = "simple"
 
 storeVsn :: Int
-storeVsn = 5
+storeVsn = 6
 
 ----------------------
 -- Types
@@ -321,9 +327,9 @@ doMSet store cmds = lockStore store $ do
     -- Increment and save the version clock.  It's ok to increment the clock
     -- superfluously, so we can be interrupted here.
     let nn = getNodeName store
-    clock' <- modifyMVar (getClock store) $ \clock -> do
-        let Just incrementedClock = VC.inc nn clock
-        return (incrementedClock, incrementedClock)
+    (clock, clock') <- modifyMVar (getClock store) $ \oldClock -> do
+        let Just incrementedClock = VC.inc nn oldClock
+        return (incrementedClock, (oldClock, incrementedClock))
     atomicWriteClock store (locationClock (getBase store)) clock'
 
     -- Write the values.  It's ok to write extra values, so we can be interrupted here.
@@ -339,6 +345,20 @@ doMSet store cmds = lockStore store $ do
     mkrs <- forM (zip cmds vhashes) $ \(cmd@(SetCmd key _), vhash) -> do
         mkr <- readKeyRecord (locationKey store key)
         return (mkr, cmd, vhash)
+
+    -- Compute the 'ChangeSet' from the store state to the new one (the store is locked,
+    -- so values can't be updated by something else while we're here).  Having superfluous
+    -- changesets lying around is not a problem.
+    changes <- Changes . M.fromList <$> forM cmds (\(SetCmd key newVal) -> do
+        mOldVal <- doGetLatest store key
+        let oldVal = maybe def fst mOldVal
+        return (key, wireDiffFromTo oldVal newVal))
+    let changeSet = Update { getBeforeUpdateVersion = clock
+                           , getAfterUpdateVersion  = clock'
+                           , getUpdateChanges       = changes }
+    let serializedChangeSet = printHum (toSexp changeSet)
+    let chash = BL.pack (showDigest (sha1 serializedChangeSet))
+    atomicWriteFile store (locationChangeSetHash store chash) serializedChangeSet
 
     -- Update the key records, or create new ones if they are missing.
     krs' <- forM mkrs $ \(mkrOld, cmd@(SetCmd key value), vhash) -> do
@@ -475,6 +495,7 @@ initStore params = do
     createDirectory (locationTemporary base)
     createDirectory (locationValues base)
     createDirectory (locationKeys base)
+    createDirectory (locationChanges base)
 
 -- | The hash of a key.  This hash is used as the filename under which
 -- the key is stored in the @keys/@ folder.
@@ -511,6 +532,10 @@ lockStore store act = withMVar (getLock store) (const act)
 locationValueHash :: Simple -> ValueHash -> FilePath
 locationValueHash store hash = locationValues (getBase store) </> BL.unpack hash
 
+-- | The location of a 'ChangeSet'.
+locationChangeSetHash :: Simple -> ChangeSetHash -> FilePath
+locationChangeSetHash store hash = locationChanges (getBase store) </> BL.unpack hash
+
 -- | The location of a key's record.
 locationKey :: Simple -> Key -> FilePath
 locationKey store key = locationKeys (getBase store) </> BL.unpack (keyHash key)
@@ -535,6 +560,9 @@ locationValues base = base </> "values"
 
 locationKeys :: FilePath -> FilePath
 locationKeys base = base </> "keys"
+
+locationChanges :: FilePath -> FilePath
+locationChanges base = base </> "changes"
 
 locationNodeName :: FilePath -> FilePath
 locationNodeName base = base </> "nodeName"

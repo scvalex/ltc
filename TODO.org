@@ -47,6 +47,7 @@
   - [X] Graph sets/gets
 * TODO UDP Connections
   :LOGBOOK:
+  CLOCK: [2013-06-20 Thu 15:15]--[2013-06-20 Thu 15:57] =>  0:42
   CLOCK: [2013-06-20 Thu 00:11]--[2013-06-20 Thu 01:05] =>  0:54
   CLOCK: [2013-06-16 Sun 17:49]--[2013-06-16 Sun 18:43] =>  0:54
   CLOCK: [2013-06-04 Tue 13:34]--[2013-06-04 Tue 13:37] =>  0:03
@@ -192,6 +193,7 @@
   properties the individual components should have to be able to prove
   the bigger thing.
 * TODO Check documentation
+* TODO SQLite backend
 * Final Report
   :LOGBOOK:
   CLOCK: [2013-06-18 Tue 11:03]--[2013-06-18 Tue 11:25] =>  0:22

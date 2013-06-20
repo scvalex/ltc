@@ -3,9 +3,10 @@
 module Ltc.Store.ChangeSet (
         -- * Changesets
         ChangeSet(..), getChangeSetFromTo,
+        Changes(..),
 
         -- * Serializable diffs
-        WireDiff, getWireDiffFromTo, getApplyWireDiff
+        WireDiff, wireDiffFromTo, getApplyWireDiff
     ) where
 
 import Data.ByteString.Char8 ( ByteString )
@@ -84,7 +85,7 @@ instance Sexpable Changes
 getChangesFromTo :: (Store s) => s -> Version -> Version -> IO Changes
 getChangesFromTo _store fromVsn toVsn = do
     debugM tag (printf "getChangesFromTo %s %s" (show fromVsn) (show toVsn))
-    let _ = getWireDiffFromTo (23 :: Integer) 42
+    let _ = wireDiffFromTo (23 :: Integer) 42
     return undefined
 
 ----------------------
@@ -101,8 +102,8 @@ instance Serialize WireDiff
 instance Sexpable WireDiff
 
 -- | Get a serializable diff between two 'Storable' values.
-getWireDiffFromTo :: (Storable a) => a -> a -> WireDiff
-getWireDiffFromTo before after =
+wireDiffFromTo :: (Storable a) => a -> a -> WireDiff
+wireDiffFromTo before after =
     let diff = diffFromTo before after
     in WireDiff { getWireDiffType = typeOf before
                 , getWireDiffDiff = encode diff
