@@ -239,10 +239,9 @@ but are not permanently connected.
 
 # Data replication
 
-\begin{figure}[h!]
-\centering
-
 \tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
 
 \begin{tikzpicture}
 
@@ -270,8 +269,6 @@ but are not permanently connected.
 
 \end{tikzpicture}
 
-\end{figure}
-
 \note{
 
 \tiny
@@ -298,11 +295,84 @@ same data, sort of.  At the beginning, both have A, but each also has
 something extra: Node 1 has B, and Node 2 has C.  By data replication,
 or synchronization, we'll be using the terms interchangeably, we mean
 that the two nodes start like this, they exchange a bunch of messages,
-and they end in a states where they agree on the data.
+and they end in states where they agree on the data.
 
 \item We're first going to briefly look at how other data stores
 handle replication, and why it doesn't quite work in the environments
 we mentioned before.
+
+\end{itemize}
+
+}
+
+# Clustering
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
+
+\begin{tikzpicture}
+
+\node (A1) {Node 1};
+\node (A2) [state, below of=A1] {A};
+\node (A3) [state, below=0.6cm of A2] {A};
+\node (A4) [state, below=0.6cm of A3] {A};
+\node (A5) [state, below=0.6cm of A4] {A};
+\node (A6) [state, below=0.6cm of A5] {A, B};
+
+\node (B1) [right=2cm of A1] {Node 2};
+\node (B2) [state, below of=B1] {A};
+\node (B3) [state, below=0.6cm of B2] {A};
+\node (B4) [state, below=0.6cm of B3] {A};
+\node (B5) [state, below=0.6cm of B4] {A, B};
+\node (B6) [state, below=0.6cm of B5] {A, B};
+
+\path[->]
+    (A2) edge (A3)
+    (A3) edge (A4)
+    (A4) edge (A5)
+    (A5) edge (A6)
+    (B2) edge (B3)
+    (B3) edge (B4)
+    (B4) edge (B5)
+    (B5) edge (B6);
+
+\path[->,dashed,font=\scriptsize]
+    (A2) edge node [above] {B?} (B3)
+    (B3) edge node [above] {B? ok} (A4)
+    (A4) edge node [above] {B!} (B5)
+    (B5) edge node [above] {B! ok} (A6);
+
+\end{tikzpicture}
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item Other data stores generally use of two processes for data
+replication.  They first is usually called ``clustering''.
+
+\item The idea is that you start both nodes in the same state.  Here,
+Node 1 wants to make a change, call it B.  So, Node 1 tells the other
+nodes that it wants to make the change.  If everything is ok, the
+other nodes reply that they are willing to make the change.  So Node 1
+does so, and tells the other nodes to make the change.
+
+\item This is basically two phase commit.  The are more sophisticated
+schemes available, but two phase commit is enough to illustrate our
+point.
+
+\item Note that clustering is a synchronous process.  Remember, 4
+minutes, 4 minutes, 4 minutes, 4 minutes.  All the while this is
+happening, neither node can process writes.  Of course, it could be
+worse: it could be that the satellite that connects Node 1 to Node 2
+is not visible, and you have to wait until tomorrow to do this.
+
+\item And remember, this entire process has to happen for \emph{every}
+change.  Clearly, this isn't an option for the environments we're
+considering.
 
 \end{itemize}
 
