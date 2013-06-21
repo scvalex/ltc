@@ -650,6 +650,54 @@ new key into it, or to update the value of an existing key.
 
 }
 
+# Changes
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
+
+\begin{tikzpicture}
+
+\node (B1) [right=2cm of A1] {\texttt{[(Key, Value)]}};
+\node (B2) [state, below of=B1] {\texttt{[("foo", 23)]}};
+\node (B3) [state, below=1cm of B2] {\texttt{[("foo", 23),("bar", 41)]}};
+\node (B4) [state, below=1cm of B3] {\texttt{[("foo", 23),("bar", 42)]}};
+
+\path[->]
+    (B2) edge node [right] {\texttt{[("bar", +41)]}} (B3)
+    (B3) edge node [right] {\texttt{[("bar", +1)]}} (B4);
+
+\end{tikzpicture}
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item We've said that LTc stores the previous states as well as the
+current one.  We can now explain how it does this.
+
+\item First off, like any data store, it stores the current state
+as-is.  Then, like version control systems, it also stores the changes
+that led to the current state.  Since LTc's data is key-value map, the
+changes are key-diff maps.
+
+\item This is easy to see in our example.  The changes that
+transformed the first state into the second was the addition of the
+"bar" key.  The changes that transformed the second state into the
+third was the update of the bar key.  If we had changed more keys at
+once, these changes would contain multiple entries.
+
+\item So, LTc stores the latest state, and the chain of changes that
+led to it.  Since the changes are reversible, we can also infer any
+previous state.  The way you get back to the second state from the
+third is by decrementing "bar" by 1.
+
+\end{itemize}
+
+}
+
 # Thank you
 
 \begin{center}
