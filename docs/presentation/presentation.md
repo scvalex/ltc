@@ -796,6 +796,60 @@ default behaviour, the user can change it easily.
 
 }
 
+# Propagating updates
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
+
+\begin{tikzpicture}
+
+\node (A1) {Node 1};
+\node (A2) [state, below of=A1] {\texttt{[("foo", 23)]}};
+\node (A3) [state, below=1cm of A2] {\texttt{[("foo", 24)]}};
+
+\node (B1) [right=4cm of A1] {Node 2};
+\node (B2) [state, below of=B1] {?};
+
+\path[->]
+    (A2) edge node [right] {\texttt{[("foo", +1)]}} (A3);
+\end{tikzpicture}
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item We've already seen how a node handles receiving an update.  But
+how does it send one?  In particular, how does a node know which
+updates to send?
+
+\item Here, other data stores would just have Node 1 query Node 2 for
+its state.  Since LTc assumes high latency connections, this isn't an
+option.  Our only choice is for a node to guess what the state of the
+other node is.
+
+\item In the example above, we silently assumed that Node 1 knows that
+Node 2 has all the changes up to here, so we only sent the most recent
+one.
+
+\item On the other hand, Node 2 at this point knows that Node 1 has
+all of the changes up to here (because it sent this update), so it
+only has to send back these two changes.
+
+\item Note that since we assume lossy connections, a node cannot
+assume that the updates it sent were actually received.  So it has to
+be conservative about its estimate of the other node's state.  This
+implies that Node 1 might actually send this update multiple times.
+It's not a problem, since the update contains enough information to
+let Node 2 know that it's a duplicate, but it is wasteful.
+Unfortunately, there's little we can do about this.
+
+\end{itemize}
+
+}
+
 # Thank you
 
 \begin{center}
