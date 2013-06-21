@@ -186,6 +186,57 @@ in practice.
 
 }
 
+# Three Problems
+
+* Problem 1: High latency
+
+* Problem 2: Intermittent connectivity
+
+* Problem 3: Lossy channels
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item So, these are the three big problems that occur in
+inter-planetary communications: very high latency, intermittent
+connectivity, and lossy channels.
+
+\item But they also happen in more mundane circumstances.  Strictly
+speaking, any environment that's not a data centre has these problems,
+but there are a few situations where they stick out.
+
+\item For instance, in many rural or developing areas, the
+ground-based communications infrastructure is either incomplete or
+non-existing.  For reference, about two thirds of all people are in
+this situation.
+
+\item In this case, the only traditional option, is satellite
+communications, which tends to be expensive, unpredictable, and lossy.
+There's also Project Loon now, which uses low orbit balloons to
+provide internet access.  The idea is that you use a special antenna
+to connect to the nearest balloon, and your traffic is forwarded
+through the network of balloons until it reaches the Internet.  So,
+this has the added problem that you may be able to contact your own
+region, but not outside, if the balloons that were forwarding the
+traffic fail.
+
+\item The same problems also happen in disaster stricken areas.  When
+something catastrophic happens, like an earthquake, the communications
+infrastructure tends to go down.  Sometimes, this happens because the
+actual infrastructure is damaged, or simply because it cannot handle
+the unusually high traffic.  What's interesting in this case is that
+the individual nodes in network, so laptops and phones, generally
+continue to work.  This means that you have a bunch of devices that
+can form temporary connections of varying quality with one another,
+but are not permanently connected.
+
+\end{itemize}
+
+}
+
 # Thank you
 
 \begin{center}
