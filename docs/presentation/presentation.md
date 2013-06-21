@@ -553,6 +553,59 @@ replication.
 
 }
 
+# What we know
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
+
+\begin{tikzpicture}
+
+\node (A1) {Other data stores};
+\node (A2) [state, below of=A1] {\dots};
+\node (A3) [state, below=1cm of A2] {\dots};
+\node (A4) [state, below=1cm of A3] {\dots};
+
+\node (B1) [right=2cm of A1] {LTc};
+\node (B2) [state, below of=B1] {\dots};
+\node (B3) [state, below=1cm of B2] {\dots};
+\node (B4) [state, below=1cm of B3] {\dots};
+
+\path[->]
+    (A2) edge (A3)
+    (A3) edge (A4)
+    (B2) edge (B3)
+    (B3) edge (B4);
+
+\draw[thick,dotted] ($(A4.north west)+(-0.5,0.15)$) rectangle ($(A4.south east)+(0.5,-0.15)$);
+\draw[thick,dotted] ($(B2.north west)+(-0.5,0.15)$) rectangle ($(B4.south east)+(0.5,-0.15)$);
+
+\end{tikzpicture}
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item How much data does a data store actually hold?  Most just store
+the current value of the data and nothing else.  So, when they get a
+write request, they're probably going to do some things in
+preparation, then they're going to perform the write, and then they're
+going to forget about it.  Once a write has been done, conceptually,
+it's not important anymore.  In other words, the data store only know
+about the very latest state.
+
+\item LTc takes a hint from version control systems and keeps track of
+all the previous states in addition to the current states.  In other
+words, LTc knows about the entire chain of states that led to the
+latest state.  This turns out to be a big help when we reconcile
+diverging changes.
+
+\end{itemize}
+
+}
+
 # Thank you
 
 \begin{center}
