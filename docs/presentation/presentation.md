@@ -451,6 +451,82 @@ available, which is not usually the case.  It would be pretty bad if
 an update where lost between Node 1 and Node 2.  Node 2 might then end
 up in an inconsistent state.
 
+\item Despite these two practical issues, this is basically what we
+want, with one exception.  With master-slave replication, there's only
+one node that can initiate changes.  So, we can have Earth Wikipedia,
+and replicate it to Mars, but then martians can't edit Wikipedia,
+which is not nice at all.
+
+\end{itemize}
+
+}
+
+# Master-master replication?
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
+
+\begin{tikzpicture}
+
+\node (A1) {Node 1};
+\node (A2) [state, below of=A1] {A, B};
+\node (A3) [state, below=1.4cm of A2] {A, B};
+\node (A4) [state, below=1.4cm of A3] {A, B};
+
+\node (B1) [right=2cm of A1] {Node 2};
+\node (B2) [state, below of=B1] {A, $\lnot$ B};
+\node (B3) [state, below=1.4cm of B2] {A, $\lnot$ B};
+\node (B4) [state, below=1.4cm of B3] {A, $\lnot$ B};
+
+\path[->]
+    (A2) edge (A3)
+    (A3) edge (A4)
+    (B2) edge (B3)
+    (B3) edge (B4);
+
+\path[->,dashed,font=\scriptsize]
+    (A2) edge node [right] {B} (B3)
+    (B2) edge node [left] {$\lnot$ B} (A3)
+    (B3) edge node [left] {$\lnot$ B} (A4)
+    (A3) edge node [right] {B} (B4);
+
+\end{tikzpicture}
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item We want both earthlings and martians to be able to edit
+Wikipedia at the same time.  In other words, we want to be able to
+make changes to all of the nodes.
+
+\item Since master-master is strictly more general than master-slave,
+and also nicer to have, the question that comes to mind is, why is it
+that other data stores generally don't offer this?  What's difficult
+about master-master?
+
+\item The big problem is diverging changes.  If the nodes can make
+changes independently of one another, they can make different changes
+to the exact same item.  Here, both nodes agree on A, but they've both
+made changes regarding B.  Node 1 says the result should be B, while
+Node 2 says the result should be not B.
+
+\item Note that both of them have already committed to making the
+respective changes on behalf of their users.  It's not like
+clustering, where it's ok for the transaction to fail.  This is a
+situation where each node knows that it has the correct data, but it's
+getting conflicting changes from on of its peers.  Since we're talking
+about peers, rather than masters and slaves, it doesn't have some
+simple heuristic like, ignore the other node's changes, or accept the
+other node's changes.
+
+\item Since the nodes have made diverging changes to the data, we need
+to reconcile them somehow.  But to do this, we'd like to have a bit
+more information about the state of the world.
+
 \end{itemize}
 
 }
