@@ -525,7 +525,29 @@ other node's changes.
 
 \item Since the nodes have made diverging changes to the data, we need
 to reconcile them somehow.  But to do this, we'd like to have a bit
-more information about the state of the world.
+more information about the state of the world and we need to be a bit
+careful about what changes to the data we can make.
+
+\end{itemize}
+
+}
+
+#
+
+\begin{center}
+  \textsc{\large Introducing} \textsc{\LARGE LTc}\\[0.5cm]
+  \textsc{\large A replicated data store for high-latency disconnected environments}
+\end{center}
+
+\note{
+
+\begin{itemize}
+
+\item We wrote LTc to solve this problem in the aforementioned
+environments.  LTc is a replicated data store for high-latency
+disconnected environments.  We're now going to talk about LTc's
+replication mechanism and how it tries to achieve master-master
+replication.
 
 \end{itemize}
 
