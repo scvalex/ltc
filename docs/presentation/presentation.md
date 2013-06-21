@@ -351,7 +351,7 @@ we mentioned before.
 
 \begin{itemize}
 
-\item Other data stores generally use of two processes for data
+\item Other data stores generally use of two mechanisms for data
 replication.  They first is usually called ``clustering''.
 
 \item The idea is that you start both nodes in the same state.  Here,
@@ -364,15 +364,92 @@ does so, and tells the other nodes to make the change.
 schemes available, but two phase commit is enough to illustrate our
 point.
 
-\item Note that clustering is a synchronous process.  Remember, 4
-minutes, 4 minutes, 4 minutes, 4 minutes.  All the while this is
-happening, neither node can process writes.  Of course, it could be
-worse: it could be that the satellite that connects Node 1 to Node 2
-is not visible, and you have to wait until tomorrow to do this.
+\item Note that clustering is a blocking synchronous process.
+Remember, 4 minutes, 4 minutes, 4 minutes, 4 minutes.  All the while
+this is happening, neither node can process writes.  Of course, it
+could be worse: it could be that the satellite that connects Node 1 to
+Node 2 is not visible, and you have to wait until tomorrow to do this.
 
 \item And remember, this entire process has to happen for \emph{every}
 change.  Clearly, this isn't an option for the environments we're
 considering.
+
+\end{itemize}
+
+}
+
+# Master-slave replication
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
+
+\begin{tikzpicture}
+
+\node (A1) {Node 1};
+\node (A2) [state, below of=A1] {A B};
+\node (A3) [state, below=0.6cm of A2] {A B C};
+\node (A4) [state, below=0.6cm of A3] {A B C D};
+\node (A5) [state, below=0.6cm of A4] {A B C D E};
+\node (A6) [state, below=0.6cm of A5] {A B C D E};
+
+\node (B1) [right=2cm of A1] {Node 2};
+\node (B2) [state, below of=B1] {A};
+\node (B3) [state, below=0.6cm of B2] {A B};
+\node (B4) [state, below=0.6cm of B3] {A B C};
+\node (B5) [state, below=0.6cm of B4] {A B C};
+\node (B6) [state, below=0.6cm of B5] {A B C D E};
+
+\path[->]
+    (A2) edge (A3)
+    (A3) edge (A4)
+    (A4) edge (A5)
+    (A5) edge (A6)
+    (B2) edge (B3)
+    (B3) edge (B4)
+    (B4) edge (B5)
+    (B5) edge (B6);
+
+\path[->,dashed,font=\scriptsize]
+    (A2) edge node [above] {B} (B3)
+    (A3) edge node [above] {C} (B4)
+    (A5) edge node [above] {D E} (B6);
+
+\end{tikzpicture}
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item The other way mechanisms data stores usually use for data
+replication is usually called master-slave replication.
+
+\item The idea here is that there's one node called the master which
+makes changes to the data, and other nodes called slaves, which just
+follow the changes the master makes.  Here, only Node 1 initiates
+changes.  Every once in a while, Node 2 gets the changes Node 1 has
+made and makes them as well.
+
+\item Note that this is an asynchronous process.  The reason we can
+avoid the whole back-and-forth from before is because Node 2
+\emph{never} initiates changes to the data.  So, it's perfectly safe
+for Node 1 to tell it exactly what to do.
+
+\item Unlike before, this is a non-blocking process.  Node 1 is free
+to make changes even if Node 2 isn't up to date.  All that matters is
+that Node 2 will be able to catch up at some point in the future.
+
+\item Because it's asynchronous and non-blocking, it's the sort of
+mechanism that would work well in the environments we're considering.
+Unfortunately, the way every data store implements this in practice is
+over TCP, so none of them could actually be used without modification.
+
+\item Furthermore, they usually assume that lossless channels are
+available, which is not usually the case.  It would be pretty bad if
+an update where lost between Node 1 and Node 2.  Node 2 might then end
+up in an inconsistent state.
 
 \end{itemize}
 
