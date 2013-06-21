@@ -698,6 +698,104 @@ third is by decrementing "bar" by 1.
 
 }
 
+# Handling updates --- the setup
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
+
+\begin{tikzpicture}
+
+\node (A1) {Node 1};
+\node (A2) [state, below of=A1] {\texttt{[("foo", 23)]}};
+\node (A3) [state, below=1cm of A2] {\texttt{[("foo", 24)]}};
+
+\node (B1) [right=4cm of A1] {Node 2};
+\node (B2) [state, below of=B1] {\texttt{[("foo", 23)]}};
+\node (B3) [state, below=1cm of B2] {\texttt{[("foo", 25)]}};
+\node (B4) [state, below=1cm of B3] {\dots};
+
+\path[->]
+    (A2) edge node [right] {\texttt{[("foo", +1)]}} (A3)
+    (B2) edge node [right] {\texttt{[("foo", +2)]}} (B3)
+    (B3) edge (B4);
+
+\path[->,dashed,font=\scriptsize]
+    (A3) edge node [below, xshift=-0.5cm] {\texttt{[("foo", +1)]}} (B4);
+
+\end{tikzpicture}
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item So, we've said what LTc does differently: it's a key value store
+that keeps track of both current and previous states and the changes
+between them.  But how does this help us to reconcile diverging
+changes?
+
+\item Suppose we have two nodes that made the following diverging
+changes: Node 1 increases "foo" by 1, and Node 2 increases it by 3.
+Now suppose Node 1 managed to send its change to Node 2.
+
+\end{itemize}
+
+}
+
+# Handling updates --- the merge
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
+
+\begin{tikzpicture}
+
+\node (B1) {Node 2};
+\node (B2) [state, below of=B1] {\texttt{[("foo", 23)]}};
+\node (B3) [state, below=1cm of B2, xshift=2cm] {\texttt{[("foo", 25)]}};
+\node (B4) [state, below=1cm of B2, xshift=-2cm] {\texttt{[("foo", 24)]}};
+\node (B5) [state, below=3cm of B2] {\texttt{["foo", 26]}};
+
+\path[->]
+    (B2) edge node [left] {\texttt{[("foo", +1)]}} (B4)
+    (B2) edge node [right] {\texttt{[("foo", +2)]}} (B3)
+    (B2) edge node [right, yshift=-0.75cm] {\texttt{[("foo", +3)]}} (B5);
+
+\path[->,dashed,font=\scriptsize]
+    (B3) edge (B5)
+    (B4) edge (B5);
+
+\end{tikzpicture}
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item From Node 2's POV, the situation looks like this.  It knows two
+diverging changes have been made to "foo".
+
+\item If we weren't keeping track of the entire history, we have very
+few options now.  We would only know the two current states, so we
+would be forced to choose between them.  Sometimes, this is enough,
+but we can be more general if we use the history.
+
+\item We can take the two current states, we can walk back up the
+graph and find their most recent common ancestor, we can take the
+differences between this state and the two, we can merge the
+difference, and finally apply it to that node.  This way, we can get a
+state that's truly a combination of the two diverging states.
+
+\item I should mention that although this kind of merge is LTc's
+default behaviour, the user can change it easily.
+
+\end{itemize}
+
+}
+
 # Thank you
 
 \begin{center}
