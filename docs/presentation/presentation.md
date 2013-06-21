@@ -237,6 +237,77 @@ but are not permanently connected.
 
 }
 
+# Data replication
+
+\begin{figure}[h!]
+\centering
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\begin{tikzpicture}
+
+\node (A1) {Node 1};
+\node (A2) [state, below of=A1] {A, B};
+\node (A3) [state, below=1.4cm of A2] {\dots};
+\node (A4) [state, below=1.4cm of A3] {A, B, C};
+
+\node (B1) [right=2cm of A1] {Node 2};
+\node (B2) [state, below of=B1] {A, C};
+\node (B3) [state, below=1.4cm of B2] {\dots};
+\node (B4) [state, below=1.4cm of B3] {A, B, C};
+
+\path[->]
+    (A2) edge (A3)
+    (A3) edge (A4)
+    (B2) edge (B3)
+    (B3) edge (B4);
+
+\path[->,dashed,font=\scriptsize]
+    (A2) edge (B3)
+    (B2) edge (A3)
+    (B3) edge (A4)
+    (A3) edge (B4);
+
+\end{tikzpicture}
+
+\end{figure}
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item Those three problems affect basically every networked program,
+but we're not going to treat the general case.  Instead, we will focus
+on data replication.
+
+\item Here's what we mean by ``data replication''.  We've got one data
+store, but it's on multiple nodes.  To be clear, the data isn't
+fragmented, sharded or anything like that.  It's the same data on
+every node.  Or rather, that's what we'd like to happen.
+
+\item In this diagram, we have two nodes.  The boxes represent states
+the nodes are in, and time flows downward.  So, Node 1 starts in this
+state, goes through some other states, and ends up in this state.  The
+same goes for Node 2: it starts here, it goes through some
+intermediary states, and ends here.
+
+\item Here's what we mean by data replication.  The two nodes hold the
+same data, sort of.  At the beginning, both have A, but each also has
+something extra: Node 1 has B, and Node 2 has C.  By data replication,
+or synchronization, we'll be using the terms interchangeably, we mean
+that the two nodes start like this, they exchange a bunch of messages,
+and they end in a states where they agree on the data.
+
+\item We're first going to briefly look at how other data stores
+handle replication, and why it doesn't quite work in the environments
+we mentioned before.
+
+\end{itemize}
+
+}
+
 # Thank you
 
 \begin{center}
