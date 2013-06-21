@@ -256,6 +256,10 @@
   CLOCK: [2013-06-04 Tue 19:07]--[2013-06-04 Tue 20:15] =>  1:08
   CLOCK: [2013-06-04 Tue 14:01]--[2013-06-04 Tue 17:16] =>  3:15
   :END:
+* Presentation
+  :LOGBOOK:
+  CLOCK: [2013-06-21 Fri 00:48]--[2013-06-21 Fri 01:27] =>  0:39
+  :END:
 * Code improvements
   :LOGBOOK:
   CLOCK: [2013-06-10 Mon 01:23]--[2013-06-10 Mon 01:33] =>  0:10
