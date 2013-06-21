@@ -606,6 +606,50 @@ diverging changes.
 
 }
 
+# Key-value store
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
+
+\begin{tikzpicture}
+
+\node (B1) [right=2cm of A1] {\texttt{[(Key, Value)]}};
+\node (B2) [state, below of=B1] {\texttt{[("foo", 23)]}};
+\node (B3) [state, below=1cm of B2] {\texttt{[("foo", 23),("bar", 41)]}};
+\node (B4) [state, below=1cm of B3] {\texttt{[("foo", 23),("bar", 42)]}};
+
+\path[->]
+    (B2) edge (B3)
+    (B3) edge (B4);
+
+\end{tikzpicture}
+
+\note{
+
+\tiny
+
+\begin{itemize}
+
+\item What is the layout of the data inside of a data store?  For SQL
+databases, it's a bunch of tables, interconnected by constraints.  For
+object databases, it's a bunch of nested objects.  For NoSQL data
+stores, it's usually some variant of key-value store.
+
+\item Although key-value stores are less featureful than the
+alternatives, they are widely used, which implies that they're good
+enough for a wide range of applications.  Furthermore, since they're
+also easier to reason about, we've chosen to make LTc a key-value
+store.
+
+\item So, in LTc, we can represent a state by a set of key-value
+pairs.  The basic ways to change a the data store are then to insert a
+new key into it, or to update the value of an existing key.
+
+\end{itemize}
+
+}
+
 # Thank you
 
 \begin{center}
