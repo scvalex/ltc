@@ -74,7 +74,7 @@ class Store a where
     changesetsNotBefore :: a -> Version -> IO [Changeset]
 
     -- | Blindly add multiple 'Changeset's to the store.  This does not actually update
-    -- the values.  See 'setInternal'.
+    -- the values.  See 'msetInternal'.
     addChangesets :: a -> [Changeset] -> IO ()
 
     -- | Get the type of the values associated with a key.  A key cannot be associated
@@ -90,6 +90,11 @@ class Store a where
     -- because it's a multi-set.  If 'close' was already called on this store, throw
     -- 'StoreClosed'.
     mset :: a -> [SetCmd] -> IO Version
+
+    -- FIXME msetInternal should only be called over a single-user locked store.
+    -- | /internal use/ Atomically set the values associated with multiple keys at the
+    -- given version.  Does not update the store's version.
+    msetInternal :: a -> [SetCmd] -> Version -> IO ()
 
     -- | Acquire the write lock, execute the given action, and release the write lock.
     -- Since writes to the store cannot happen while the lock is acquired, this is an

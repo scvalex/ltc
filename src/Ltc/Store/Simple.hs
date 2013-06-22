@@ -204,7 +204,9 @@ instance Store Simple where
 
     set store key value = doSet store key value
 
-    mset store kvs = doMSet store kvs
+    mset store cmds = doMSet store cmds
+
+    msetInternal store cmds version = doMSetInternal store cmds version
 
     withWriteLock store act = lockStore store act
 
@@ -478,6 +480,10 @@ doMSet store cmds = lockStore store $ do
 
     valueToString :: (Storable a) => a -> ByteString
     valueToString = printHum . toSexp
+
+doMSetInternal :: Simple -> [SetCmd] -> Version -> IO ()
+doMSetInternal _store _cmds _clock' = do
+    return ()
 
 -- FIXME doAddChangesets should be an atomic set of file writes.
 doAddChangesets :: Simple -> [Changeset] -> IO ()
