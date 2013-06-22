@@ -54,6 +54,7 @@ class Store a where
     -- the type of the value in order to use this function.
     getLatest :: (Storable b) => a -> Key -> IO (Maybe (b, Version))
 
+    -- FIXME keyVersions' most-recent-first semantics can't quite work.
     -- | Get all versions of the values associated with the given key, most-recent-first.
     keyVersions :: a -> Key -> IO (Maybe [Version])
 
@@ -71,6 +72,10 @@ class Store a where
     --     changesetsNotBefore v2 == [v3, v4]
     -- @
     changesetsNotBefore :: a -> Version -> IO [Changeset]
+
+    -- | Blindly add multiple 'Changeset's to the store.  This does not actually update
+    -- the values.  See 'setInternal'.
+    addChangesets :: a -> [Changeset] -> IO ()
 
     -- | Get the type of the values associated with a key.  A key cannot be associated
     -- with values of different types.

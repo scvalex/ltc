@@ -63,7 +63,7 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent ( MVar, newMVar
                           , modifyMVar, modifyMVar_, readMVar, withMVar )
 import Control.Concurrent.STM ( atomically, writeTChan )
-import Control.Monad ( when, unless, forM )
+import Control.Monad ( when, unless, forM, forM_ )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Default ( Default(..) )
 import Data.Digest.Pure.SHA ( sha1, showDigest, integerDigest )
@@ -156,6 +156,7 @@ data KeyRecord = KR
 
 instance Sexpable KeyRecord
 
+-- FIXME The changelog should be a map, not an alist.
 data Changelog = Changelog [(Version, ChangesetHash)]
                deriving ( Generic )
 
@@ -196,6 +197,8 @@ instance Store Simple where
     keyVersions store key = doKeyVersions store key
 
     changesetsNotBefore store version = doChangesetsNotBefore store version
+
+    addChangesets store changesets = doAddChangesets store changesets
 
     keyType store key = doKeyType store key
 
@@ -425,9 +428,13 @@ doMSet store cmds = lockStore store $ do
     let changeset = Update { getBeforeUpdateVersion = clock
                            , getAfterVersion        = clock'
                            , getChanges             = changes }
-    let serializedChangeset = printHum (toSexp changeset)
-    let chash = BL.pack (showDigest (sha1 serializedChangeset))
-    atomicWriteFile store (locationChangesetHash store chash) serializedChangeset
+    let (cbin, chash) = serializedChangeset changeset
+    atomicWriteFile store (locationChangesetHash store chash) cbin
+
+    -- Update the changelog in-memory.
+    Changelog changesets <- readMVar (getChangelog store)
+    let changelog' = Changelog ((clock', chash) : changesets)
+    modifyMVar_ (getChangelog store) (const (return changelog'))
 
     -- Update the key records, or create new ones if they are missing.
     krs' <- forM mkrs $ \(mkrOld, cmd@(SetCmd key value), vhash) -> do
@@ -448,9 +455,6 @@ doMSet store cmds = lockStore store $ do
                 return $ (cmd, krOld { getTip     = tip
                                      , getHistory = chash : getHistory krOld
                                      })
-    Changelog changesets <- readMVar (getChangelog store)
-    let changelog' = Changelog ((clock', chash) : changesets)
-    modifyMVar_ (getChangelog store) (const (return changelog'))
     atomicWriteFiles store $
         (locationChangelog (getBase store), printHum (toSexp changelog')) :
         (flip map krs' $ \(SetCmd key _, kr) ->
@@ -474,6 +478,22 @@ doMSet store cmds = lockStore store $ do
 
     valueToString :: (Storable a) => a -> ByteString
     valueToString = printHum . toSexp
+
+-- FIXME doAddChangesets should be an atomic set of file writes.
+doAddChangesets :: Simple -> [Changeset] -> IO ()
+doAddChangesets store newChangesets = lockStore store $ do
+    forM_ newChangesets $ \changeset -> do
+        -- Write the new changeset.  Having superfluous changesets is not a problem, so we
+        -- can be interrupted here.
+        let (cbin, chash) = serializedChangeset changeset
+        atomicWriteFile store (locationChangesetHash store chash) cbin
+
+        -- Update the changelog in-memory
+        Changelog changesets <- readMVar (getChangelog store)
+        let changelog' = Changelog ((getAfterVersion changeset, chash) : changesets)
+        modifyMVar_ (getChangelog store) (const (return changelog'))
+
+        atomicWriteFile store (locationChangelog (getBase store)) (printHum (toSexp changelog'))
 
 doKeys :: Simple -> IO (Set Key)
 doKeys store = do
@@ -613,6 +633,12 @@ assertIsOpen store = do
 -- at any time.
 lockStore :: Simple -> IO a -> IO a
 lockStore store act = withMVar (getLock store) (const act)
+
+-- | Serialize a 'ChangeSet'.
+serializedChangeset :: Changeset -> (ByteString, ChangesetHash)
+serializedChangeset changeset =
+    let cbin = printHum (toSexp changeset)
+    in (cbin, BL.pack (showDigest (sha1 cbin)))
 
 ----------------------
 -- Locations

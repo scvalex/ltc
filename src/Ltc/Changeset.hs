@@ -3,7 +3,7 @@
 module Ltc.Changeset (
         -- * Changesets
         Changeset(..),
-        Changes(..), changesFromList, wireDiffForKey,
+        Changes, changesFromList, changesToList, wireDiffForKey,
 
         -- * Serializable diffs
         WireDiff, wireDiffFromTo,
