@@ -386,6 +386,73 @@
     (A2) edge node [right] {\texttt{[("foo", +1)]}} (A3);
 \end{tikzpicture}
 
+# Recap
+
+* Key-value store
+
+* Versioned data
+
+* Automatic master-master replication
+
+* Merge-based conflict resolution
+
+* Simple strongly-typed interface
+
+# Distributed auction house --- LTc setup
+
+~~~~ {.haskell}
+store <- open (def { location = "auction-store"
+                   , nodeName = myUniqueName
+                   })
+node <- Node.serve store myUniqueName
+Node.addNeighbour node otherNodeName otherNodeAddress
+~~~~
+
+# Distributed auction house --- bid handling
+
+~~~~ {.haskell}
+placeBid :: Store -> AuctionName -> Bid -> IO ()
+placeBid store auction bid = do
+    set store (auction ++ ":bid:" ++ myUniqueName) bid
+
+getBids :: Store -> AuctionName -> IO [Bid]
+getBids store auction bid = do
+    bidKeys <- keys store (auction ++ ":bid:.*")
+    mapM bidKeys (getLatest store)
+~~~~
+
+# Distributed auction house --- data types
+
+~~~~ {.haskell}
+data Bid = Bid Integer
+           deriving ( Generic, Typeable )
+
+instance Serialize Bid
+
+instance Diffable Bid where
+    data Diff Bid = Diff Integer
+
+    diffFromTo  = diffFromTo
+    applyDiff   = applyDiff
+    reverseDiff = reverseDiff
+
+    merge (DiffInt n1) (DiffInt n2) = DiffInt (max n1 n2)
+~~~~
+
+# Performance
+
+~~~~ {.sourceCode}
+Writes/Sec  76 |     #
+               |     #
+               |     #
+               |     #
+            27 |     #            #
+               |     #            #
+               +-----------------------
+                   SQLite        LTc
+                   (more is better)
+~~~~
+
 # Thank you
 
 \begin{center}
