@@ -3,7 +3,7 @@
 module Ltc.Changeset (
         -- * Changesets
         Changeset(..),
-        Changes(..), changesFromList, wireDiffForKeyExn,
+        Changes(..), changesFromList, wireDiffForKey,
 
         -- * Serializable diffs
         WireDiff, wireDiffFromTo,
@@ -65,13 +65,9 @@ instance Sexpable Changes
 changesFromList :: [(Key, WireDiff)] -> Changes
 changesFromList = Changes . M.fromList
 
--- | Get the 'WireDiff' associated with a 'Key' in a 'Changes'.  Throw an error if the
--- 'Key' does not have an entry in the given 'Changes'.
-wireDiffForKeyExn :: Changes -> Key -> WireDiff
-wireDiffForKeyExn (Changes m) key =
-    case M.lookup key m of
-        Nothing       -> error "entry f or key not found in Changes"
-        Just wireDiff -> wireDiff
+-- | Get the 'WireDiff' associated with a 'Key' in a 'Changes'.
+wireDiffForKey :: Changes -> Key -> Maybe WireDiff
+wireDiffForKey (Changes m) key = M.lookup key m
 
 ----------------------
 -- WireDiff

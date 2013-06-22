@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeFamilies, TupleSections, DeriveGeneric #-}
-{-# Language FlexibleContexts, FlexibleInstances #-}
+{-# Language FlexibleContexts, FlexibleInstances, ViewPatterns #-}
 
 -- | Imagine desiging a key-value store on top of the file system.
 -- The 'Simple' store is basically that, with a few added
@@ -69,12 +69,13 @@ import Data.Default ( Default(..) )
 import Data.Digest.Pure.SHA ( sha1, showDigest, integerDigest )
 import Data.Foldable ( foldlM )
 import Data.Set ( Set )
+import Data.Sequence ( Seq, ViewL(..), (|>) )
 import Data.Typeable ( TypeRep, typeOf )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..), parse, parseExn, printHum )
 import Ltc.Changeset ( Changeset(..)
                      , changesFromList
-                     , wireDiffForKeyExn, wireDiffFromTo, diffFromWireDiff )
+                     , wireDiffForKey, wireDiffFromTo, diffFromWireDiff )
 import Ltc.Diff ( Diffable(..) )
 import Ltc.Store.Class ( Store(..), SetCmd(..)
                        , Key(..), KeyHash
@@ -89,6 +90,7 @@ import qualified Codec.Compression.GZip as Z
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
+import qualified Data.Sequence as Seq
 import qualified Data.VectorClock as VC
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents, removeFile )
@@ -127,6 +129,7 @@ data Simple = Simple
     , getIsOpen         :: MVar Bool
     , getClock          :: MVar Version
     , getLock           :: MVar ()
+    , getChangelog      :: MVar Changelog
     }
 
 -- | There is one 'KeyVersion' record for each *value* stored for a
@@ -242,6 +245,7 @@ doOpen params = do
         else doRecover
 
     clock <- newMVar =<< readClockExn (locationClock (location params))
+    changelog <- newMVar =<< readChangelogExn (location params)
 
     eventChannels <- newMVar []
     isOpen <- newMVar True
@@ -254,6 +258,7 @@ doOpen params = do
                    , getIsOpen         = isOpen
                    , getClock          = clock
                    , getLock           = lock
+                   , getChangelog      = changelog
                    })
   where
     doRecover = do
@@ -290,7 +295,8 @@ doGet store key version = do
 
             -- Walk back through the history looking for the earliest version that was
             -- before or equal to the given version.
-            Just <$> findVersion val (getHistory kr)
+            chash <- changesetHashForVersion (getVersion (getTip kr))
+            Just <$> findVersion (Seq.singleton (val, chash))
   where
     getEvent =
         let Key k = key
@@ -305,27 +311,39 @@ doGet store key version = do
             Right [sexp]  -> fromSexp sexp
             Right _       -> fail "wrong number of sexps"
 
-    findVersion :: a -> [ChangesetHash] -> IO a
-    findVersion val [] =
-        return val
-    findVersion val (chash : history) = do
+    changesetHashForVersion :: Version -> IO ChangesetHash
+    changesetHashForVersion vsn = do
+        Changelog changesets <- readMVar (getChangelog store)
+        case lookup vsn changesets of
+            Nothing        -> error "no changeset for version"
+            Just changeset -> return changeset
+
+    findVersion :: Seq (a, ChangesetHash) -> IO a
+    findVersion (Seq.viewl -> (val, chash) :< rest) = do
         changeset <- readChangesetExn (locationChangesetHash store chash)
         case changeset of
             Update {} -> do
                 if not (getAfterVersion changeset `VC.causes` version)
                     then do
-                        let wireDiff = wireDiffForKeyExn (getChanges changeset) key
-                        -- The only way for 'diffFromWireDiff' to fail is if the type is
-                        -- wrong, but it cannot be at this point in the execution.
-                        let Just diff = diffFromWireDiff wireDiff
-                        let rdiff = reverseDiff diff
-                        let val' = applyDiff val rdiff
-                        findVersion val' history
+                        let val' = case wireDiffForKey (getChanges changeset) key of
+                                Nothing ->
+                                    val
+                                Just wireDiff ->
+                                    -- The only way for 'diffFromWireDiff' to fail is if
+                                    -- the type is wrong, but it cannot be at this point
+                                    -- in the execution.
+                                    let Just diff = diffFromWireDiff wireDiff
+                                        rdiff = reverseDiff diff
+                                    in applyDiff val rdiff
+                        chash' <- changesetHashForVersion (getBeforeUpdateVersion changeset)
+                        findVersion (rest |> (val', chash'))
                     else do
                         return val
             Merge {} ->
                 -- FIXME Implement getting history past merges.
                 error "walking back through merges not supported"
+    findVersion _ = do
+        error "findVersion ran out of changes :("
 
 doGetLatest :: (Storable a) => Simple -> Key -> IO (Maybe (a, Version))
 doGetLatest store key = do
@@ -350,7 +368,7 @@ doKeyVersions store key = do
 
 doChangesetsAfter :: Simple -> Version -> IO [Changeset]
 doChangesetsAfter store version = do
-    Changelog changesets <- readChangelogExn store
+    Changelog changesets <- readChangelogExn (getBase store)
     let changesetPaths =
             map (locationChangesetHash store) $
             map snd $
@@ -430,8 +448,9 @@ doMSet store cmds = lockStore store $ do
                 return $ (cmd, krOld { getTip     = tip
                                      , getHistory = chash : getHistory krOld
                                      })
-    Changelog changesets <- readChangelogExn store
+    Changelog changesets <- readMVar (getChangelog store)
     let changelog' = Changelog ((clock', chash) : changesets)
+    modifyMVar_ (getChangelog store) (const (return changelog'))
     atomicWriteFiles store $
         (locationChangelog (getBase store), printHum (toSexp changelog')) :
         (flip map krs' $ \(SetCmd key _, kr) ->
@@ -521,9 +540,9 @@ readChangesetExn path = do
                                         , ccsReason     = reason })
 
 -- | Read the store's 'Changelog'.
-readChangelogExn :: Simple -> IO Changelog
-readChangelogExn store = do
-    parseWithHandler (locationChangelog (getBase store)) $ \reason -> do
+readChangelogExn :: FilePath -> IO Changelog
+readChangelogExn base = do
+    parseWithHandler (locationChangelog base) $ \reason -> do
         CE.throw (CorruptChangelogError reason)
 
 -- | Write the given 'ByteString' to the file atomically.  Overwrite any previous content.
