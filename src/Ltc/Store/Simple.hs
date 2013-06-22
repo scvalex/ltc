@@ -59,14 +59,11 @@ module Ltc.Store.Simple (
         Simple, OpenParameters(..)
     ) where
 
-import qualified Codec.Compression.GZip as Z
 import Control.Applicative ( (<$>) )
 import Control.Concurrent ( MVar, newMVar
                           , modifyMVar, modifyMVar_, readMVar, withMVar )
 import Control.Concurrent.STM ( atomically, writeTChan )
-import qualified Control.Exception as CE
 import Control.Monad ( when, unless, forM )
-import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Default ( Default(..) )
 import Data.Digest.Pure.SHA ( sha1, showDigest, integerDigest )
@@ -74,22 +71,25 @@ import Data.Foldable ( foldlM )
 import Data.Set ( Set )
 import Data.Typeable ( TypeRep, typeOf )
 import GHC.Generics ( Generic )
-import qualified Data.Set as S
-import qualified Data.VectorClock as VC
 import Language.Sexp ( Sexpable(..), parse, parseExn, printHum )
 import Ltc.Changeset ( Changeset(..)
                      , changesFromList
                      , wireDiffForKeyExn, wireDiffFromTo, diffFromWireDiff )
 import Ltc.Diff ( Diffable(..) )
 import Ltc.Store.Class ( Store(..), SetCmd(..)
-                       , Storable, ValueHash
-                       , Version, ChangesetHash
                        , Key(..), KeyHash
                        , NodeName
-                       , TypeMismatchError(..), CorruptStoreError(..), CorruptKeyFileError(..)
+                       , Storable, ValueHash
                        , StoreClosed(..), CorruptValueFileError(..), NodeNameMismatchError(..)
+                       , TypeMismatchError(..), CorruptStoreError(..), CorruptKeyFileError(..)
+                       , Version, ChangesetHash
                        , CorruptChangesetError(..), CorruptChangelogError(..) )
 import Ltc.Store.Event ( EventChannel, Event(..), SetEvent(..) )
+import qualified Codec.Compression.GZip as Z
+import qualified Control.Exception as CE
+import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.Set as S
+import qualified Data.VectorClock as VC
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents, removeFile )
 import System.FilePath ( (</>) )
