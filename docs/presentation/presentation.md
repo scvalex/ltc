@@ -301,16 +301,38 @@
 
 \node (B1) [right=4cm of A1] {Node 2};
 \node (B2) [state, below of=B1] {\texttt{[("foo", 23)]}};
-\node (B3) [state, below=1cm of B2] {\texttt{[("foo", 25)]}};
-\node (B4) [state, below=1cm of B3] {\dots};
+\node (B3) [below=1cm of B2] {};
+\node (B4) [below=1cm of B3] {};
 
 \path[->]
     (A2) edge node [right] {\texttt{[("foo", +1)]}} (A3)
-    (B2) edge node [right] {\texttt{[("foo", +2)]}} (B3)
-    (B3) edge (B4);
+    (B2) edge (B3);
 
 \path[->,dashed,font=\scriptsize]
     (A3) edge node [below, xshift=-0.5cm] {\texttt{[("foo", +1)]}} (B4);
+
+\end{tikzpicture}
+
+# Handling updates --- the simple case
+
+\tikzset{state/.style={rectangle, draw, text centered}}
+
+\centering
+
+\begin{tikzpicture}
+
+\node (A1) {Node 1};
+\node (A2) [state, below of=A1] {\dots};
+
+\node (B1) [right=4cm of A1] {Node 2};
+\node (B2) [state, below of=B1] {\texttt{[("foo", 23)]}};
+\node (B3) [state, below=1cm of B2] {\texttt{[("foo", 24)]}};
+
+\path[->]
+    (B2) edge (B3);
+
+\path[->,dashed,font=\scriptsize]
+    (A2) edge node [below, xshift=-0.6cm] {\texttt{[("foo", +1)]}} (B3);
 
 \end{tikzpicture}
 
@@ -322,20 +344,26 @@
 
 \begin{tikzpicture}
 
-\node (B1) {Node 2};
+\node (A1) {Node 1};
+\node (A2) [state, below of=A1] {\dots};
+
+\node (B1) [right=4cm of A1] {Node 2};
 \node (B2) [state, below of=B1] {\texttt{[("foo", 23)]}};
 \node (B3) [state, below=1cm of B2, xshift=2cm] {\texttt{[("foo", 25)]}};
 \node (B4) [state, below=1cm of B2, xshift=-2cm] {\texttt{[("foo", 24)]}};
 \node (B5) [state, below=3cm of B2] {\texttt{["foo", 26]}};
 
 \path[->]
-    (B2) edge node [left] {\texttt{[("foo", +1)]}} (B4)
+    (B2) edge (B4)
     (B2) edge node [right] {\texttt{[("foo", +2)]}} (B3)
     (B2) edge node [right, yshift=-0.75cm] {\texttt{[("foo", +3)]}} (B5);
 
 \path[->,dashed,font=\scriptsize]
     (B3) edge (B5)
     (B4) edge (B5);
+
+\path[->,dashed,font=\scriptsize]
+    (A2) edge node [below, xshift=-0.8cm] {\texttt{[("foo", +1)]}} (B4);
 
 \end{tikzpicture}
 
