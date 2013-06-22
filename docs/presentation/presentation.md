@@ -453,6 +453,18 @@ Writes/Sec  76 |     #
                    (more is better)
 ~~~~
 
+* Solution: Replace debug data store with a commercial one.
+
+# Cryto
+
+* No message integrity checks
+
+* No authentication
+
+* No secrecy
+
+* Solution: Use a crypo library.
+
 # Thank you
 
 \begin{center}
