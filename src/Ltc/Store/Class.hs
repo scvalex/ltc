@@ -57,8 +57,20 @@ class Store a where
     -- | Get all versions of the values associated with the given key, most-recent-first.
     keyVersions :: a -> Key -> IO (Maybe [Version])
 
-    -- | Get all the 'Changeset's after the given version.
-    changesetsAfter :: a -> Version -> IO [Changeset]
+    -- | Get all the 'Changeset's not before the given version.
+    --
+    -- @
+    --    v1
+    --   /  \
+    -- v2    v3
+    --   \  /
+    --    v4
+    -- @
+    --
+    -- @
+    --     changesetsNotBefore v2 == [v3, v4]
+    -- @
+    changesetsNotBefore :: a -> Version -> IO [Changeset]
 
     -- | Get the type of the values associated with a key.  A key cannot be associated
     -- with values of different types.

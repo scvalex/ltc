@@ -282,7 +282,7 @@ sendChangesetsToNeighbours node store = do
         mapM_ (sendChangesetsToNeighbour nodeData) (M.elems (getNeighbours nodeData))
   where
     sendChangesetsToNeighbour nodeData remoteNode = do
-        changesets <- changesetsAfter store (getRemoteClock remoteNode)
+        changesets <- changesetsNotBefore store (getRemoteClock remoteNode)
         debugM tag (printf "sending %d changesets to neighbour %s"
                            (length changesets)
                            (show (getRemoteLocation remoteNode)))

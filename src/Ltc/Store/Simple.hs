@@ -195,7 +195,7 @@ instance Store Simple where
 
     keyVersions store key = doKeyVersions store key
 
-    changesetsAfter store version = doChangesetsAfter store version
+    changesetsNotBefore store version = doChangesetsNotBefore store version
 
     keyType store key = doKeyType store key
 
@@ -366,9 +366,9 @@ doKeyVersions store key = do
             changeset <- readChangesetExn (locationChangesetHash store chash)
             return (getAfterVersion changeset))
 
-doChangesetsAfter :: Simple -> Version -> IO [Changeset]
-doChangesetsAfter store version = do
-    Changelog changesets <- readChangelogExn (getBase store)
+doChangesetsNotBefore :: Simple -> Version -> IO [Changeset]
+doChangesetsNotBefore store version = do
+    Changelog changesets <- readMVar (getChangelog store)
     let changesetPaths =
             map (locationChangesetHash store) $
             map snd $
