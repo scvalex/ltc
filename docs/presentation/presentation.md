@@ -198,12 +198,27 @@
 
 \end{tikzpicture}
 
-#
+# Introducing LTc
 
-\begin{center}
-  \textsc{\large Introducing} \textsc{\LARGE LTc}\\[0.5cm]
-  \textsc{\large A replicated data store for high-latency disconnected environments}
-\end{center}
+\centering
+
+\begin{tikzpicture}
+
+\node (A1) [text width=2cm, text centered] {Application};
+\node (A2) [below of=A1, text width=1cm, xshift=1cm, align=flush right] {LTc};
+
+\node (B1) [right=2cm of A1, text width=2cm, text centered] {Application};
+\node (B2) [below of=B1, text width=1cm, xshift=1cm, align=flush left] {LTc};
+
+\draw[thick] ($(A1.north west)+(-0.5,0.15)$) rectangle ($(A2.south east)+(0.5,-0.15)$);
+\draw[thick, dotted] ($(A2.north west)+(-0.5,0.15)$) rectangle ($(A2.south east)+(0.5,-0.15)$);
+\draw[thick] ($(B1.north west)+(-0.5,0.15)$) rectangle ($(B2.south east)+(0.5,-0.15)$);
+\draw[thick, dotted] ($(B2.north west)+(-0.5,0.15)$) rectangle ($(B2.south east)+(0.5,-0.15)$);
+
+\draw[<->] (A2.south) -- ++(0,-1) -| (B2.south);
+\node (label) [below of=A2, yshift=-0.6cm, xshift=2cm] {Auto sync};
+
+\end{tikzpicture}
 
 # What we know
 
