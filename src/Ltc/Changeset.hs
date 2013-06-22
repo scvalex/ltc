@@ -65,6 +65,10 @@ instance Sexpable Changes
 changesFromList :: [(Key, WireDiff)] -> Changes
 changesFromList = Changes . M.fromList
 
+-- | Make a list of 'Key'-'WireDiff' pairs from a 'Changes'.
+changesToList :: Changes -> [(Key, WireDiff)]
+changesToList (Changes m) = M.toList m
+
 -- | Get the 'WireDiff' associated with a 'Key' in a 'Changes'.
 wireDiffForKey :: Changes -> Key -> Maybe WireDiff
 wireDiffForKey (Changes m) key = M.lookup key m
