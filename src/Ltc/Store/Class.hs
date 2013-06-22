@@ -92,8 +92,10 @@ class Store a where
     mset :: a -> [SetCmd] -> IO Version
 
     -- FIXME msetInternal should only be called over a single-user locked store.
+
     -- | /internal use/ Atomically set the values associated with multiple keys at the
-    -- given version.  Does not update the store's version.
+    -- given version.  Do /not/ update the store's version.  Do /not/ create a changeset.
+    -- Do /not/ modify the changelog.
     msetInternal :: a -> [SetCmd] -> Version -> IO ()
 
     -- | Acquire the write lock, execute the given action, and release the write lock.

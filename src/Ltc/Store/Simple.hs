@@ -184,35 +184,35 @@ instance Store Simple where
         , forceOpen       :: Bool
         }
 
-    open params = doOpen params
+    open = doOpen
 
-    close store = doClose store
+    close = doClose
 
     storeFormat _ = formatString
     storeVersion _ = storeVsn
 
-    get store key version = doGet store key version
-    getLatest store key = doGetLatest store key
+    get = doGet
+    getLatest = doGetLatest
 
-    keyVersions store key = doKeyVersions store key
+    keyVersions = doKeyVersions
 
-    changesetsNotBefore store version = doChangesetsNotBefore store version
+    changesetsNotBefore = doChangesetsNotBefore
 
-    addChangesets store changesets = doAddChangesets store changesets
+    addChangesets = doAddChangesets
 
-    keyType store key = doKeyType store key
+    keyType = doKeyType
 
-    set store key value = doSet store key value
+    set = doSet
 
-    mset store cmds = doMSet store cmds
+    mset = doMSet
 
-    msetInternal store cmds version = doMSetInternal store cmds version
+    msetInternal = doMSetInternal
 
-    withWriteLock store act = lockStore store act
+    withWriteLock = lockStore
 
-    keys store = doKeys store
+    keys = doKeys
 
-    addEventChannel store eventChannel = doAddEventChannel store eventChannel
+    addEventChannel = doAddEventChannel
 
 instance Default (OpenParameters Simple) where
     def = SimpleParameters { location        = "ltc-store"
