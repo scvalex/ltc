@@ -454,13 +454,26 @@ instance Diffable Bid where
 
 # Performance
 
-<!-- pdf("wps.pdf") -->
-<!-- barplot(c(76, 27), main="Writes/Sec", names.arg=c("SQLite", "LTc"), cex.axis=2, cex.names=2, cex.main=2) -->
-<!-- dev.off() -->
+<!-- pdf("wps.pdf")
+barplot(c(70, 42), main="Writes/Sec", names.arg=c("SQLite", "LTc"), cex.axis=2, cex.names=2, cex.main=2)
+dev.off() -->
 
-\begin{center}
-\includegraphics[width=5cm]{wps.pdf}
-\end{center}
+<!-- pdf("wps.pdf")
+barplot(c(log10(18432/20), log10(1447108/20)), main="Storage overhead per byte (log)", names.arg=c("SQLite", "LTc"), cex.axis=2, cex.names=2, cex.main=2)
+dev.off() -->
+
+\begin{columns}
+
+\begin{column}{.48\textwidth}
+    \centering
+    \includegraphics[width=5cm]{wps.pdf}
+\end{column}
+
+\begin{column}{.48\textwidth}
+    \centering
+    \includegraphics[width=5cm]{overhead.pdf}
+\end{column}
+\end{columns}
 
 \begin{center}
 \fbox{Solution: Replace debug data store with a commercial one.}
