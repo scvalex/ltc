@@ -354,7 +354,7 @@ dropOwnedChangesets node store = do
 -- | Try to apply as many changesets as possible to the data store.
 tryApplyChangesets :: (Store s) => Node a -> s -> IO ()
 tryApplyChangesets node store = do
-    tryAgain <- modifyMVar (getNodeData node) $ \nodeData -> do
+    tryAgain <- withWriteLock store $ modifyMVar (getNodeData node) $ \nodeData -> do
         let changesets = getChangesetCache nodeData
         tip <- tipVersion store
         debugM tag (printf "trying to apply %d changesets to %s"
@@ -399,7 +399,7 @@ tryApplyChangesets node store = do
 
     -- Apply the given 'Changeset'.  It better be a fast-forward 'Update'.
     fastForward :: Changeset -> [TypeHandler] -> IO ()
-    fastForward update@(Update {}) typeHandlers = withWriteLock store $ do
+    fastForward update@(Update {}) typeHandlers = do
         cmds <- setCmdsFromChangeset store update typeHandlers
         _ <- msetInternal store update cmds
         return ()
