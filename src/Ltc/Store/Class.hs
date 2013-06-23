@@ -117,6 +117,9 @@ class Store a where
     -- they happen.
     addEventChannel :: a -> EventChannel -> IO ()
 
+    -- | Get the version of the tip of the store.
+    tipVersion :: a -> IO Version
+
 data SetCmd = forall a. (Storable a) => SetCmd Key a
 
 -- | Open a store, run the given action, and close the store.  The store is cleanly closed

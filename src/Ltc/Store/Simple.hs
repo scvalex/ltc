@@ -212,6 +212,8 @@ instance Store Simple where
 
     addEventChannel = doAddEventChannel
 
+    tipVersion store = readMVar (getClock store)
+
 instance Default (OpenParameters Simple) where
     def = SimpleParameters { location        = "ltc-store"
                            , useCompression  = False
