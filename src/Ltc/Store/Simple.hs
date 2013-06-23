@@ -332,27 +332,25 @@ doGet store key version = do
     findVersion :: Seq (a, ChangesetHash) -> IO a
     findVersion (Seq.viewl -> (val, chash) :< rest) = do
         changeset <- readChangesetExn (locationChangesetHash store chash)
-        case changeset of
-            Update {} -> do
-                if not (getAfterVersion changeset `VC.causes` version)
-                    then do
-                        let val' = case wireDiffForKey (getChanges changeset) key of
-                                Nothing ->
-                                    val
-                                Just wireDiff ->
-                                    -- The only way for 'diffFromWireDiff' to fail is if
-                                    -- the type is wrong, but it cannot be at this point
-                                    -- in the execution.
-                                    let Just diff = diffFromWireDiff wireDiff
-                                        rdiff = reverseDiff diff
-                                    in applyDiff val rdiff
-                        chash' <- changesetHashForVersion (getBeforeUpdateVersion changeset)
-                        findVersion (rest |> (val', chash'))
-                    else do
-                        return val
-            Merge {} ->
-                -- FIXME Implement getting history past merges.
-                error "walking back through merges not supported"
+        -- FIXME We are implicitly linearizing the history here.
+        if not (getAfterVersion changeset `VC.causes` version)
+            then do
+                let val' = case wireDiffForKey (getChanges changeset) key of
+                        Nothing ->
+                            val
+                        Just wireDiff ->
+                            -- The only way for 'diffFromWireDiff' to fail is if the type
+                            -- is wrong, but it cannot be at this point in the execution.
+                            let Just diff = diffFromWireDiff wireDiff
+                                rdiff = reverseDiff diff
+                            in applyDiff val rdiff
+                let beforeVersion = case changeset of
+                        Update { getBeforeUpdateVersion = vsn } -> vsn
+                        Merge { getMergeAncestorVersion = vsn } -> vsn
+                chash' <- changesetHashForVersion beforeVersion
+                findVersion (rest |> (val', chash'))
+            else do
+                return val
     findVersion _ = do
         error "findVersion ran out of changes :("
 
