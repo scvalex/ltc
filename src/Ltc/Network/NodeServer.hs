@@ -362,7 +362,8 @@ tryApplyChangesets node store = do
         if length changesets > 0
             then do
                 -- Attempt fast forward
-                case findFastForward [] tip changesets of
+                mFastForward <- findFastForward [] tip changesets
+                case mFastForward of
                     Just ((remoteName, changeset), changesets') -> do
                         debugM tag (printf "fast-forwarding to %s" (show (getAfterVersion changeset)))
                         fastForward changeset (getTypeHandlers nodeData)
@@ -373,20 +374,8 @@ tryApplyChangesets node store = do
                                          , getNeighbours     = neighbours' }, True)
                     Nothing -> do
                         debugM tag "not a fast-forward"
-                        mFastForwardMerge <- findFastForwardMerge [] changesets
-                        case mFastForwardMerge of
-                            Just ((remoteName, changeset), changesets') -> do
-                                debugM tag (printf "fast-forward merging to %s" (show (getAfterVersion changeset)))
-                                fastForward changeset (getTypeHandlers nodeData)
-                                let neighbours' = maybeUpdateRemoteClock (getNeighbours nodeData)
-                                                                         remoteName
-                                                                         (getAfterVersion changeset)
-                                return (nodeData { getChangesetCache = changesets'
-                                                 , getNeighbours     = neighbours' }, True)
-                            Nothing -> do
-                                debugM tag "not a fast-forward merge"
-                                -- Attempt conflict resolution (with store locked)
-                                return (nodeData, False)
+                        -- Attempt conflict resolution (with store locked)
+                        return (nodeData, False)
             else do
                 return (nodeData, False)
     -- If we've made reduced the number of cached changesets, try to apply more.
@@ -396,26 +385,15 @@ tryApplyChangesets node store = do
     findFastForward :: [(NodeName, Changeset)]
                     -> Version
                     -> [(NodeName, Changeset)]
-                    -> Maybe ((NodeName, Changeset), [(NodeName, Changeset)])
+                    -> IO (Maybe ((NodeName, Changeset), [(NodeName, Changeset)]))
     findFastForward _ _ [] =
-        Nothing
-    findFastForward acc tip ((remoteName, changeset) : changesets) =
-        case changeset of
-            Update { getBeforeUpdateVersion = beforeVersion } | beforeVersion == tip ->
-                Just ((remoteName, changeset), reverse acc ++ changesets)
-            _ ->
-                findFastForward ((remoteName, changeset) : acc) tip changesets
-
-    findFastForwardMerge :: [(NodeName, Changeset)]
-                         -> [(NodeName, Changeset)]
-                         -> IO (Maybe ((NodeName, Changeset), [(NodeName, Changeset)]))
-    findFastForwardMerge _ [] =
         return Nothing
-    findFastForwardMerge acc ((remoteName, changeset) : changesets) = do
+    findFastForward acc tip ((remoteName, changeset) : changesets) = do
         case changeset of
+            Update { getBeforeUpdateVersion = beforeVersion } | beforeVersion == tip -> do
+                return (Just ((remoteName, changeset), reverse acc ++ changesets))
             Merge {} -> do
                 hasAncestor <- hasVersion store (getMergeAncestorVersion changeset)
-                tip <- tipVersion store
                 -- If the merge result is based on a version we already have, and if it's
                 -- in the future, it's a "fast-forward" merge.
                 if hasAncestor && tip `VC.causes` getAfterVersion changeset
@@ -423,9 +401,9 @@ tryApplyChangesets node store = do
                         -- FIXME Warning: Applying only this will leave holes in the history.
                         return (Just ((remoteName, changeset), reverse acc ++ changesets))
                     else do
-                        findFastForwardMerge ((remoteName, changeset) : acc) changesets
-            _ ->
-                findFastForwardMerge ((remoteName, changeset) : acc) changesets
+                        findFastForward ((remoteName, changeset) : acc) tip changesets
+            _ -> do
+                findFastForward ((remoteName, changeset) : acc) tip changesets
 
     -- Apply the given 'Changeset'.  It better be a fast-forward.
     fastForward :: Changeset -> [TypeHandler] -> IO ()
