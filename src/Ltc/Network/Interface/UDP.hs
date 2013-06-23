@@ -18,7 +18,20 @@ import Network.Socket ( Socket(..), socket, sClose, bindSocket, iNADDR_ANY
 import Network.Socket.ByteString ( sendAll, recv )
 import qualified Control.Exception as CE
 import qualified Network.Socket as NS
+import System.Log.Logger ( debugM )
 import Text.Printf ( printf )
+
+----------------------
+-- Debugging
+----------------------
+
+-- | Debugging tag for this module
+tag :: String
+tag = "UDP"
+
+----------------------
+-- UDP Interface
+----------------------
 
 -- | The abstract type of a UDP socket.  This is used both for receiving and sending
 -- sockets.
@@ -57,7 +70,9 @@ instance NetworkInterface UdpInterface where
                  NS.connect sock (addrAddress $ head addrInfos)
                  return $ UdpInterface { getSocket = sock})
 
-    send intf bin = sendAll (getSocket intf) bin
+    send intf bin =
+        CE.handle (\(_ :: CE.SomeException) -> debugM tag "UDP failed to send")
+            (sendAll (getSocket intf) bin)
 
     close intf = sClose (getSocket intf)
 

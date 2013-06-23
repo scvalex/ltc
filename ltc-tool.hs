@@ -138,6 +138,7 @@ main = do
                                         store
                                         (makeNodeName hostname idx)
             N.handleType node (undefined :: Integer)
+            N.handleType node (undefined :: BL.ByteString)
             -- FIXME Remove hacky "connect to next node in the ring"
             N.addNeighbour node
                            (makeNodeName hostname (idx + 1))
