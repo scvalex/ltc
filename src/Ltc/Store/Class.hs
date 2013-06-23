@@ -120,6 +120,9 @@ class Store a where
     -- | Get the version of the tip of the store.
     tipVersion :: a -> IO Version
 
+    -- | Check if the store has ever been in the given version.
+    hasVersion :: a -> Version -> IO Bool
+
 data SetCmd = forall a. (Storable a) => SetCmd Key a
 
 -- | Open a store, run the given action, and close the store.  The store is cleanly closed

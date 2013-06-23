@@ -68,6 +68,7 @@ import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Default ( Default(..) )
 import Data.Digest.Pure.SHA ( sha1, showDigest, integerDigest )
 import Data.Foldable ( foldlM )
+import Data.List ( find )
 import Data.Set ( Set )
 import Data.Sequence ( Seq, ViewL(..), (|>) )
 import Data.Typeable ( TypeRep, typeOf )
@@ -213,6 +214,8 @@ instance Store Simple where
     addEventChannel = doAddEventChannel
 
     tipVersion store = readMVar (getClock store)
+
+    hasVersion = doHasVersion
 
 instance Default (OpenParameters Simple) where
     def = SimpleParameters { location        = "ltc-store"
@@ -526,6 +529,13 @@ doKeys store = do
           return (maybe s (\k -> S.insert k s) mk))
         S.empty
         kfs
+
+doHasVersion :: Simple -> Version -> IO Bool
+doHasVersion store version = do
+    Changelog versions <- readMVar (getChangelog store)
+    case find (\(oldVersion, _) -> oldVersion == version) versions of
+        Nothing -> return False
+        Just _  -> return True
 
 doAddEventChannel :: Simple -> EventChannel -> IO ()
 doAddEventChannel store eventChannel = do

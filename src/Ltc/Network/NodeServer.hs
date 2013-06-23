@@ -25,7 +25,7 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO, threadDelay
                           , MVar, newMVar, withMVar, readMVar, modifyMVar, modifyMVar_ )
 import Control.Exception ( Exception )
-import Control.Monad ( unless, forever, forM, forM_, when )
+import Control.Monad ( unless, forever, forM, forM_, when, filterM )
 import Control.Proxy ( Proxy, ProxyFast, Pipe, Producer, Consumer
                      , runProxy, lift, runIdentityP, request, respond, (>->) )
 import Data.ByteString ( ByteString )
@@ -300,12 +300,21 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Chang
     -- Connect back to the sender.
     addNeighbour node (getEnvelopeNode envelope) (getEnvelopeSender envelope)
 
-    -- FIXME Drop changesets which we already have
+    -- Drop changesets which we already have
+    dropOwnedChangesets node store
 
     -- Try to apply changesets to the store
     tryApplyChangesets node store
 
     debugM tag "changes handled"
+
+-- | Drop those changesets which we already have.
+dropOwnedChangesets :: (Store s) => Node a -> s -> IO ()
+dropOwnedChangesets node store = do
+    modifyMVar_ (getNodeData node) $ \nodeData -> do
+        changesets' <- flip filterM (getChangesetCache nodeData) $ \changeset -> do
+            not <$> hasVersion store (getAfterVersion changeset)
+        return (nodeData { getChangesetCache = changesets' })
 
 -- FIXME Actually try to apply changesets.
 -- FIXME Update our best guess of the remote vector clocks.
@@ -313,9 +322,9 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Chang
 -- | Try to apply as many changesets as possible to the data store.
 tryApplyChangesets :: (Store s) => Node a -> s -> IO ()
 tryApplyChangesets node store = do
-    debugM tag "trying to apply changesets"
     tryAgain <- modifyMVar (getNodeData node) $ \nodeData -> do
         let changesets = getChangesetCache nodeData
+        debugM tag (printf "trying to apply %d changesets" (length changesets))
         tip <- tipVersion store
 
         -- Attempt fast forward
