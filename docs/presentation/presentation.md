@@ -411,6 +411,9 @@ Node.addNeighbour node otherNodeName otherNodeAddress
 # Distributed auction house --- bid handling
 
 ~~~~ {.haskell}
+set :: (Storable a) => Store -> Key -> a -> IO Version
+getLatest :: (Storable a) => Store -> Key -> IO (Maybe a)
+
 placeBid :: Store -> AuctionName -> Bid -> IO ()
 placeBid store auction bid = do
     set store (auction ++ ":bid:" ++ myUniqueName) bid
