@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, StandaloneDeriving #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Ltc.Network.NodeServer (
         module Ltc.Network.Types,
@@ -8,6 +9,9 @@ module Ltc.Network.NodeServer (
         -- * Nodes and serving
         Node, shutdown,
         serve, serveFromLocation,
+
+        -- * Handling types
+        TypeHandler, handleType,
 
         -- * Connections and sending
         Connection, connect, closeConnection,
@@ -25,15 +29,20 @@ import Control.Monad ( unless, forever, forM_, when )
 import Control.Proxy ( Proxy, ProxyFast, Pipe, Producer, Consumer
                      , runProxy, lift, runIdentityP, request, respond, (>->) )
 import Data.ByteString ( ByteString )
+import Data.Default ( def )
 import Data.Function ( on )
 import Data.Map ( Map )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
-import Ltc.Changeset ( Changeset(..) )
+import Ltc.Changeset ( Changeset(..), WireDiff(..), diffFromWireDiff )
+import Ltc.Diff ( Diffable(..) )
 import Ltc.Network.Interface ( NetworkInterface, Sending, Receiving, NetworkLocation )
 import Ltc.Network.Interface.UDP ( UdpInterface )
 import Ltc.Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
-import Ltc.Store ( Store(..), Version, NodeName )
+import Ltc.Store ( Store(..), Storable, SetCmd(..)
+                 , Key, Version, NodeName
+                 , Type, typeOf
+                 , getLatestExn )
 import Network.BSD ( getHostName )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
@@ -69,6 +78,11 @@ data Shutdown = Shutdown
 
 instance Exception Shutdown
 
+data TypeHandler = TypeHandler
+    { getSetCmdFromWireDiff :: forall s. (Store s) => s -> Key -> WireDiff -> IO (Maybe SetCmd)
+    , getType               :: Type
+    }
+
 -- | The abstract type of a network connection.  Note that it is parametrised by the type
 -- of the network interface (e.g. 'UdpInterface').  Note also that since these connections
 -- are asynchronous, there is generally no way to tell if the other side is running on
@@ -103,6 +117,7 @@ data NodeData a = NodeData
     , getNodeName       :: NodeName
     , getNeighbours     :: Map NodeName (RemoteNode a)
     , getChangesetCache :: [Changeset]
+    , getTypeHandlers   :: [TypeHandler]
     }
 
 -- | Start the node interface on the default port.
@@ -125,6 +140,7 @@ serveFromLocation location store nodeName = do
                             , getNodeName       = nodeName
                             , getNeighbours     = M.empty
                             , getChangesetCache = []
+                            , getTypeHandlers   = []
                             }
     node <- Node <$> newMVar nodeData
 
@@ -187,6 +203,17 @@ sendMessage node conn msg = do
                                 }
     NI.send (getConnectionInterface conn) (encode envelope)
     debugM tag "message sent"
+
+-- | Add a type handler to the node for the given type.
+handleType :: (Storable b)
+           => Node a
+           -> b                 -- ^ dummy value
+           -> IO ()
+handleType node dummy = do
+    let typeHandler = TypeHandler { getType               = typeOf dummy
+                                  , getSetCmdFromWireDiff = makeSetCmdFromWireDiff dummy }
+    modifyMVar_ (getNodeData node) $ \nodeData ->
+        return (nodeData { getTypeHandlers = typeHandler : getTypeHandlers nodeData })
 
 ----------------------
 -- Neighbour-set manipulation
@@ -309,8 +336,34 @@ tryApplyChangesets node store = do
 
     -- Apply the given 'Changeset'.  It better be a fast-forward 'Update'.
     fastForward :: Changeset -> IO ()
-    fastForward _changeset = do
+    fastForward _changeset = withWriteLock store $ do
         return ()
+
+-- | Make a function that transforms part of a 'WireDiff' into a `SetCmd`.
+makeSetCmdFromWireDiff :: forall a s. (Storable a, Store s)
+                 => a           -- ^ dummy value to fix the type
+                 -> (s -> Key -> WireDiff -> IO (Maybe SetCmd))
+makeSetCmdFromWireDiff _ = \store key wireDiff -> do
+    mtyp <- keyType store key
+    case mtyp of
+        Nothing -> do
+            -- The key does not exist, so just assume 'def' for the previous value.
+            let v = def :: a
+            return (Just (setCmdFromWireDiff key v wireDiff))
+        Just typ -> do
+            if typ == getWireDiffType wireDiff
+                then do
+                    (v :: a, _) <- getLatestExn store key
+                    return (Just (setCmdFromWireDiff key v wireDiff))
+                else do
+                    -- The key has the wrong type.
+                    return Nothing
+  where
+    -- | Get a `SetCmd` from a 'WireDiff'.
+    setCmdFromWireDiff :: Key -> a -> WireDiff -> SetCmd
+    setCmdFromWireDiff key v wireDiff =
+        let Just diff = diffFromWireDiff wireDiff
+        in SetCmd key (applyDiff v diff)
 
 ----------------------
 -- Change propagation
@@ -332,30 +385,3 @@ sendChangesetsToNeighbours node store = do
                                         , getEnvelopeMessage = Change changeset
                                         }
             NI.send (getRemoteInterface remoteNode) (encode envelope)
-
--- -- | Get a function that could apply a 'WireDiff' of the given type.
--- getApplyWireDiff :: forall a s. (Storable a, Store s)
---                  => a           -- ^ dummy value to fix the type
---                  -> (s -> Key -> WireDiff -> IO Bool)
--- getApplyWireDiff _ = \store key wireDiff -> do
---     mtyp <- keyType store key
---     case mtyp of
---         Nothing -> do
---             -- The key does not exist, so just assume 'def' for the previous value.
---             let v = def :: a
---             applyWireDiff store key v wireDiff
---         Just typ -> do
---             if typ == getWireDiffType wireDiff
---                 then do
---                     (v :: a, _) <- getLatestExn store key
---                     applyWireDiff store key v wireDiff
---                 else do
---                     -- The key has the wrong type.
---                     return False
---   where
---     -- | Apply the 'WireDiff' to the given value and set the given key to it.
---     applyWireDiff :: (Store s) => s -> Key -> a -> WireDiff -> IO Bool
---     applyWireDiff store key v wireDiff = do
---         let Just diff = diffFromWireDiff wireDiff
---         _ <- set store key (applyDiff v diff)
---         return True
