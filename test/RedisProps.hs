@@ -32,7 +32,7 @@ main :: IO ()
 main = defaultMainWithOpts (concat [ msgStructureTests
                                    , endToEndBinaryTests
                                    , endToEndTests
-                                   , [ testProperty "numericDance" propNumericDance ]
+                                   -- , [ testProperty "numericDance" propNumericDance ]
                                    ]) options
   where
     options = mempty { ropt_test_options = Just (mempty { topt_timeout = Just (Just 20000000) }) }

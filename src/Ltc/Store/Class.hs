@@ -108,7 +108,6 @@ class Store a where
     -- try to write while the write lock is acquired, you will block indefinitely.
     withWriteLock :: a -> IO b -> IO b
 
-    -- FIXME Store.keys should take a regexp pattern.
     -- | Get all the keys stored in the store.  Note that using this is probably racey
     -- because the set of keys may change before it is used.
     keys :: a -> String -> IO (Set Key)

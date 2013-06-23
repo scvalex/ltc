@@ -71,6 +71,7 @@ import Data.Foldable ( foldlM )
 import Data.List ( find )
 import Data.Set ( Set )
 import Data.Sequence ( Seq, ViewL(..), (|>) )
+import Data.String ( fromString )
 import Data.Typeable ( TypeRep, typeOf )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..), parse, parseExn, printHum )
@@ -93,12 +94,14 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
 import qualified Data.Sequence as Seq
 import qualified Data.VectorClock as VC
+import qualified Text.Regex.TDFA.ByteString as T
 import System.Directory ( createDirectory, doesFileExist, doesDirectoryExist
                         , renameFile, getDirectoryContents, removeFile )
 import System.FilePath ( (</>) )
 import System.IO ( hClose, openBinaryTempFile )
 import System.Log.Logger ( debugM, warningM )
 import Text.Printf ( printf )
+import Text.Regex.TDFA ( defaultCompOpt, defaultExecOpt )
 
 ----------------------
 -- Debugging
@@ -518,16 +521,29 @@ doMSetInternal store changeset cmds = do
 
 
 doKeys :: Simple -> String -> IO (Set Key)
-doKeys store _regexp = do
-    debugM tag "keys"
-    let keysDir = locationKeys (getBase store)
-    kfs <- getDirectoryContents keysDir
-    foldlM
-        (\s kf -> do
-          mk <- withKeyRecord (keysDir </> kf) (\kr -> return (Just (getKeyName kr)))
-          return (maybe s (\k -> S.insert k s) mk))
-        S.empty
-        kfs
+doKeys store regexp = do
+    debugM tag (printf "keys %s" regexp)
+
+    case T.compile defaultCompOpt defaultExecOpt (fromString regexp) of
+        Left err -> do
+            warningM tag (printf "keys bad pattern: %s" err)
+            return S.empty
+        Right reg -> do
+            let keysDir = locationKeys (getBase store)
+            kfs <- getDirectoryContents keysDir
+            unfilteredKeys <- foldlM
+                (\s kf -> do
+                      mk <- withKeyRecord (keysDir </> kf) (\kr -> return (Just (getKeyName kr)))
+                      return (maybe s (\k -> S.insert k s) mk))
+                S.empty
+                kfs
+            return (S.filter (\(Key key) -> isRightJust (T.execute reg (BL.toStrict key)))
+                             unfilteredKeys)
+  where
+    isRightJust :: Either a (Maybe b) -> Bool
+    isRightJust (Right (Just _)) = True
+    isRightJust _                = False
+
 
 doHasVersion :: Simple -> Version -> IO Bool
 doHasVersion store version = do

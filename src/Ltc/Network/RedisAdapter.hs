@@ -16,10 +16,8 @@ import Ltc.Store ( Store(..), Storable, SetCmd(..), Key(..), Version
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Set as S
-import qualified Text.Regex.TDFA.ByteString as T
 import System.Log.Logger ( debugM, warningM )
 import Text.Printf ( printf )
-import Text.Regex.TDFA ( defaultCompOpt, defaultExecOpt )
 
 ----------------------
 -- Debugging
@@ -114,16 +112,9 @@ redisProxyD store () = runIdentityP loop
             Nothing ->
                 resply (Error "ERR bad pattern")
             Just reg -> do
-                case T.compile defaultCompOpt defaultExecOpt reg of
-                    Left err ->
-                        resply (toError (printf "ERR bad pattern '%s'" err))
-                    Right reg' -> do
-                        -- FIXME Move the regular expression matching to the store.
-                        ks <- keys store ".*"
-                        let ks' = filter (\k -> isRightJust (T.execute reg' k))
-                                  . map (\(Key k) -> strict k)
-                                  $ S.toList ks
-                        resply (MultiBulk (map Bulk ks'))
+                ks <- keys store (BL.unpack (BL.fromStrict reg))
+                let ks' = map (\(Key k) -> strict k) (S.toList ks)
+                resply (MultiBulk (map Bulk ks'))
 
     handleIncr key delta = do
         s <- getWithDefault (mkKey key) ("0" :: ByteString)
@@ -271,7 +262,3 @@ globToRegex s = do
     charClass (']':cs) = BS.cons ']' <$> go cs
     charClass (c:cs)   = BS.cons c <$> charClass cs
     charClass _        = fail "unterminated character class"
-
-isRightJust :: Either a (Maybe b) -> Bool
-isRightJust (Right (Just _)) = True
-isRightJust _                = False

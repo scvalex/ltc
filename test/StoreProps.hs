@@ -35,6 +35,7 @@ main = defaultMainWithOpts
        , testCase "simpleSetGet" testSimpleSetGet
        , testCase "simpleHistory" testSimpleHistory
        , testCase "simpleFieldType" testSimpleFieldType
+       , testCase "simpleKeysPattern" testSimpleKeysPattern
        , testProperty "setGetLatest" propSetGetLatest
        , testProperty "keysPresent" propKeysPresent
        , testProperty "ascendingHistory" propAscendingHistory
@@ -108,6 +109,15 @@ testSimpleFieldType = cleanEnvironment ["test-store"] $ do
         return True
     when done $ assertFailure "set a key with a different type"
     close store
+
+testSimpleKeysPattern :: Assertion
+testSimpleKeysPattern = cleanEnvironment ["test-store"] $ do
+    store <- open testParameters
+    _ <- set store "item1:bid:alex" (23 :: Integer)
+    _ <- set store "item1:bid:francesco" (42 :: Integer)
+    _ <- set store "item1:bid:alex" (43 :: Integer)
+    ks <- keys store "item1:bid:.*"
+    ks @?= S.fromList ["item1:bid:alex", "item1:bid:francesco"]
 
 --------------------------------
 -- QuickCheck
