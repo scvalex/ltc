@@ -87,13 +87,19 @@ class Store a where
     -- 'StoreClosed'.
     mset :: a -> [SetCmd] -> IO Version
 
-    -- | /internal use/ Atomically set the values associated with multiple keys at the
-    -- given version.  Do /not/ update the store's version.  Do /not/ create a changeset;
-    -- use the given one.  But /do/ update the tip of the keys.  This means that, unless
-    -- you handle merge conflicts correctly, you can leave the store in an inconsistent
-    -- state.  The version is the after version of the changeset.  It is up to you to
-    -- ensure that the changes are those intended by the changeset.  Note that you should
-    -- probably only use 'msetInternal' inside of a 'withWriteLock' call.
+    -- | /internal use/ Atomically set the values associated with multiple keys with the
+    -- given version.  It is up to you to ensure that the changes are those intended by
+    -- the changeset.
+    --
+    -- Do /not/ update the store's version.  Do /not/ create a changeset; use the given
+    -- one.  But /do/ update the tip of the keys.
+    --
+    -- This means that you can leave the store in an inconsistent state: if you do not
+    -- handle merge conflicts, if you make changes other than those specified by the
+    -- changeset.
+    --
+    -- Note that you should probably only use 'msetInternal' inside of a 'withWriteLock'
+    -- call.
     msetInternal :: a -> Changeset -> [SetCmd] -> IO Event
 
     -- | Acquire the write lock, execute the given action, and release the write lock.
