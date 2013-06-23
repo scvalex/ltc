@@ -61,7 +61,7 @@ module Ltc.Store.Simple (
 
 import Control.Applicative ( (<$>) )
 import Control.Concurrent ( MVar, newMVar
-                          , modifyMVar, modifyMVar_, readMVar, withMVar )
+                          , modifyMVar_, readMVar, withMVar )
 import Control.Concurrent.STM ( atomically, writeTChan )
 import Control.Monad ( when, unless, forM )
 import Data.ByteString.Lazy.Char8 ( ByteString )
@@ -403,12 +403,10 @@ doMSet store cmds = lockStore store $ do
 
     -- Increment the version clock.
     let nn = getNodeName store
-    (clock, clock') <- modifyMVar (getClock store) $ \oldClock -> do
-        let incrementedClock =
-                case VC.inc nn oldClock of
-                    Nothing       -> VC.insert nn (1 :: Int) oldClock
-                    Just newClock -> newClock
-        return (incrementedClock, (oldClock, incrementedClock))
+    clock <- readMVar (getClock store)
+    let clock' = case VC.inc nn clock of
+            Nothing       -> VC.insert nn (1 :: Int) clock
+            Just newClock -> newClock
 
     -- Compute the 'Changeset' from the store state to the new one (the store is locked,
     -- so values can't be updated by something else while we're here).
@@ -429,6 +427,7 @@ doMSetInternal :: Simple -> Changeset -> [SetCmd] -> IO Event
 doMSetInternal store changeset cmds = do
     -- Save the store clock.  It's ok to increment the clock superfluously, so we can be
     -- interrupted here.
+    modifyMVar_ (getClock store) (const (return (getAfterVersion changeset)))
     atomicWriteClock store (locationClock (getBase store)) (getAfterVersion changeset)
 
     -- Save the changeset to disk.  Having superfluous changesets lying around is not a
