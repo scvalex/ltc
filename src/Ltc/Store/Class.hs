@@ -21,7 +21,7 @@ import Control.Exception ( Exception )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Set ( Set )
 import Data.Typeable ( Typeable, TypeRep )
-import Ltc.Store.Event ( EventChannel )
+import Ltc.Store.Event ( Event, EventChannel )
 import Ltc.Changeset ( Changeset )
 import qualified Control.Exception as CE
 
@@ -94,7 +94,7 @@ class Store a where
     -- state.  The version is the after version of the changeset.  It is up to you to
     -- ensure that the changes are those intended by the changeset.  Note that you should
     -- probably only use 'msetInternal' inside of a 'withWriteLock' call.
-    msetInternal :: a -> Changeset -> [SetCmd] -> IO ()
+    msetInternal :: a -> Changeset -> [SetCmd] -> IO Event
 
     -- | Acquire the write lock, execute the given action, and release the write lock.
     -- Since writes to the store cannot happen while the lock is acquired, this is an

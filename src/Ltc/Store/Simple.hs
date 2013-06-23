@@ -404,20 +404,6 @@ doMSet store cmds = lockStore store $ do
         return (incrementedClock, (oldClock, incrementedClock))
     atomicWriteClock store (locationClock (getBase store)) clock'
 
-    -- Write the values.  It's ok to write extra values, so we can be interrupted here.
-    (vals, vhashes) <- unzip <$> forM cmds (\(SetCmd _ value) -> do
-        let vhash = valueHash value
-            val = valueToString value
-        atomicWriteFile store (locationValueHash store vhash)
-            ((if getUseCompression store then Z.compress else id) val)
-        return (val, vhash))
-
-    -- Read the key records (the store is locked so there's no risk of them being updated
-    -- by something else).
-    mkrs <- forM (zip cmds vhashes) $ \(cmd@(SetCmd key _), vhash) -> do
-        mkr <- readKeyRecordExn (locationKey store key)
-        return (mkr, cmd, vhash)
-
     -- Compute the 'Changeset' from the store state to the new one (the store is locked,
     -- so values can't be updated by something else while we're here).  Having superfluous
     -- changesets lying around is not a problem.
@@ -428,61 +414,17 @@ doMSet store cmds = lockStore store $ do
     let changeset = Update { getBeforeUpdateVersion = clock
                            , getAfterVersion        = clock'
                            , getChanges             = changes }
-    let (cbin, chash) = serializedChangeset changeset
-    atomicWriteFile store (locationChangesetHash store chash) cbin
 
-    -- Update the changelog in-memory.
-    Changelog changesets <- readMVar (getChangelog store)
-    let changelog' = Changelog ((clock', chash) : changesets)
-    modifyMVar_ (getChangelog store) (const (return changelog'))
+    event <- doMSetInternal store changeset cmds
 
-    -- Update the key records, or create new ones if they are missing.
-    krs' <- forM mkrs $ \(mkrOld, cmd@(SetCmd key value), vhash) -> do
-        let tip = KeyVersion { getVersion   = clock'
-                             , getValueHash = vhash
-                             }
-        case mkrOld of
-            Nothing -> return $
-                (cmd, KR { getKeyName   = key
-                         , getValueType = typeOf value
-                         , getTip       = tip
-                         , getHistory   = [chash]
-                         })
-            Just krOld -> do
-                when (getValueType krOld /= typeOf value) $ do
-                    CE.throw (TypeMismatchError { expectedType = getValueType krOld
-                                                , foundType    = typeOf value })
-                return $ (cmd, krOld { getTip     = tip
-                                     , getHistory = chash : getHistory krOld
-                                     })
-    atomicWriteFiles store $
-        (locationChangelog (getBase store), printHum (toSexp changelog')) :
-        (flip map krs' $ \(SetCmd key _, kr) ->
-          (locationKey store key, printHum (toSexp kr)))
-
-    writeEventChannels store (msetEvent vals)
+    writeEventChannels store event
     return clock'
-  where
-    msetEvent vals =
-        MSetEvent (flip map (zip cmds vals) $ \(SetCmd key _, val) ->
-                    let Key k = key
-                    in SetEvent { setKey       = key
-                                , setKeyDigest = fromInteger (integerDigest (sha1 k))
-                                , valueDigest  = fromInteger (integerDigest (sha1 val))
-                                })
 
-    -- | The hash of a value.  This hash is used as the filename under which the value is
-    -- stored in the @values/@ folder.
-    valueHash :: (Storable a) => a -> ValueHash
-    valueHash = BL.pack . showDigest . sha1 . valueToString
-
-    valueToString :: (Storable a) => a -> ByteString
-    valueToString = printHum . toSexp
-
-doMSetInternal :: Simple -> Changeset -> [SetCmd] -> IO ()
-doMSetInternal store changeset _cmds = do
+doMSetInternal :: Simple -> Changeset -> [SetCmd] -> IO Event
+doMSetInternal store changeset cmds = do
     addChangeset
-    return ()
+
+    writeValuesAndUpdateKeyRecords
   where
     addChangeset :: IO ()
     addChangeset = do
@@ -499,6 +441,72 @@ doMSetInternal store changeset _cmds = do
         -- Write the changelog to disk.  Since we've already written the changeset, this
         -- leaves the store in a consistent state.
         atomicWriteFile store (locationChangelog (getBase store)) (printHum (toSexp changelog'))
+
+    writeValuesAndUpdateKeyRecords :: IO Event
+    writeValuesAndUpdateKeyRecords = do
+        let clock' = getAfterVersion changeset
+            (_, chash) = serializedChangeset changeset
+
+        -- Write the values.  It's ok to write extra values, so we can be interrupted
+        -- here.
+        (vals, vhashes) <- unzip <$> forM cmds (\(SetCmd _ value) -> do
+            let vhash = valueHash value
+                val = valueToString value
+            atomicWriteFile store
+                            (locationValueHash store vhash)
+                            ((if getUseCompression store then Z.compress else id) val)
+            return (val, vhash))
+
+        -- Read the key records (the store is locked so there's no risk of them being
+        -- updated by something else).
+        mkrs <- forM (zip cmds vhashes) $ \(cmd@(SetCmd key _), vhash) -> do
+            mkr <- readKeyRecordExn (locationKey store key)
+            return (mkr, cmd, vhash)
+
+        -- Update the key records in-memory, or create new ones if they are missing.
+        krs' <- forM mkrs $ \(mkrOld, cmd@(SetCmd key value), vhash) -> do
+            let tip = KeyVersion { getVersion   = clock'
+                                 , getValueHash = vhash
+                                 }
+            case mkrOld of
+                Nothing -> return $
+                    (cmd, KR { getKeyName   = key
+                             , getValueType = typeOf value
+                             , getTip       = tip
+                             , getHistory   = [chash]
+                             })
+                Just krOld -> do
+                    when (getValueType krOld /= typeOf value) $ do
+                        CE.throw (TypeMismatchError { expectedType = getValueType krOld
+                                                    , foundType    = typeOf value })
+                    return $ (cmd, krOld { getTip     = tip
+                                         , getHistory = chash : getHistory krOld
+                                         })
+
+        -- Write the updated key records to disk.
+        atomicWriteFiles store $
+            flip map krs' $ \(SetCmd key _, kr) ->
+                (locationKey store key, printHum (toSexp kr))
+
+        -- Return the event that this change would cause.
+        return (msetEvent vals)
+
+    -- | The hash of a value.  This hash is used as the filename under which the value is
+    -- stored in the @values/@ folder.
+    valueHash :: (Storable a) => a -> ValueHash
+    valueHash = BL.pack . showDigest . sha1 . valueToString
+
+    valueToString :: (Storable a) => a -> ByteString
+    valueToString = printHum . toSexp
+
+    msetEvent vals =
+        MSetEvent (flip map (zip cmds vals) $ \(SetCmd key _, val) ->
+                    let Key k = key
+                    in SetEvent { setKey       = key
+                                , setKeyDigest = fromInteger (integerDigest (sha1 k))
+                                , valueDigest  = fromInteger (integerDigest (sha1 val))
+                                })
+
 
 doKeys :: Simple -> IO (Set Key)
 doKeys store = do
