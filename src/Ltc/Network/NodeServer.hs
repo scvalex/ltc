@@ -183,9 +183,9 @@ sendMessage :: (NetworkInterface a) => Node a -> Connection a -> NodeMessage -> 
 sendMessage node conn msg = do
     debugM tag (printf "sending message to %s" (show (getConnectionLocation conn)))
     nodeData <- readMVar (getNodeData node)
-    let envelope = NodeEnvelope { getEnvelopeLocation = getLocation nodeData
-                                , getEnvelopeNode     = getNodeName nodeData
-                                , getEnvelopeMessage  = msg
+    let envelope = NodeEnvelope { getEnvelopeSender  = getLocation nodeData
+                                , getEnvelopeNode    = getNodeName nodeData
+                                , getEnvelopeMessage = msg
                                 }
     NI.send (getConnectionInterface conn) (encode envelope)
     debugM tag "message sent"
@@ -270,7 +270,7 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Chang
                                 S.insert changeset (getChangesetCache nodeData) })
 
     -- Connect back to the sender.
-    addNeighbour node (getEnvelopeNode envelope) (getEnvelopeLocation envelope)
+    addNeighbour node (getEnvelopeNode envelope) (getEnvelopeSender envelope)
 
     -- Try to apply changesets to the store
     tryApplyChangesets node store
@@ -304,9 +304,9 @@ sendChangesetsToNeighbours node store = do
                            (length changesets)
                            (show (getRemoteLocation remoteNode)))
         forM_ changesets $ \changeset -> do
-            let envelope = NodeEnvelope { getEnvelopeLocation = getLocation nodeData
-                                        , getEnvelopeNode     = getNodeName nodeData
-                                        , getEnvelopeMessage  = Change changeset
+            let envelope = NodeEnvelope { getEnvelopeSender  = getLocation nodeData
+                                        , getEnvelopeNode    = getNodeName nodeData
+                                        , getEnvelopeMessage = Change changeset
                                         }
             NI.send (getRemoteInterface remoteNode) (encode envelope)
 

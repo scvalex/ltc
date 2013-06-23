@@ -18,9 +18,9 @@ import qualified Data.Serialize as S
 ----------------------
 
 data NodeEnvelope a = NetworkInterface a => NodeEnvelope
-    { getEnvelopeLocation :: NetworkLocation a
-    , getEnvelopeNode     :: NodeName
-    , getEnvelopeMessage  :: NodeMessage
+    { getEnvelopeSender  :: NetworkLocation a
+    , getEnvelopeNode    :: NodeName
+    , getEnvelopeMessage :: NodeMessage
     }
 
 deriving instance Show (NodeEnvelope a)
@@ -54,7 +54,7 @@ instance Sexpable NodeMessage
 -- | Encode a 'NodeEnvelope' as a strict 'ByteString'.
 encode :: (NetworkInterface a) => NodeEnvelope a -> ByteString
 encode env =
-    let serEnv = V1 { getSender  = S.encode (getEnvelopeLocation env)
+    let serEnv = V1 { getSender  = S.encode (getEnvelopeSender env)
                     , getNode    = getEnvelopeNode env
                     , getMessage = getEnvelopeMessage env
                     }
@@ -74,7 +74,7 @@ decode bin =
                 Left _ ->
                     Nothing
                 Right location ->
-                    Just (NodeEnvelope { getEnvelopeLocation = location
-                                       , getEnvelopeNode     = getNode serEnv
-                                       , getEnvelopeMessage  = getMessage serEnv
+                    Just (NodeEnvelope { getEnvelopeSender  = location
+                                       , getEnvelopeNode    = getNode serEnv
+                                       , getEnvelopeMessage = getMessage serEnv
                                        })
