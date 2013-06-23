@@ -31,9 +31,10 @@ data Changeset = Update { getBeforeUpdateVersion :: Version
                         , getAfterVersion        :: Version
                         , getChanges             :: Changes
                         }
-               | Merge { getBeforeMergeVersions :: (Version, Version)
-                       , getAfterVersion        :: Version
-                       , getChanges             :: Changes
+               | Merge { getBeforeMergeVersions  :: (Version, Version)
+                       , getMergeAncestorVersion :: Version
+                       , getAfterVersion         :: Version
+                       , getChanges              :: Changes
                        }
                deriving ( Show, Generic )
 

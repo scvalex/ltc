@@ -45,7 +45,7 @@ import Ltc.Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, dec
 import Ltc.Store ( Store(..), Storable, SetCmd(..)
                  , Key, Version, NodeName
                  , Type, typeOf
-                 , getLatestExn )
+                 , getExn )
 import Network.BSD ( getHostName )
 import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
@@ -82,7 +82,7 @@ data Shutdown = Shutdown
 instance Exception Shutdown
 
 data TypeHandler = TypeHandler
-    { getSetCmdFromWireDiff :: forall s. (Store s) => s -> Key -> WireDiff -> IO SetCmd
+    { getSetCmdFromWireDiff :: forall s. (Store s) => s -> Key -> Version -> WireDiff -> IO SetCmd
     , getType               :: Type
     }
 
@@ -349,8 +349,6 @@ dropOwnedChangesets node store = do
             not <$> hasVersion store (getAfterVersion changeset)
         return (nodeData { getChangesetCache = changesets' })
 
--- FIXME Actually try to apply changesets.
-
 -- | Try to apply as many changesets as possible to the data store.
 tryApplyChangesets :: (Store s) => Node a -> s -> IO ()
 tryApplyChangesets node store = do
@@ -375,8 +373,20 @@ tryApplyChangesets node store = do
                                          , getNeighbours     = neighbours' }, True)
                     Nothing -> do
                         debugM tag "not a fast-forward"
-                        -- Attempt conflict resolution (with store locked)
-                        return (nodeData, False)
+                        mFastForwardMerge <- findFastForwardMerge [] changesets
+                        case mFastForwardMerge of
+                            Just ((remoteName, changeset), changesets') -> do
+                                debugM tag (printf "fast-forward merging to %s" (show (getAfterVersion changeset)))
+                                fastForward changeset (getTypeHandlers nodeData)
+                                let neighbours' = maybeUpdateRemoteClock (getNeighbours nodeData)
+                                                                         remoteName
+                                                                         (getAfterVersion changeset)
+                                return (nodeData { getChangesetCache = changesets'
+                                                 , getNeighbours     = neighbours' }, True)
+                            Nothing -> do
+                                debugM tag "not a fast-forward merge"
+                                -- Attempt conflict resolution (with store locked)
+                                return (nodeData, False)
             else do
                 return (nodeData, False)
     -- If we've made reduced the number of cached changesets, try to apply more.
@@ -393,18 +403,36 @@ tryApplyChangesets node store = do
         case changeset of
             Update { getBeforeUpdateVersion = beforeVersion } | beforeVersion == tip ->
                 Just ((remoteName, changeset), reverse acc ++ changesets)
-            -- FIXME Fast-forward merges are also possible
             _ ->
                 findFastForward ((remoteName, changeset) : acc) tip changesets
 
-    -- Apply the given 'Changeset'.  It better be a fast-forward 'Update'.
+    findFastForwardMerge :: [(NodeName, Changeset)]
+                         -> [(NodeName, Changeset)]
+                         -> IO (Maybe ((NodeName, Changeset), [(NodeName, Changeset)]))
+    findFastForwardMerge _ [] =
+        return Nothing
+    findFastForwardMerge acc ((remoteName, changeset) : changesets) = do
+        case changeset of
+            Merge {} -> do
+                hasAncestor <- hasVersion store (getMergeAncestorVersion changeset)
+                tip <- tipVersion store
+                -- If the merge result is based on a version we already have, and if it's
+                -- in the future, it's a "fast-forward" merge.
+                if hasAncestor && tip `VC.causes` getAfterVersion changeset
+                    then do
+                        -- FIXME Warning: Applying only this will leave holes in the history.
+                        return (Just ((remoteName, changeset), reverse acc ++ changesets))
+                    else do
+                        findFastForwardMerge ((remoteName, changeset) : acc) changesets
+            _ ->
+                findFastForwardMerge ((remoteName, changeset) : acc) changesets
+
+    -- Apply the given 'Changeset'.  It better be a fast-forward.
     fastForward :: Changeset -> [TypeHandler] -> IO ()
-    fastForward update@(Update {}) typeHandlers = do
-        cmds <- setCmdsFromChangeset store update typeHandlers
-        _ <- msetInternal store update cmds
+    fastForward changeset typeHandlers = do
+        cmds <- setCmdsFromChangeset store changeset typeHandlers
+        _ <- msetInternal store changeset cmds
         return ()
-    fastForward _ _ = do
-        error "fastForward called on non-Update Changeset"
 
 maybeUpdateRemoteClock :: Map NodeName (RemoteNode a)
                        -> NodeName
@@ -427,6 +455,9 @@ maybeUpdateRemoteClock neighbours remoteName clock' =
 setCmdsFromChangeset :: (Store s) => s -> Changeset -> [TypeHandler] -> IO [SetCmd]
 setCmdsFromChangeset store changeset typeHandlers = do
     let changes = changesToList (getChanges changeset)
+        baseVersion = case changeset of
+            Update { getBeforeUpdateVersion = version } -> version
+            Merge { getMergeAncestorVersion = version } -> version
     catMaybes <$> forM changes (\(key, wireDiff) -> do
         let mTypeHandler =
                 find (\handler -> getType handler == getWireDiffType wireDiff)
@@ -436,13 +467,13 @@ setCmdsFromChangeset store changeset typeHandlers = do
                 warningM tag (printf "no type handler for %s" (show (getWireDiffType wireDiff)))
                 return Nothing
             Just typeHandler -> do
-                Just <$> (getSetCmdFromWireDiff typeHandler) store key wireDiff)
+                Just <$> (getSetCmdFromWireDiff typeHandler) store key baseVersion wireDiff)
 
 -- | Make a function that transforms part of a 'WireDiff' into a `SetCmd`.
 makeSetCmdFromWireDiff :: forall a s. (Storable a, Store s)
                  => a           -- ^ dummy value to fix the type
-                 -> (s -> Key -> WireDiff -> IO SetCmd)
-makeSetCmdFromWireDiff _ = \store key wireDiff -> do
+                 -> (s -> Key -> Version -> WireDiff -> IO SetCmd)
+makeSetCmdFromWireDiff _ = \store key version wireDiff -> do
     mtyp <- keyType store key
     case mtyp of
         Nothing -> do
@@ -452,7 +483,7 @@ makeSetCmdFromWireDiff _ = \store key wireDiff -> do
         Just typ -> do
             if typ == getWireDiffType wireDiff
                 then do
-                    (v :: a, _) <- getLatestExn store key
+                    (v :: a) <- getExn store key version
                     return (setCmdFromWireDiff key v wireDiff)
                 else do
                     error "setCmdFromWireDiff applied to wrong type"
