@@ -313,6 +313,7 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Chang
 -- | Try to apply as many changesets as possible to the data store.
 tryApplyChangesets :: (Store s) => Node a -> s -> IO ()
 tryApplyChangesets node store = do
+    debugM tag "trying to apply changesets"
     tryAgain <- modifyMVar (getNodeData node) $ \nodeData -> do
         let changesets = getChangesetCache nodeData
         tip <- tipVersion store
@@ -320,6 +321,7 @@ tryApplyChangesets node store = do
         -- Attempt fast forward
         case findFastForward [] tip changesets of
             Just (changeset, changesets') -> do
+                debugM tag (printf "fast-forwarding to %s" (show (getAfterVersion changeset)))
                 fastForward changeset (getTypeHandlers nodeData)
                 return (nodeData { getChangesetCache = changesets'}, True)
             Nothing -> do

@@ -137,6 +137,7 @@ main = do
                                                        , U.port = N.nodePort + idx })
                                         store
                                         (makeNodeName hostname idx)
+            N.handleType node (undefined :: Integer)
             -- FIXME Remove hacky "connect to next node in the ring"
             N.addNeighbour node
                            (makeNodeName hostname (idx + 1))
