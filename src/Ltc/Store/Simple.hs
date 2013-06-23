@@ -401,7 +401,10 @@ doMSet store cmds = lockStore store $ do
     -- Increment the version clock.
     let nn = getNodeName store
     (clock, clock') <- modifyMVar (getClock store) $ \oldClock -> do
-        let Just incrementedClock = VC.inc nn oldClock
+        let incrementedClock =
+                case VC.inc nn oldClock of
+                    Nothing       -> VC.insert nn (1 :: Int) oldClock
+                    Just newClock -> newClock
         return (incrementedClock, (oldClock, incrementedClock))
 
     -- Compute the 'Changeset' from the store state to the new one (the store is locked,
@@ -618,8 +621,7 @@ initStore params = do
     createDirectory base
     writeFile (locationFormat base) formatString
     writeFile (locationVersion base) (show storeVsn)
-    let initialClock = VC.insert (nodeName params) (0 :: Int) VC.empty
-    BL.writeFile (locationClock base) (printHum (toSexp initialClock))
+    BL.writeFile (locationClock base) (printHum (toSexp (VC.empty :: Version)))
     BL.writeFile (locationChangelog base) (printHum (toSexp (Changelog [])))
     BL.writeFile (locationNodeName base) (nodeName params)
     writeFile (locationCleanShutdown base) ""
