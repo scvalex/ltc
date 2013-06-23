@@ -300,6 +300,8 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Chang
     -- Connect back to the sender.
     addNeighbour node (getEnvelopeNode envelope) (getEnvelopeSender envelope)
 
+    -- FIXME Drop changesets which we already have
+
     -- Try to apply changesets to the store
     tryApplyChangesets node store
 

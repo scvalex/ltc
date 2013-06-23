@@ -51,7 +51,7 @@ data Modes = Fsck { dir :: FilePath }
            | Import { dir :: FilePath, file :: FilePath }
            | Populate { dir :: FilePath, count :: Int }
            | Redis { dir :: FilePath }
-           | Node { storeDir :: Maybe FilePath, nodeIndex :: Int }
+           | Node { storeDir :: Maybe FilePath, nodeIndex :: Int, monkey :: Bool }
            | WireClient { host :: String, port :: Int }
            deriving ( Show, Data, Typeable )
 
@@ -74,7 +74,8 @@ ltcModes =
     , Redis { dir = "redis-store" &= typDir }
       &= help "run a store with a Redis interface"
     , Node { storeDir = def &= typDir
-           , nodeIndex = 0 &= help "what is the index of this node on this machine" }
+           , nodeIndex = 0 &= help "what is the index of this node on this machine"
+           , monkey = False &= help "randomly change data in the store" }
       &= help "run a store with an LTc node interface"
     , WireClient { host = "localhost" &= typ "HOST"
                  , port = N.nodePort &= typ "PORT" }
@@ -127,7 +128,7 @@ main = do
             store <- open (openParameters d hostname 0 True)
             shutdown <- R.serve store
             shutdownOnInt store [shutdown]
-        Node mStoreDir idx -> do
+        Node mStoreDir idx monkeyEnabled -> do
             let myStoreDir = maybe (printf "node-store-%d" idx) id mStoreDir
             _ <- printf "Running Node on %d with %s\n" (N.nodePort + idx) myStoreDir
             hostname <- getHostName
@@ -141,9 +142,14 @@ main = do
                            (makeNodeName hostname (idx + 1))
                            (U.UdpLocation { U.host = hostname
                                           , U.port = N.nodePort + idx + 1 })
-            monkey <- M.start store
-            status <- S.serveWithPort (S.statusPort + idx) store (Just monkey)
-            shutdownOnInt store [N.shutdown node, S.shutdown status, M.shutdown monkey]
+            if monkeyEnabled
+               then do
+                  monkeey <- M.start store
+                  status <- S.serveWithPort (S.statusPort + idx) store (Just monkeey)
+                  shutdownOnInt store [N.shutdown node, S.shutdown status, M.shutdown monkeey]
+                else do
+                  status <- S.serveWithPort (S.statusPort + idx) store Nothing
+                  shutdownOnInt store [N.shutdown node, S.shutdown status]
         WireClient h p -> do
             _ <- printf "Connecting wire client to %s:%d\n" h p
             hostname <- getHostName
