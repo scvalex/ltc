@@ -11,6 +11,7 @@ module Ltc.Changeset (
     ) where
 
 import Data.ByteString.Char8 ( ByteString )
+import Data.Function ( on )
 import Data.Map ( Map )
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
@@ -20,6 +21,7 @@ import Ltc.Store.Types ( Key, Storable, Version
 import Ltc.Diff ( Diffable(..) )
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map as M
+import qualified Data.VectorClock as VC
 
 ----------------------
 -- Changeset container
@@ -41,14 +43,17 @@ instance Sexpable Changeset
 
 -- Changesets are uniquely identified by their versions.
 instance Eq Changeset where
-    u1@(Update {}) == u2@(Update {}) =
-        getBeforeUpdateVersion u1 == getBeforeUpdateVersion u2
-        && getAfterVersion u1 == getAfterVersion u2
-    m1@(Merge {}) == m2@(Merge {}) =
-        getBeforeMergeVersions m1 == getBeforeMergeVersions m2
-        && getAfterVersion m1 == getAfterVersion m2
-    _ == _ =
-        False
+    (==) = (==) `on` getAfterVersion
+
+instance Ord Changeset where
+    ch1 `compare` ch2 =
+        let vsn1 = getAfterVersion ch1
+            vsn2 = getAfterVersion ch2
+        in if vsn1 == vsn2
+           then EQ
+           else if vsn1 `VC.causes` vsn2
+                then LT
+                else GT
 
 ----------------------
 -- Changes
