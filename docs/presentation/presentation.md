@@ -454,17 +454,13 @@ instance Diffable Bid where
 
 # Performance
 
-~~~~ {.sourceCode}
-Writes/Sec  76 |     #
-               |     #
-               |     #
-               |     #
-            27 |     #            #
-               |     #            #
-               +-----------------------
-                   SQLite        LTc
-                   (more is better)
-~~~~
+<!-- pdf("wps.pdf") -->
+<!-- barplot(c(76, 27), main="Writes/Sec", names.arg=c("SQLite", "LTc"), cex.axis=2, cex.names=2, cex.main=2) -->
+<!-- dev.off() -->
+
+\begin{center}
+\includegraphics[width=5cm]{wps.pdf}
+\end{center}
 
 \begin{center}
 \fbox{Solution: Replace debug data store with a commercial one.}
