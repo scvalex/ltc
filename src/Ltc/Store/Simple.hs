@@ -398,17 +398,14 @@ doMSet store cmds = lockStore store $ do
     -- Log the set everywhere
     debugM tag (printf "mset %s" (show (map (\(SetCmd key _) -> key) cmds)))
 
-    -- Increment and save the version clock.  It's ok to increment the clock
-    -- superfluously, so we can be interrupted here.
+    -- Increment the version clock.
     let nn = getNodeName store
     (clock, clock') <- modifyMVar (getClock store) $ \oldClock -> do
         let Just incrementedClock = VC.inc nn oldClock
         return (incrementedClock, (oldClock, incrementedClock))
-    atomicWriteClock store (locationClock (getBase store)) clock'
 
     -- Compute the 'Changeset' from the store state to the new one (the store is locked,
-    -- so values can't be updated by something else while we're here).  Having superfluous
-    -- changesets lying around is not a problem.
+    -- so values can't be updated by something else while we're here).
     changes <- changesFromList <$> forM cmds (\(SetCmd key newVal) -> do
         mOldVal <- doGetLatest store key
         let oldVal = maybe def fst mOldVal
@@ -424,15 +421,23 @@ doMSet store cmds = lockStore store $ do
 
 doMSetInternal :: Simple -> Changeset -> [SetCmd] -> IO Event
 doMSetInternal store changeset cmds = do
+    -- Save the store clock.  It's ok to increment the clock superfluously, so we can be
+    -- interrupted here.
+    atomicWriteClock store (locationClock (getBase store)) (getAfterVersion changeset)
+
+    -- Save the changeset to disk.  Having superfluous changesets lying around is not a
+    -- problem, so we can be interrupted here.
     addChangeset
 
+    -- Update the values.
     writeValuesAndUpdateKeyRecords
   where
+    (cbin, chash) = serializedChangeset changeset
+
     addChangeset :: IO ()
     addChangeset = do
         -- Write the new changeset.  Having superfluous changesets is not a problem, so we
         -- can be interrupted here.
-        let (cbin, chash) = serializedChangeset changeset
         atomicWriteFile store (locationChangesetHash store chash) cbin
 
         -- Update the changelog in-memory
@@ -446,9 +451,6 @@ doMSetInternal store changeset cmds = do
 
     writeValuesAndUpdateKeyRecords :: IO Event
     writeValuesAndUpdateKeyRecords = do
-        let clock' = getAfterVersion changeset
-            (_, chash) = serializedChangeset changeset
-
         -- Write the values.  It's ok to write extra values, so we can be interrupted
         -- here.
         (vals, vhashes) <- unzip <$> forM cmds (\(SetCmd _ value) -> do
@@ -467,7 +469,7 @@ doMSetInternal store changeset cmds = do
 
         -- Update the key records in-memory, or create new ones if they are missing.
         krs' <- forM mkrs $ \(mkrOld, cmd@(SetCmd key value), vhash) -> do
-            let tip = KeyVersion { getVersion   = clock'
+            let tip = KeyVersion { getVersion   = getAfterVersion changeset
                                  , getValueHash = vhash
                                  }
             case mkrOld of

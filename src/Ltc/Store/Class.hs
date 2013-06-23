@@ -91,8 +91,8 @@ class Store a where
     -- given version.  It is up to you to ensure that the changes are those intended by
     -- the changeset.
     --
-    -- Do /not/ update the store's version.  Do /not/ create a changeset; use the given
-    -- one.  But /do/ update the tip of the keys.  Do /not/ cause an 'Event'.
+    -- Do /not/ create a changeset; use the given one.  But /do/ update the tip of the
+    -- keys and /do/ update the store's tip.  Do /not/ cause an 'Event'.
     --
     -- This means that you can leave the store in an inconsistent state: if you do not
     -- handle merge conflicts, if you make changes other than those specified by the
