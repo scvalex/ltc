@@ -19,18 +19,17 @@ module Ltc.Network.NodeServer (
 
 import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO, threadDelay
-                          , MVar, newMVar, withMVar, readMVar, modifyMVar_ )
+                          , MVar, newMVar, withMVar, readMVar, modifyMVar, modifyMVar_ )
 import Control.Exception ( Exception )
-import Control.Monad ( unless, forever, forM_ )
+import Control.Monad ( unless, forever, forM_, when )
 import Control.Proxy ( Proxy, ProxyFast, Pipe, Producer, Consumer
                      , runProxy, lift, runIdentityP, request, respond, (>->) )
 import Data.ByteString ( ByteString )
 import Data.Function ( on )
 import Data.Map ( Map )
-import Data.Set ( Set )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
-import Ltc.Changeset ( Changeset )
+import Ltc.Changeset ( Changeset(..) )
 import Ltc.Network.Interface ( NetworkInterface, Sending, Receiving, NetworkLocation )
 import Ltc.Network.Interface.UDP ( UdpInterface )
 import Ltc.Network.NodeProtocol ( NodeMessage(..), NodeEnvelope(..), encode, decode )
@@ -40,7 +39,6 @@ import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map as M
-import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import qualified Ltc.Network.Interface as NI
 import qualified Ltc.Network.Interface.UDP as U
@@ -104,7 +102,7 @@ data NodeData a = NodeData
     , getLocation       :: NetworkLocation a
     , getNodeName       :: NodeName
     , getNeighbours     :: Map NodeName (RemoteNode a)
-    , getChangesetCache :: Set Changeset
+    , getChangesetCache :: [Changeset]
     }
 
 -- | Start the node interface on the default port.
@@ -126,7 +124,7 @@ serveFromLocation location store nodeName = do
                             , getLocation       = location
                             , getNodeName       = nodeName
                             , getNeighbours     = M.empty
-                            , getChangesetCache = S.empty
+                            , getChangesetCache = []
                             }
     node <- Node <$> newMVar nodeData
 
@@ -267,7 +265,7 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Chang
     -- Add the changeset to the remote node's changeset cache
     modifyMVar_ (getNodeData node) $ \nodeData ->
         return (nodeData { getChangesetCache =
-                                S.insert changeset (getChangesetCache nodeData) })
+                                changeset : getChangesetCache nodeData })
 
     -- Connect back to the sender.
     addNeighbour node (getEnvelopeNode envelope) (getEnvelopeSender envelope)
@@ -282,12 +280,37 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Chang
 
 -- | Try to apply as many changesets as possible to the data store.
 tryApplyChangesets :: (Store s) => Node a -> s -> IO ()
-tryApplyChangesets node _store = do
-    modifyMVar_ (getNodeData node) $ \nodeData -> do
-        let _changesets = getChangesetCache nodeData
+tryApplyChangesets node store = do
+    tryAgain <- modifyMVar (getNodeData node) $ \nodeData -> do
+        let changesets = getChangesetCache nodeData
+        tip <- tipVersion store
+
         -- Attempt fast forward
-        -- Attempt conflict resolution (with store locked)
-        return nodeData
+        case findFastForward [] tip changesets of
+            Just (changeset, changesets') -> do
+                fastForward changeset
+                return (nodeData { getChangesetCache = changesets'}, True)
+            Nothing -> do
+                -- Attempt conflict resolution (with store locked)
+                return (nodeData, False)
+    -- If we've made reduced the number of cached changesets, try to apply more.
+    when tryAgain $ tryApplyChangesets node store
+  where
+    -- Find the first 'Update' 'Changeset' that begins in the given version.
+    findFastForward :: [Changeset] -> Version -> [Changeset] -> Maybe (Changeset, [Changeset])
+    findFastForward _ _ [] =
+        Nothing
+    findFastForward acc tip (changeset : changesets) =
+        case changeset of
+            Update { getBeforeUpdateVersion = beforeVersion } | beforeVersion == tip ->
+                Just (changeset, reverse acc ++ changesets)
+            _ ->
+                findFastForward (changeset : acc) tip changesets
+
+    -- Apply the given 'Changeset'.  It better be a fast-forward 'Update'.
+    fastForward :: Changeset -> IO ()
+    fastForward _changeset = do
+        return ()
 
 ----------------------
 -- Change propagation
