@@ -6,8 +6,8 @@ LTc
 Build
 =====
 
-LTc requires `ghc` and `cabal-install` to start building and,
-downloads the rest of the dependencies as it needs them.
+LTc requires at least `ghc- 7.6.1` and `cabal-install` to start
+building and, downloads the rest of the dependencies as it needs them.
 
 The simplest way to build LTc is through the `Makefile`:
 
