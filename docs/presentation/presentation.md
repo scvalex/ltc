@@ -453,7 +453,9 @@ Writes/Sec  76 |     #
                    (more is better)
 ~~~~
 
-* Solution: Replace debug data store with a commercial one.
+\begin{center}
+\fbox{Solution: Replace debug data store with a commercial one.}
+\end{center}
 
 # Cryptography (the lack of)
 
@@ -463,7 +465,9 @@ Writes/Sec  76 |     #
 
 * No secrecy
 
-* Solution: Use a cryptography library.
+\begin{center}
+\fbox{Solution: Use a cryptography library.}
+\end{center}
 
 # Thank you
 
