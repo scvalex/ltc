@@ -116,8 +116,12 @@ testSimpleKeysPattern = cleanEnvironment ["test-store"] $ do
     _ <- set store "item1:bid:alex" (23 :: Integer)
     _ <- set store "item1:bid:francesco" (42 :: Integer)
     _ <- set store "item1:bid:alex" (43 :: Integer)
-    ks <- keys store "item1:bid:.*"
-    ks @?= S.fromList ["item1:bid:alex", "item1:bid:francesco"]
+    ks1 <- keys store "item1:bid:.*"
+    ks1 @?= S.fromList ["item1:bid:alex", "item1:bid:francesco"]
+    ks2 <- keys store "item1:bid:a.*"
+    ks2 @?= S.fromList ["item1:bid:alex"]
+    ks3 <- keys store "item1:bid:ab.*"
+    ks3 @?= S.empty
 
 --------------------------------
 -- QuickCheck

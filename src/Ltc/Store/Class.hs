@@ -108,8 +108,10 @@ class Store a where
     -- try to write while the write lock is acquired, you will block indefinitely.
     withWriteLock :: a -> IO b -> IO b
 
-    -- | Get all the keys stored in the store.  Note that using this is probably racey
-    -- because the set of keys may change before it is used.
+    -- | Get all the keys stored in the store.  The second argument is a regular
+    -- expression that will be matched against every key.  Use @.*@ to get all keys.  Note
+    -- that using this is probably racey because the set of keys may change before it is
+    -- used.
     keys :: a -> String -> IO (Set Key)
 
     -- | Add an event channel to the store.  Events will be written are written to it as
