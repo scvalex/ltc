@@ -9,7 +9,7 @@ import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable )
 import Ltc.Network.Interface ( NetworkInterface(..) )
-import Ltc.Store ( NodeName )
+import Ltc.Store ( NodeName, Version )
 import Ltc.Changeset ( Changeset )
 import qualified Data.Serialize as S
 
@@ -41,6 +41,7 @@ instance Sexpable SerializedNodeEnvelope
 
 data NodeMessage = Ping String
                  | Change Changeset
+                 | Have Version
                  deriving ( Generic, Eq, Show )
 
 instance Serialize NodeMessage

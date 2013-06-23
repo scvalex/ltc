@@ -323,6 +323,23 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Chang
     tryApplyChangesets node store
 
     debugM tag "changes handled"
+handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Have receivedVersion}) = do
+    -- Connect back to the sender.
+    addNeighbour node (getEnvelopeNode envelope) (getEnvelopeSender envelope)
+
+    -- Update our estimate of where the other node is.
+    modifyMVar_ (getNodeData node) $ \nodeData -> do
+        haveChangeset <- hasVersion store receivedVersion
+        if haveChangeset
+           then do
+               let neighbours' = maybeUpdateRemoteClock (getNeighbours nodeData)
+                                                        (getEnvelopeNode envelope)
+                                                        receivedVersion
+               return (nodeData { getNeighbours = neighbours' })
+           else do
+               return nodeData
+
+    debugM tag "have handled"
 
 -- | Drop those changesets which we already have.
 dropOwnedChangesets :: (Store s) => Node a -> s -> IO ()
@@ -461,9 +478,19 @@ sendChangesetsToNeighbours node store = do
                            (length changesets)
                            (show (getRemoteLocation remoteNode))
                            (show (getRemoteClock remoteNode)))
+        -- Send the changes we think the other node doesn't have.
         forM_ changesets $ \changeset -> do
             let envelope = NodeEnvelope { getEnvelopeSender  = getLocation nodeData
                                         , getEnvelopeNode    = getNodeName nodeData
                                         , getEnvelopeMessage = Change changeset
+                                        }
+            NI.send (getRemoteInterface remoteNode) (encode envelope)
+        -- If we don't have any changes to send, send an update saying what our most
+        -- recent state is.
+        when (length changesets == 0) $ do
+            tip <- tipVersion store
+            let envelope = NodeEnvelope { getEnvelopeSender  = getLocation nodeData
+                                        , getEnvelopeNode    = getNodeName nodeData
+                                        , getEnvelopeMessage = Have tip
                                         }
             NI.send (getRemoteInterface remoteNode) (encode envelope)
