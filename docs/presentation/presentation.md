@@ -420,7 +420,7 @@ placeBid store auction bid = do
     set store (auction ++ ":bid:" ++ myUniqueName) bid
 
 getBids :: Store -> AuctionName -> IO [Bid]
-getBids store auction bid = do
+getBids store auction = do
     bidKeys <- keys store (auction ++ ":bid:.*")
     mapM bidKeys (getLatest store)
 ~~~~

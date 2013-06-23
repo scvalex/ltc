@@ -111,7 +111,7 @@ class Store a where
     -- FIXME Store.keys should take a regexp pattern.
     -- | Get all the keys stored in the store.  Note that using this is probably racey
     -- because the set of keys may change before it is used.
-    keys :: a -> IO (Set Key)
+    keys :: a -> String -> IO (Set Key)
 
     -- | Add an event channel to the store.  Events will be written are written to it as
     -- they happen.

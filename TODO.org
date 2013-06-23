@@ -199,6 +199,10 @@
   :END:
   - [X] Configurable stub
   - [X] Artificial delays
+* TODO dBayc
+  :LOGBOOK:
+  CLOCK: [2013-06-23 Sun 14:36]--[2013-06-23 Sun 15:04] =>  0:28
+  :END:
 * TODO Test network interfaces
 * TODO Expose net config in web interface
 * TODO Temporal logic formalization

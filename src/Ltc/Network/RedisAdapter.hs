@@ -118,7 +118,8 @@ redisProxyD store () = runIdentityP loop
                     Left err ->
                         resply (toError (printf "ERR bad pattern '%s'" err))
                     Right reg' -> do
-                        ks <- keys store
+                        -- FIXME Move the regular expression matching to the store.
+                        ks <- keys store ".*"
                         let ks' = filter (\k -> isRightJust (T.execute reg' k))
                                   . map (\(Key k) -> strict k)
                                   $ S.toList ks

@@ -167,7 +167,7 @@ versionsFromToIncluding store key from toInc = do
 -- | Get all the data from a store.
 getDiffPack :: (Store s) => s -> IO DiffPack
 getDiffPack store = do
-    ks <- keys store
+    ks <- keys store ".*"
     DiffPack <$> foldlM addKeyHistory M.empty ks
   where
     addKeyHistory m key = do

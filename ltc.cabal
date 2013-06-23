@@ -95,14 +95,16 @@ Executable ltc
                         transformers,
                         unix
 
-Executable ltc-rps
+Executable dBay
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
-  Main-is:              examples/RockPaperScissors.hs
+  Main-is:              examples/dBay.hs
   Build-depends:        base >= 4 && < 5,
                         cereal,
+                        containers,
                         data-default,
                         ltc,
+                        network,
                         sexp,
                         stm
 

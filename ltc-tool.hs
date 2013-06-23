@@ -198,7 +198,7 @@ main = do
     doInfo d lk hostname store = do
         _ <- printf "LTc store: %s (format %s-%d)\n" d (storeFormat store) (storeVersion store)
         _ <- printf "  node     : %s\n" hostname
-        ks <- keys store
+        ks <- keys store ".*"
         if lk
             then do
                 _ <- printf "  keys     :\n"

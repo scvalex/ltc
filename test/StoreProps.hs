@@ -78,7 +78,7 @@ testSimpleSetGet = cleanEnvironment ["test-store"] $ do
     _ <- set store "foo" (vs "boom")
     res4 <- getLatest store "foo"
     res4 @?= Just (vs "boom", VC.fromList [(hostname, 3)])
-    ks <- keys store
+    ks <- keys store ".*"
     ks @?= S.fromList ["foo", "bar"]
     close store
 
@@ -162,7 +162,7 @@ propKeysPresent = propWithCommands (\store cmds -> foldlM (runCmd store) S.empty
     runCmd store s (Set key value) = do
         _ <- run $ set store key value
         let s' = S.insert key s
-        ks <- run $ keys store
+        ks <- run $ keys store ".*"
         QCM.assert (ks == s')
         return s'
 

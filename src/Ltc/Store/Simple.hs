@@ -517,8 +517,8 @@ doMSetInternal store changeset cmds = do
                                 })
 
 
-doKeys :: Simple -> IO (Set Key)
-doKeys store = do
+doKeys :: Simple -> String -> IO (Set Key)
+doKeys store _regexp = do
     debugM tag "keys"
     let keysDir = locationKeys (getBase store)
     kfs <- getDirectoryContents keysDir
