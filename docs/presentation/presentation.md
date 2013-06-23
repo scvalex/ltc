@@ -322,7 +322,7 @@
 \begin{tikzpicture}
 
 \node (A1) {Node 1};
-\node (A2) [state, below of=A1] {\dots};
+\node (A2) [state, below of=A1] {\texttt{[("foo", 23)]}};
 
 \node (B1) [right=4cm of A1] {Node 2};
 \node (B2) [state, below of=B1] {\texttt{[("foo", 23)]}};
@@ -345,7 +345,7 @@
 \begin{tikzpicture}
 
 \node (A1) {Node 1};
-\node (A2) [state, below of=A1] {\dots};
+\node (A2) [state, below of=A1] {\texttt{[("foo", 23)]}};
 
 \node (B1) [right=4cm of A1] {Node 2};
 \node (B2) [state, below of=B1] {\texttt{[("foo", 23)]}};
@@ -367,7 +367,7 @@
 
 \end{tikzpicture}
 
-# Propagating updates
+# Propagating updates --- what to send
 
 \tikzset{state/.style={rectangle, draw, text centered}}
 
