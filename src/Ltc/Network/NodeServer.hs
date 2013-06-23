@@ -25,16 +25,19 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO, threadDelay
                           , MVar, newMVar, withMVar, readMVar, modifyMVar, modifyMVar_ )
 import Control.Exception ( Exception )
-import Control.Monad ( unless, forever, forM_, when )
+import Control.Monad ( unless, forever, forM, forM_, when )
 import Control.Proxy ( Proxy, ProxyFast, Pipe, Producer, Consumer
                      , runProxy, lift, runIdentityP, request, respond, (>->) )
 import Data.ByteString ( ByteString )
 import Data.Default ( def )
+import Data.List ( find )
 import Data.Function ( on )
 import Data.Map ( Map )
+import Data.Maybe ( catMaybes )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
-import Ltc.Changeset ( Changeset(..), WireDiff(..), diffFromWireDiff )
+import Ltc.Changeset ( Changeset(..), changesToList
+                     , WireDiff(..), diffFromWireDiff )
 import Ltc.Diff ( Diffable(..) )
 import Ltc.Network.Interface ( NetworkInterface, Sending, Receiving, NetworkLocation )
 import Ltc.Network.Interface.UDP ( UdpInterface )
@@ -79,7 +82,7 @@ data Shutdown = Shutdown
 instance Exception Shutdown
 
 data TypeHandler = TypeHandler
-    { getSetCmdFromWireDiff :: forall s. (Store s) => s -> Key -> WireDiff -> IO (Maybe SetCmd)
+    { getSetCmdFromWireDiff :: forall s. (Store s) => s -> Key -> WireDiff -> IO SetCmd
     , getType               :: Type
     }
 
@@ -315,7 +318,7 @@ tryApplyChangesets node store = do
         -- Attempt fast forward
         case findFastForward [] tip changesets of
             Just (changeset, changesets') -> do
-                fastForward changeset
+                fastForward changeset (getTypeHandlers nodeData)
                 return (nodeData { getChangesetCache = changesets'}, True)
             Nothing -> do
                 -- Attempt conflict resolution (with store locked)
@@ -335,29 +338,47 @@ tryApplyChangesets node store = do
                 findFastForward (changeset : acc) tip changesets
 
     -- Apply the given 'Changeset'.  It better be a fast-forward 'Update'.
-    fastForward :: Changeset -> IO ()
-    fastForward _changeset = withWriteLock store $ do
+    fastForward :: Changeset -> [TypeHandler] -> IO ()
+    fastForward update@(Update {}) typeHandlers = withWriteLock store $ do
+        cmds <- setCmdsFromChangeset store update typeHandlers
+        _ <- msetInternal store update cmds
         return ()
+    fastForward _ _ = do
+        error "fastForward called on non-Update Changeset"
+
+-- | Convert a 'Changeset' to a list of 'SetCmd's using the given 'TypeHandler's.
+setCmdsFromChangeset :: (Store s) => s -> Changeset -> [TypeHandler] -> IO [SetCmd]
+setCmdsFromChangeset store changeset typeHandlers = do
+    let changes = changesToList (getChanges changeset)
+    catMaybes <$> forM changes (\(key, wireDiff) -> do
+        let mTypeHandler =
+                find (\handler -> getType handler == getWireDiffType wireDiff)
+                     typeHandlers
+        case mTypeHandler of
+            Nothing -> do
+                warningM tag (printf "no type handler for %s" (show (getWireDiffType wireDiff)))
+                return Nothing
+            Just typeHandler -> do
+                Just <$> (getSetCmdFromWireDiff typeHandler) store key wireDiff)
 
 -- | Make a function that transforms part of a 'WireDiff' into a `SetCmd`.
 makeSetCmdFromWireDiff :: forall a s. (Storable a, Store s)
                  => a           -- ^ dummy value to fix the type
-                 -> (s -> Key -> WireDiff -> IO (Maybe SetCmd))
+                 -> (s -> Key -> WireDiff -> IO SetCmd)
 makeSetCmdFromWireDiff _ = \store key wireDiff -> do
     mtyp <- keyType store key
     case mtyp of
         Nothing -> do
             -- The key does not exist, so just assume 'def' for the previous value.
             let v = def :: a
-            return (Just (setCmdFromWireDiff key v wireDiff))
+            return (setCmdFromWireDiff key v wireDiff)
         Just typ -> do
             if typ == getWireDiffType wireDiff
                 then do
                     (v :: a, _) <- getLatestExn store key
-                    return (Just (setCmdFromWireDiff key v wireDiff))
+                    return (setCmdFromWireDiff key v wireDiff)
                 else do
-                    -- The key has the wrong type.
-                    return Nothing
+                    error "setCmdFromWireDiff applied to wrong type"
   where
     -- | Get a `SetCmd` from a 'WireDiff'.
     setCmdFromWireDiff :: Key -> a -> WireDiff -> SetCmd
