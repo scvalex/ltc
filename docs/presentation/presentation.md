@@ -405,6 +405,7 @@ store <- open (def { location = "auction-store"
                    , nodeName = myUniqueName
                    })
 node <- Node.serve store myUniqueName
+Node.handleType node (undefined :: Bid)
 Node.addNeighbour node otherNodeName otherNodeAddress
 ~~~~
 
@@ -423,6 +424,15 @@ getBids store auction bid = do
     bidKeys <- keys store (auction ++ ":bid:.*")
     mapM bidKeys (getLatest store)
 ~~~~
+
+\begin{center}
+\begin{tabular}{c c l}
+Key & $\mapsto$ & Value\\
+\hline
+item1:bid:alex & $\mapsto$ & $\cancel{23}$ 43\\
+item1:bid:nick & $\mapsto$ & 42\\
+\end{tabular}
+\end{center}
 
 # Distributed auction house --- data types
 
