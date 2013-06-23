@@ -27,6 +27,7 @@ import Control.Proxy ( Proxy, ProxyFast, Pipe, Producer, Consumer
 import Data.ByteString ( ByteString )
 import Data.Function ( on )
 import Data.Map ( Map )
+import Data.Set ( Set )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
 import Ltc.Changeset ( Changeset )
@@ -39,6 +40,7 @@ import qualified Control.Exception as CE
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Map as M
+import qualified Data.Set as S
 import qualified Data.VectorClock as VC
 import qualified Ltc.Network.Interface as NI
 import qualified Ltc.Network.Interface.UDP as U
@@ -98,10 +100,11 @@ instance (NetworkInterface a) => Ord (RemoteNode a) where
 
 -- | The node's mutable state.
 data NodeData a = NodeData
-    { getShutdown   :: IO ()
-    , getLocation   :: NetworkLocation a
-    , getNodeName   :: NodeName
-    , getNeighbours :: Map NodeName (RemoteNode a)
+    { getShutdown       :: IO ()
+    , getLocation       :: NetworkLocation a
+    , getNodeName       :: NodeName
+    , getNeighbours     :: Map NodeName (RemoteNode a)
+    , getChangesetCache :: Set Changeset
     }
 
 -- | Start the node interface on the default port.
@@ -119,10 +122,11 @@ serveFromLocation location store nodeName = do
     debugM tag (printf "serveFromLocation %s" (show location))
 
     -- Make the node data-structure
-    let nodeData = NodeData { getShutdown   = error "shutdown not yet defined"
-                            , getLocation   = location
-                            , getNodeName   = nodeName
-                            , getNeighbours = M.empty
+    let nodeData = NodeData { getShutdown       = error "shutdown not yet defined"
+                            , getLocation       = location
+                            , getNodeName       = nodeName
+                            , getNeighbours     = M.empty
+                            , getChangesetCache = S.empty
                             }
     node <- Node <$> newMVar nodeData
 
@@ -137,6 +141,8 @@ serveFromLocation location store nodeName = do
     -- Start the store event listener
     tidPublisher <- forkIO $ forever $ do
         threadDelay 2000000 -- 2s
+
+        -- FIXME We should also send changes to neighbours when they're made to the store.
         sendChangesetsToNeighbours node store
 
     -- Fill in the 'getShutdown' field of the node
@@ -254,23 +260,26 @@ handleNodeEnvelopeC node store () = runIdentityP $ forever $ do
 handleNodeEnvelope :: (Store s) => Node a -> s -> NodeEnvelope a -> IO ()
 handleNodeEnvelope _node _store (NodeEnvelope {getEnvelopeMessage = Ping _}) = do
     debugM tag "ping handled"
-handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Change changeset}) = do
-    modifyMVar_ (getNodeData node) $ \nodeData -> do
-        case M.lookup (getEnvelopeNode envelope) (getNeighbours nodeData) of
-            Nothing -> do
-                return nodeData
-            Just remoteNode -> do
-                remoteClock' <- applyChanges store changeset
-                let neighbours' = M.insert (getEnvelopeNode envelope)
-                                           (remoteNode {getRemoteClock = remoteClock'})
-                                           (getNeighbours nodeData)
-                return (nodeData { getNeighbours = neighbours' })
+handleNodeEnvelope node store (NodeEnvelope {getEnvelopeMessage = Change changeset}) = do
+    -- Add the changeset to the remote node's changeset cache
+    modifyMVar_ (getNodeData node) $ \nodeData ->
+        return (nodeData { getChangesetCache =
+                                S.insert changeset (getChangesetCache nodeData) })
+
+    -- Try to apply changesets to the store
+    tryApplyChangesets node store
+
     debugM tag "changes handled"
 
--- | Apply changes to the store and return the version of the last applied change.
-applyChanges :: (Store s) => s -> Changeset -> IO Version
-applyChanges _store _changeset =
-    return VC.empty
+-- FIXME Actually try to apply changesets.
+-- FIXME Update our best guess of the remote vector clocks.
+
+-- | Try to apply as many changesets as possible to the data store.
+tryApplyChangesets :: (Store s) => Node a -> s -> IO ()
+tryApplyChangesets node _store = do
+    modifyMVar_ (getNodeData node) $ \nodeData -> do
+        let _changesets = getChangesetCache nodeData
+        return nodeData
 
 ----------------------
 -- Change propagation
