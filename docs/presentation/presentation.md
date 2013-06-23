@@ -187,8 +187,8 @@
     (B2) edge (B3);
 
 \path[->,dashed,font=\scriptsize]
-    (A2) edge node [right] {B} (B3)
-    (B2) edge node [left] {$\lnot$ B} (A3);
+    (A2) edge node [right, xshift=0.4cm, yshift=-0.2cm] {B} (B3)
+    (B2) edge node [left, xshift=-0.4cm, yshift=-0.2cm] {$\lnot$ B} (A3);
 
 \end{tikzpicture}
 
@@ -375,9 +375,15 @@
 
 \node (B1) [right=4cm of A1] {Node 2};
 \node (B2) [state, below of=B1] {?};
+\node (B3) [below=1cm of B2] {};
+\node (B4) [below=1cm of B3] {};
 
 \path[->]
     (A2) edge node [right] {\texttt{[("foo", +1)]}} (A3);
+
+\path[->,dashed,font=\scriptsize]
+    (A3) edge node [below, xshift=-0.5cm] {?} (B4);
+
 \end{tikzpicture}
 
 # Recap
