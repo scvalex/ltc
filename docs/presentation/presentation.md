@@ -455,7 +455,7 @@ Writes/Sec  76 |     #
 
 * Solution: Replace debug data store with a commercial one.
 
-# Cryto
+# Cryptography (the lack of)
 
 * No message integrity checks
 
@@ -463,7 +463,7 @@ Writes/Sec  76 |     #
 
 * No secrecy
 
-* Solution: Use a crypo library.
+* Solution: Use a cryptography library.
 
 # Thank you
 

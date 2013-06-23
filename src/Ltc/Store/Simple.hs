@@ -63,7 +63,7 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent ( MVar, newMVar
                           , modifyMVar, modifyMVar_, readMVar, withMVar )
 import Control.Concurrent.STM ( atomically, writeTChan )
-import Control.Monad ( when, unless, forM, forM_ )
+import Control.Monad ( when, unless, forM )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Default ( Default(..) )
 import Data.Digest.Pure.SHA ( sha1, showDigest, integerDigest )
@@ -197,8 +197,6 @@ instance Store Simple where
     keyVersions = doKeyVersions
 
     changesetsNotBefore = doChangesetsNotBefore
-
-    addChangesets = doAddChangesets
 
     keyType = doKeyType
 
@@ -481,14 +479,13 @@ doMSet store cmds = lockStore store $ do
     valueToString :: (Storable a) => a -> ByteString
     valueToString = printHum . toSexp
 
-doMSetInternal :: Simple -> [SetCmd] -> Version -> IO ()
-doMSetInternal _store _cmds _clock' = do
+doMSetInternal :: Simple -> Changeset -> [SetCmd] -> IO ()
+doMSetInternal store changeset _cmds = do
+    addChangeset
     return ()
-
--- FIXME doAddChangesets should be an atomic set of file writes.
-doAddChangesets :: Simple -> [Changeset] -> IO ()
-doAddChangesets store newChangesets = lockStore store $ do
-    forM_ newChangesets $ \changeset -> do
+  where
+    addChangeset :: IO ()
+    addChangeset = do
         -- Write the new changeset.  Having superfluous changesets is not a problem, so we
         -- can be interrupted here.
         let (cbin, chash) = serializedChangeset changeset
@@ -499,6 +496,8 @@ doAddChangesets store newChangesets = lockStore store $ do
         let changelog' = Changelog ((getAfterVersion changeset, chash) : changesets)
         modifyMVar_ (getChangelog store) (const (return changelog'))
 
+        -- Write the changelog to disk.  Since we've already written the changeset, this
+        -- leaves the store in a consistent state.
         atomicWriteFile store (locationChangelog (getBase store)) (printHum (toSexp changelog'))
 
 doKeys :: Simple -> IO (Set Key)

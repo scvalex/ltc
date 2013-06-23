@@ -73,10 +73,6 @@ class Store a where
     -- @
     changesetsNotBefore :: a -> Version -> IO [Changeset]
 
-    -- | Blindly add multiple 'Changeset's to the store.  This does not actually update
-    -- the values.  See 'msetInternal'.
-    addChangesets :: a -> [Changeset] -> IO ()
-
     -- | Get the type of the values associated with a key.  A key cannot be associated
     -- with values of different types.
     keyType :: a -> Key -> IO (Maybe Type)
@@ -91,12 +87,14 @@ class Store a where
     -- 'StoreClosed'.
     mset :: a -> [SetCmd] -> IO Version
 
-    -- FIXME msetInternal should only be called over a single-user locked store.
-
     -- | /internal use/ Atomically set the values associated with multiple keys at the
-    -- given version.  Do /not/ update the store's version.  Do /not/ create a changeset.
-    -- Do /not/ modify the changelog.
-    msetInternal :: a -> [SetCmd] -> Version -> IO ()
+    -- given version.  Do /not/ update the store's version.  Do /not/ create a changeset;
+    -- use the given one.  But /do/ update the tip of the keys.  This means that, unless
+    -- you handle merge conflicts correctly, you can leave the store in an inconsistent
+    -- state.  The version is the after version of the changeset.  It is up to you to
+    -- ensure that the changes are those intended by the changeset.  Note that you should
+    -- probably only use 'msetInternal' inside of a 'withWriteLock' call.
+    msetInternal :: a -> Changeset -> [SetCmd] -> IO ()
 
     -- | Acquire the write lock, execute the given action, and release the write lock.
     -- Since writes to the store cannot happen while the lock is acquired, this is an
