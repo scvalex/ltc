@@ -119,7 +119,7 @@ data NodeData a = NodeData
     , getLocation       :: NetworkLocation a
     , getNodeName       :: NodeName
     , getNeighbours     :: Map NodeName (RemoteNode a)
-    , getChangesetCache :: [Changeset]
+    , getChangesetCache :: [(NodeName, Changeset)]
     , getTypeHandlers   :: [TypeHandler]
     }
 
@@ -292,15 +292,31 @@ handleNodeEnvelope :: (Store s) => Node a -> s -> NodeEnvelope a -> IO ()
 handleNodeEnvelope _node _store (NodeEnvelope {getEnvelopeMessage = Ping _}) = do
     debugM tag "ping handled"
 handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Change changeset}) = do
-    -- Add the changeset to the remote node's changeset cache
-    modifyMVar_ (getNodeData node) $ \nodeData ->
-        return (nodeData { getChangesetCache =
-                                changeset : getChangesetCache nodeData })
-
     -- Connect back to the sender.
     addNeighbour node (getEnvelopeNode envelope) (getEnvelopeSender envelope)
 
-    -- Drop changesets which we already have
+    -- Add the changeset to the node's changeset cache
+    modifyMVar_ (getNodeData node) $ \nodeData -> do
+        let receivedVersion = getAfterVersion changeset
+        haveChangeset <- hasVersion store receivedVersion
+        if haveChangeset
+           then do
+               debugM tag "changeset already had"
+               -- I have the changeset, so update our best guess of the remote node's
+               -- state.
+               let neighbours' = maybeUpdateRemoteClock (getNeighbours nodeData)
+                                                        (getEnvelopeNode envelope)
+                                                        receivedVersion
+               return (nodeData { getNeighbours = neighbours' })
+           else do
+               debugM tag "new changeset"
+               -- This is a new changeset, so add it to the cache.
+               let changesetCache' = ((getEnvelopeNode envelope), changeset)
+                                     : getChangesetCache nodeData
+               return (nodeData { getChangesetCache = changesetCache' })
+
+    -- Drop changesets which we already have.  Strictly speaking, this is unnecessary, but
+    -- it's not slow and it cannot hurt.
     dropOwnedChangesets node store
 
     -- Try to apply changesets to the store
@@ -312,43 +328,57 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Chang
 dropOwnedChangesets :: (Store s) => Node a -> s -> IO ()
 dropOwnedChangesets node store = do
     modifyMVar_ (getNodeData node) $ \nodeData -> do
-        changesets' <- flip filterM (getChangesetCache nodeData) $ \changeset -> do
+        changesets' <- flip filterM (getChangesetCache nodeData) $ \(_, changeset) -> do
             not <$> hasVersion store (getAfterVersion changeset)
         return (nodeData { getChangesetCache = changesets' })
 
 -- FIXME Actually try to apply changesets.
--- FIXME Update our best guess of the remote vector clocks.
 
 -- | Try to apply as many changesets as possible to the data store.
 tryApplyChangesets :: (Store s) => Node a -> s -> IO ()
 tryApplyChangesets node store = do
     tryAgain <- modifyMVar (getNodeData node) $ \nodeData -> do
         let changesets = getChangesetCache nodeData
-        debugM tag (printf "trying to apply %d changesets" (length changesets))
         tip <- tipVersion store
+        debugM tag (printf "trying to apply %d changesets to %s"
+                           (length changesets)
+                           (show tip))
 
-        -- Attempt fast forward
-        case findFastForward [] tip changesets of
-            Just (changeset, changesets') -> do
-                debugM tag (printf "fast-forwarding to %s" (show (getAfterVersion changeset)))
-                fastForward changeset (getTypeHandlers nodeData)
-                return (nodeData { getChangesetCache = changesets'}, True)
-            Nothing -> do
-                -- Attempt conflict resolution (with store locked)
+        if length changesets > 0
+            then do
+                -- Attempt fast forward
+                case findFastForward [] tip changesets of
+                    Just ((remoteName, changeset), changesets') -> do
+                        debugM tag (printf "fast-forwarding to %s" (show (getAfterVersion changeset)))
+                        fastForward changeset (getTypeHandlers nodeData)
+                        let neighbours' = maybeUpdateRemoteClock (getNeighbours nodeData)
+                                                                 remoteName
+                                                                 (getAfterVersion changeset)
+                        return (nodeData { getChangesetCache = changesets'
+                                         , getNeighbours     = neighbours' }, True)
+                    Nothing -> do
+                        debugM tag "not a fast-forward"
+                        -- Attempt conflict resolution (with store locked)
+                        return (nodeData, False)
+            else do
                 return (nodeData, False)
     -- If we've made reduced the number of cached changesets, try to apply more.
     when tryAgain $ tryApplyChangesets node store
   where
     -- Find the first 'Update' 'Changeset' that begins in the given version.
-    findFastForward :: [Changeset] -> Version -> [Changeset] -> Maybe (Changeset, [Changeset])
+    findFastForward :: [(NodeName, Changeset)]
+                    -> Version
+                    -> [(NodeName, Changeset)]
+                    -> Maybe ((NodeName, Changeset), [(NodeName, Changeset)])
     findFastForward _ _ [] =
         Nothing
-    findFastForward acc tip (changeset : changesets) =
+    findFastForward acc tip ((remoteName, changeset) : changesets) =
         case changeset of
             Update { getBeforeUpdateVersion = beforeVersion } | beforeVersion == tip ->
-                Just (changeset, reverse acc ++ changesets)
+                Just ((remoteName, changeset), reverse acc ++ changesets)
+            -- FIXME Fast-forward merges are also possible
             _ ->
-                findFastForward (changeset : acc) tip changesets
+                findFastForward ((remoteName, changeset) : acc) tip changesets
 
     -- Apply the given 'Changeset'.  It better be a fast-forward 'Update'.
     fastForward :: Changeset -> [TypeHandler] -> IO ()
@@ -358,6 +388,23 @@ tryApplyChangesets node store = do
         return ()
     fastForward _ _ = do
         error "fastForward called on non-Update Changeset"
+
+maybeUpdateRemoteClock :: Map NodeName (RemoteNode a)
+                       -> NodeName
+                       -> Version
+                       -> Map NodeName (RemoteNode a)
+maybeUpdateRemoteClock neighbours remoteName clock' =
+    M.adjust (\remoteNode ->
+               let clock = getRemoteClock remoteNode
+               in remoteNode { getRemoteClock = if clock `VC.causes` clock'
+                                                then clock'
+                                                else clock })
+             remoteName
+             neighbours
+
+----------------------
+-- Changeset deserialization
+----------------------
 
 -- | Convert a 'Changeset' to a list of 'SetCmd's using the given 'TypeHandler's.
 setCmdsFromChangeset :: (Store s) => s -> Changeset -> [TypeHandler] -> IO [SetCmd]
@@ -410,9 +457,10 @@ sendChangesetsToNeighbours node store = do
   where
     sendChangesetsToNeighbour nodeData remoteNode = do
         changesets <- changesetsNotBefore store (getRemoteClock remoteNode)
-        debugM tag (printf "sending %d changesets to neighbour %s"
+        debugM tag (printf "sending %d changesets to neighbour %s (est. %s)"
                            (length changesets)
-                           (show (getRemoteLocation remoteNode)))
+                           (show (getRemoteLocation remoteNode))
+                           (show (getRemoteClock remoteNode)))
         forM_ changesets $ \changeset -> do
             let envelope = NodeEnvelope { getEnvelopeSender  = getLocation nodeData
                                         , getEnvelopeNode    = getNodeName nodeData
