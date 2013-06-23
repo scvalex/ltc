@@ -176,25 +176,19 @@
 
 \node (A1) {Node 1};
 \node (A2) [state, below of=A1] {A, B};
-\node (A3) [state, below=1.4cm of A2] {A, B};
-\node (A4) [state, below=1.4cm of A3] {A, B};
+\node (A3) [state, below=1.4cm of A2] {A, ?};
 
 \node (B1) [right=2cm of A1] {Node 2};
 \node (B2) [state, below of=B1] {A, $\lnot$ B};
-\node (B3) [state, below=1.4cm of B2] {A, $\lnot$ B};
-\node (B4) [state, below=1.4cm of B3] {A, $\lnot$ B};
+\node (B3) [state, below=1.4cm of B2] {A, ?};
 
 \path[->]
     (A2) edge (A3)
-    (A3) edge (A4)
-    (B2) edge (B3)
-    (B3) edge (B4);
+    (B2) edge (B3);
 
 \path[->,dashed,font=\scriptsize]
     (A2) edge node [right] {B} (B3)
-    (B2) edge node [left] {$\lnot$ B} (A3)
-    (B3) edge node [left] {$\lnot$ B} (A4)
-    (A3) edge node [right] {B} (B4);
+    (B2) edge node [left] {$\lnot$ B} (A3);
 
 \end{tikzpicture}
 
