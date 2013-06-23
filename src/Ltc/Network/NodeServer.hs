@@ -194,19 +194,22 @@ sendMessage node conn msg = do
 -- Neighbour-set manipulation
 ----------------------
 
--- | Tell the given node that it has a neighbour at the given location.  Adding the same
--- location twice is a bad idea (which will probably lead to fd leaks).
+-- | Tell the given node that it has a neighbour at the given location.  Idempotent.
 addNeighbour :: (NetworkInterface a) => Node a -> NodeName -> NetworkLocation a -> IO ()
 addNeighbour node nodeName location = do
     modifyMVar_ (getNodeData node) $ \nodeData -> do
-        intf <- NI.connect location
-        let remoteNode = RemoteNode { getRemoteLocation  = location
-                                    , getRemoteName      = nodeName
-                                    , getRemoteInterface = intf
-                                    , getRemoteClock     = VC.empty
-                                    }
-            neighbours' = M.insert nodeName remoteNode (getNeighbours nodeData)
-        return (nodeData { getNeighbours = neighbours' })
+        case M.lookup nodeName (getNeighbours nodeData) of
+            Just _ -> do
+                return nodeData
+            Nothing -> do
+                intf <- NI.connect location
+                let remoteNode = RemoteNode { getRemoteLocation  = location
+                                            , getRemoteName      = nodeName
+                                            , getRemoteInterface = intf
+                                            , getRemoteClock     = VC.empty
+                                            }
+                    neighbours' = M.insert nodeName remoteNode (getNeighbours nodeData)
+                return (nodeData { getNeighbours = neighbours' })
 
 -- | Tell the given node to not consider the node at the given location its neighbour
 -- anymore.  Idempotent.
@@ -260,11 +263,14 @@ handleNodeEnvelopeC node store () = runIdentityP $ forever $ do
 handleNodeEnvelope :: (Store s) => Node a -> s -> NodeEnvelope a -> IO ()
 handleNodeEnvelope _node _store (NodeEnvelope {getEnvelopeMessage = Ping _}) = do
     debugM tag "ping handled"
-handleNodeEnvelope node store (NodeEnvelope {getEnvelopeMessage = Change changeset}) = do
+handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Change changeset}) = do
     -- Add the changeset to the remote node's changeset cache
     modifyMVar_ (getNodeData node) $ \nodeData ->
         return (nodeData { getChangesetCache =
                                 S.insert changeset (getChangesetCache nodeData) })
+
+    -- Connect back to the sender.
+    addNeighbour node (getEnvelopeNode envelope) (getEnvelopeLocation envelope)
 
     -- Try to apply changesets to the store
     tryApplyChangesets node store
@@ -279,6 +285,8 @@ tryApplyChangesets :: (Store s) => Node a -> s -> IO ()
 tryApplyChangesets node _store = do
     modifyMVar_ (getNodeData node) $ \nodeData -> do
         let _changesets = getChangesetCache nodeData
+        -- Attempt fast forward
+        -- Attempt conflict resolution (with store locked)
         return nodeData
 
 ----------------------
