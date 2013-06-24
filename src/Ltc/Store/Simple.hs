@@ -212,6 +212,8 @@ instance Store Simple where
 
     msetInternal = doMSetInternal
 
+    addChangeset = doAddChangeset
+
     withWriteLock = lockStore
 
     keys = doKeys
@@ -443,27 +445,12 @@ doMSetInternal store changeset cmds = do
 
     -- Save the changeset to disk.  Having superfluous changesets lying around is not a
     -- problem, so we can be interrupted here.
-    addChangeset
+    doAddChangeset store changeset
 
     -- Update the values.
     writeValuesAndUpdateKeyRecords
   where
-    (cbin, chash) = serializedChangeset changeset
-
-    addChangeset :: IO ()
-    addChangeset = do
-        -- Write the new changeset.  Having superfluous changesets is not a problem, so we
-        -- can be interrupted here.
-        atomicWriteFile store (locationChangesetHash store chash) cbin
-
-        -- Update the changelog in-memory
-        Changelog changesets <- readMVar (getChangelog store)
-        let changelog' = Changelog ((getAfterVersion changeset, chash) : changesets)
-        modifyMVar_ (getChangelog store) (const (return changelog'))
-
-        -- Write the changelog to disk.  Since we've already written the changeset, this
-        -- leaves the store in a consistent state.
-        atomicWriteFile store (locationChangelog (getBase store)) (printHum (toSexp changelog'))
+    (_, chash) = serializedChangeset changeset
 
     writeValuesAndUpdateKeyRecords :: IO Event
     writeValuesAndUpdateKeyRecords = do
@@ -527,6 +514,23 @@ doMSetInternal store changeset cmds = do
                                 , valueDigest  = fromInteger (integerDigest (sha1 val))
                                 })
 
+
+doAddChangeset :: Simple -> Changeset -> IO ()
+doAddChangeset store changeset = do
+    let (cbin, chash) = serializedChangeset changeset
+
+    -- Write the new changeset.  Having superfluous changesets is not a problem, so we can
+    -- be interrupted here.
+    atomicWriteFile store (locationChangesetHash store chash) cbin
+
+    -- Update the changelog in-memory
+    Changelog changesets <- readMVar (getChangelog store)
+    let changelog' = Changelog ((getAfterVersion changeset, chash) : changesets)
+    modifyMVar_ (getChangelog store) (const (return changelog'))
+
+    -- Write the changelog to disk.  Since we've already written the changeset, this
+    -- leaves the store in a consistent state.
+    atomicWriteFile store (locationChangelog (getBase store)) (printHum (toSexp changelog'))
 
 doKeys :: Simple -> String -> IO (Set Key)
 doKeys store regexp = do

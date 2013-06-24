@@ -106,6 +106,9 @@ class Store a where
     -- call.
     msetInternal :: a -> Changeset -> [SetCmd] -> IO Event
 
+    -- | /internal use/ Add a 'Changeset' to the store.
+    addChangeset :: a -> Changeset -> IO ()
+
     -- | Acquire the write lock, execute the given action, and release the write lock.
     -- Since writes to the store cannot happen while the lock is acquired, this is an
     -- effective way to atomically get multiple values from the store.  Note that if you
