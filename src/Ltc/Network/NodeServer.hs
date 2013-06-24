@@ -348,7 +348,7 @@ handleOwnedChangesets node store = do
     tip <- tipVersion store
     modifyMVar_ (getNodeData node) $ \nodeData -> do
         changesets' <- flip filterM (getChangesetCache nodeData) $ \(_, changeset) -> do
-            changesetPresent <- not <$> hasVersion store (getAfterVersion changeset)
+            changesetPresent <- hasVersion store (getAfterVersion changeset)
             if not changesetPresent
                 then do
                     if getAfterVersion changeset `VC.causes` tip
@@ -397,6 +397,7 @@ tryApplyChangesets node store = do
                                 return (nodeData { getChangesetCache = changesets'
                                                  , getNeighbours     = neighbours' }, True)
                             Nothing -> do
+                                debugM tag "not a merge"
                                 return (nodeData, False)
             else do
                 return (nodeData, False)
