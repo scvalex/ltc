@@ -27,6 +27,11 @@ import Snap.Core
 import Snap.Http.Server
 import Snap.Util.FileServe ( serveFile, serveDirectory )
 
+import System.IO ( stdout )
+import System.Log.Logger ( Priority(..), setLevel
+                         , updateGlobalLogger, rootLoggerName, setHandlers )
+import System.Log.Handler.Simple ( verboseStreamHandler )
+
 import Ltc.Network.Interface.UDP
 import Ltc.Store
 import Ltc.Store.Simple
@@ -118,6 +123,9 @@ setupWebUi store = do
 
 main :: IO ()
 main = do
+    handler <- verboseStreamHandler stdout DEBUG
+    updateGlobalLogger rootLoggerName (setHandlers [handler] . setLevel DEBUG)
+
     args <- getArgs
     case args of
         ["bidder", otherHost] -> do
