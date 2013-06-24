@@ -316,9 +316,8 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Chang
                                      : getChangesetCache nodeData
                return (nodeData { getChangesetCache = changesetCache' })
 
-    -- Drop changesets which we already have.  Strictly speaking, this is unnecessary, but
-    -- it's not slow and it cannot hurt.
-    dropOwnedChangesets node store
+    -- Strictly speaking, this is unnecessary, but it's not slow and it cannot hurt.
+    handleOwnedChangesets node store
 
     -- Try to apply changesets to the store
     tryApplyChangesets node store
@@ -342,12 +341,24 @@ handleNodeEnvelope node store envelope@(NodeEnvelope {getEnvelopeMessage = Have 
 
     debugM tag "have handled"
 
--- | Drop those changesets which we already have.
-dropOwnedChangesets :: (Store s) => Node a -> s -> IO ()
-dropOwnedChangesets node store = do
+-- | Handle those 'Changeset's which we already have.  Drop the ones which are already in
+-- the store.  Add the ones which are before the store's tip and then drop them.
+handleOwnedChangesets :: (Store s) => Node a -> s -> IO ()
+handleOwnedChangesets node store = do
+    tip <- tipVersion store
     modifyMVar_ (getNodeData node) $ \nodeData -> do
         changesets' <- flip filterM (getChangesetCache nodeData) $ \(_, changeset) -> do
-            not <$> hasVersion store (getAfterVersion changeset)
+            changesetPresent <- not <$> hasVersion store (getAfterVersion changeset)
+            if not changesetPresent
+                then do
+                    if getAfterVersion changeset `VC.causes` tip
+                        then do
+                            addChangeset store changeset
+                            return False
+                        else do
+                            return True
+                else do
+                    return False
         return (nodeData { getChangesetCache = changesets' })
 
 -- | Try to apply as many changesets as possible to the data store.
