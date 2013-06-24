@@ -454,7 +454,7 @@ tryApplyChangesets node store = do
     fastForward :: Changeset -> [TypeHandler] -> IO ()
     fastForward changeset typeHandlers = do
         cmds <- setCmdsFromChangeset store changeset typeHandlers
-        _ <- msetInternal store changeset cmds
+        _ <- msetInternal store changeset cmds True
         return ()
 
     -- | Merge the given 'Changeset' into the history by creating a new tip 'Changeset'.
@@ -465,7 +465,7 @@ tryApplyChangesets node store = do
         -- FIXME Merge operations should be atomic.
         -- Apply the give changeset.
         cmds <- setCmdsFromChangeset store changeset typeHandlers
-        _ <- msetInternal store changeset cmds
+        _ <- msetInternal store changeset cmds True
 
         -- Formulate the merge.
         mergeChangeset <- mergeFromChangesets (changesetBaseVersion changeset)
@@ -474,7 +474,7 @@ tryApplyChangesets node store = do
                                               typeHandlers
         debugM tag (printf "merged changeset: %s" (show mergeChangeset))
         mergeCmds <- setCmdsFromChangeset store mergeChangeset typeHandlers
-        _ <- msetInternal store mergeChangeset mergeCmds
+        _ <- msetInternal store mergeChangeset mergeCmds True
 
         return ()
 

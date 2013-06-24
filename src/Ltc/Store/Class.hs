@@ -21,7 +21,7 @@ import Control.Exception ( Exception )
 import Data.ByteString.Lazy.Char8 ( ByteString )
 import Data.Set ( Set )
 import Data.Typeable ( Typeable, TypeRep )
-import Ltc.Store.Event ( Event, EventChannel )
+import Ltc.Store.Event ( EventChannel )
 import Ltc.Changeset ( Changeset )
 import qualified Control.Exception as CE
 
@@ -96,7 +96,7 @@ class Store a where
     -- the changeset.
     --
     -- Do /not/ create a changeset; use the given one.  But /do/ update the tip of the
-    -- keys and /do/ update the store's tip.  Do /not/ cause an 'Event'.
+    -- keys and /do/ update the store's tip.
     --
     -- This means that you can leave the store in an inconsistent state: if you do not
     -- handle merge conflicts, if you make changes other than those specified by the
@@ -104,7 +104,7 @@ class Store a where
     --
     -- Note that you should probably only use 'msetInternal' inside of a 'withWriteLock'
     -- call.
-    msetInternal :: a -> Changeset -> [SetCmd] -> IO Event
+    msetInternal :: a -> Changeset -> [SetCmd] -> Bool -> IO ()
 
     -- | /internal use/ Add a 'Changeset' to the store.
     addChangeset :: a -> Changeset -> IO ()

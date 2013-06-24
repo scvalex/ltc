@@ -431,13 +431,12 @@ doMSet store cmds = lockStore store $ do
                            , getAfterVersion        = clock'
                            , getChanges             = changes }
 
-    event <- doMSetInternal store changeset cmds
+    doMSetInternal store changeset cmds True
 
-    writeEventChannels store event
     return clock'
 
-doMSetInternal :: Simple -> Changeset -> [SetCmd] -> IO Event
-doMSetInternal store changeset cmds = do
+doMSetInternal :: Simple -> Changeset -> [SetCmd] -> Bool -> IO ()
+doMSetInternal store changeset cmds shouldSendEvent = do
     -- Save the store clock.  It's ok to increment the clock superfluously, so we can be
     -- interrupted here.
     modifyMVar_ (getClock store) (const (return (getAfterVersion changeset)))
@@ -448,7 +447,9 @@ doMSetInternal store changeset cmds = do
     doAddChangeset store changeset
 
     -- Update the values.
-    writeValuesAndUpdateKeyRecords
+    event <- writeValuesAndUpdateKeyRecords
+
+    when shouldSendEvent (writeEventChannels store event)
   where
     (_, chash) = serializedChangeset changeset
 
