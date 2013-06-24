@@ -73,6 +73,10 @@ class Store a where
     -- @
     changesetsNotBefore :: a -> Version -> IO [Changeset]
 
+    -- | Get all the 'Changeset's after the given version.  Do not confuse this with
+    -- 'changesetsNotBefore'.
+    changesetsAfter :: a -> Version -> IO [Changeset]
+
     -- | Get the type of the values associated with a key.  A key cannot be associated
     -- with values of different types.
     keyType :: a -> Key -> IO (Maybe Type)

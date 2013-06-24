@@ -202,6 +202,8 @@ instance Store Simple where
 
     changesetsNotBefore = doChangesetsNotBefore
 
+    changesetsAfter = doChangesetsAfter
+
     keyType = doKeyType
 
     set = doSet
@@ -378,8 +380,18 @@ doChangesetsNotBefore store version = do
     let changesetPaths =
             map (locationChangesetHash store) $
             map snd $
-            takeWhile (\(otherVersion, _) -> not (otherVersion `VC.causes` version))
-                      changesets
+            filter (\(otherVersion, _) -> not (otherVersion `VC.causes` version))
+                   changesets
+    changesets' <- mapM readChangesetExn changesetPaths
+    return (reverse changesets')
+
+doChangesetsAfter :: Simple -> Version -> IO [Changeset]
+doChangesetsAfter store version = do
+    Changelog changesets <- readMVar (getChangelog store)
+    let changesetPaths =
+            map (locationChangesetHash store) $
+            map snd $
+            filter (\(otherVersion, _) -> version `VC.causes` otherVersion) changesets
     changesets' <- mapM readChangesetExn changesetPaths
     return (reverse changesets')
 
