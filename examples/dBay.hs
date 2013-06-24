@@ -32,12 +32,14 @@ instance Serialize Bid
 instance Sexpable Bid
 
 instance Diffable Bid where
-    data Diff Bid = DiffBid (Diff Integer)
+    data Diff Bid = DiffBid Integer
                   deriving ( Generic, Show, Eq )
 
-    diffFromTo  = diffFromTo
-    applyDiff   = applyDiff
-    reverseDiff = reverseDiff
+    diffFromTo (Bid n1) (Bid n2) = DiffBid (n2 - n1)
+    applyDiff (Bid n) (DiffBid d) = Bid (n + d)
+    reverseDiff (DiffBid d) = DiffBid (-d)
+
+    mergeDiffs (DiffBid d1) (DiffBid d2) = DiffBid (max d1 d2)
 
 instance Serialize (Diff Bid)
 

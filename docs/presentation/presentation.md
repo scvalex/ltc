@@ -443,13 +443,14 @@ data Bid = Bid Integer
 instance Serialize Bid
 
 instance Diffable Bid where
-    data Diff Bid = Diff Integer
+    data Diff Bid = DiffBid Integer
 
-    diffFromTo  = diffFromTo
-    applyDiff   = applyDiff
-    reverseDiff = reverseDiff
+    diffFromTo (Bid n1) (Bid n2)  = DiffBid (n2 - n1)
+    applyDiff (Bid n) (DiffBid d) = Bid (n + d)
+    reverseDiff (DiffBid d)       = DiffBid (-d)
 
-    merge (DiffInt n1) (DiffInt n2) = DiffInt (max n1 n2)
+    mergeDiffs (DiffBid d1) (DiffBid d2) =
+        DiffBid (max d1 d2)
 ~~~~
 
 # Performance

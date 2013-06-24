@@ -41,7 +41,7 @@ instance Sexpable Foo
 
 instance Diffable Foo where
     data Diff Foo = ReplaceDiff Foo Foo
-                    deriving ( Eq, Generic, Show )
+                    deriving ( Eq, Ord, Generic, Show )
 
     diffFromTo = ReplaceDiff
 
@@ -49,6 +49,8 @@ instance Diffable Foo where
         if x1 == x2 then y else error "cannot apply diff to Foo"
 
     reverseDiff (ReplaceDiff x y) = ReplaceDiff y x
+
+    mergeDiffs d1 d2 = max d1 d2
 
 instance Serialize (Diff Foo)
 

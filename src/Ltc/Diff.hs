@@ -51,6 +51,9 @@ class (Default a, Eq (Diff a), Show (Diff a), Sexpable (Diff a), Serialize (Diff
     -- @
     reverseDiff :: Diff a -> Diff a
 
+    -- | Merge two 'Diff's.  This operation should be commutative.
+    mergeDiffs :: Diff a -> Diff a -> Diff a
+
 --------------------------------
 -- Diffable Integer
 --------------------------------
@@ -63,6 +66,8 @@ instance Diffable Integer where
     applyDiff n (DiffInt d) = n + d
 
     reverseDiff (DiffInt d) = DiffInt (-d)
+
+    mergeDiffs (DiffInt a) (DiffInt b) = DiffInt (a + b)
 
 deriving instance Eq (Diff Integer)
 
@@ -86,6 +91,8 @@ instance Diffable ByteString where
     applyDiff s (DiffString d) = applyEdits s d
 
     reverseDiff (DiffString d) = DiffString (reverseEdits d)
+
+    mergeDiffs (DiffString _a) (DiffString _b) = error "cannot merge string diffs"
 
 deriving instance Eq (Diff ByteString)
 
@@ -115,6 +122,9 @@ instance (Ord a, Show a, Serialize a, Sexpable a) => Diffable (Set a) where
 
     reverseDiff (DiffSet toRemove toAdd) =
         DiffSet toAdd toRemove
+
+    mergeDiffs (DiffSet _toRemove1 _toAdd1) (DiffSet _toRemove2 _toAdd2) =
+        error "cannot merge set diffs"
 
 deriving instance (Eq a) => Eq (Diff (Set a))
 
