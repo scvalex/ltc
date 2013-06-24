@@ -391,7 +391,8 @@ doChangesetsAfter store version = do
     let changesetPaths =
             map (locationChangesetHash store) $
             map snd $
-            filter (\(otherVersion, _) -> version `VC.causes` otherVersion) changesets
+            filter (\(otherVersion, _) -> version `VC.causes` otherVersion
+                                       && version /= otherVersion) changesets
     changesets' <- mapM readChangesetExn changesetPaths
     return (reverse changesets')
 

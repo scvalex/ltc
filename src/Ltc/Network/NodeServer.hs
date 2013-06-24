@@ -25,7 +25,7 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO, threadDelay
                           , MVar, newMVar, withMVar, readMVar, modifyMVar, modifyMVar_ )
 import Control.Exception ( Exception )
-import Control.Monad ( unless, forever, forM, forM_, when, filterM )
+import Control.Monad ( unless, forever, forM, forM_, when, filterM, foldM )
 import Control.Proxy ( Proxy, ProxyFast, Pipe, Producer, Consumer
                      , runProxy, lift, runIdentityP, request, respond, (>->) )
 import Data.ByteString ( ByteString )
@@ -36,7 +36,8 @@ import Data.Map ( Map )
 import Data.Maybe ( catMaybes )
 import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
-import Ltc.Changeset ( Changeset(..), changesToList
+import Ltc.Changeset ( Changeset(..), changesetBaseVersion
+                     , Changes(..), changesToList
                      , WireDiff(..), diffFromWireDiff )
 import Ltc.Diff ( Diffable(..) )
 import Ltc.Network.Interface ( NetworkInterface, Sending, Receiving, NetworkLocation )
@@ -374,14 +375,24 @@ tryApplyChangesets node store = do
                                          , getNeighbours     = neighbours' }, True)
                     Nothing -> do
                         debugM tag "not a fast-forward"
-                        -- Attempt conflict resolution (with store locked)
-                        return (nodeData, False)
+                        mMergeCandidate <- findMergeCandidate [] changesets
+                        case mMergeCandidate of
+                            Just ((remoteName, changeset), changesets') -> do
+                                debugM tag (printf "merging %s" (show (getAfterVersion changeset)))
+                                mergeIntoHistory changeset (getTypeHandlers nodeData)
+                                let neighbours' = maybeUpdateRemoteClock (getNeighbours nodeData)
+                                                                         remoteName
+                                                                         (getAfterVersion changeset)
+                                return (nodeData { getChangesetCache = changesets'
+                                                 , getNeighbours     = neighbours' }, True)
+                            Nothing -> do
+                                return (nodeData, False)
             else do
                 return (nodeData, False)
     -- If we've made reduced the number of cached changesets, try to apply more.
     when tryAgain $ tryApplyChangesets node store
   where
-    -- Find the first 'Update' 'Changeset' that begins in the given version.
+    -- | Find the first 'Changeset' that begins in the given version.
     findFastForward :: [(NodeName, Changeset)]
                     -> Version
                     -> [(NodeName, Changeset)]
@@ -405,11 +416,47 @@ tryApplyChangesets node store = do
             _ -> do
                 findFastForward ((remoteName, changeset) : acc) tip changesets
 
-    -- Apply the given 'Changeset'.  It better be a fast-forward.
+    -- | Find the first 'Changeset' that extends a 'Changeset' already in the store.
+    findMergeCandidate :: [(NodeName, Changeset)]
+              -> [(NodeName, Changeset)]
+              -> IO (Maybe ((NodeName, Changeset), [(NodeName, Changeset)]))
+    findMergeCandidate _ [] =
+        return Nothing
+    findMergeCandidate acc ((remoteName, changeset) : changesets) = do
+        -- Note that in the case of a 'Merge', we have already handled the case where it
+        -- extends the tip with fast-forwards.
+        hasAncestor <- hasVersion store (changesetBaseVersion changeset)
+        if hasAncestor
+            then do
+                return (Just ((remoteName, changeset), reverse acc ++ changesets))
+            else do
+                findMergeCandidate ((remoteName, changeset) : acc) changesets
+
+    -- | Apply the given 'Changeset'.  It better be a fast-forward.
     fastForward :: Changeset -> [TypeHandler] -> IO ()
     fastForward changeset typeHandlers = do
         cmds <- setCmdsFromChangeset store changeset typeHandlers
         _ <- msetInternal store changeset cmds
+        return ()
+
+    -- | Merge the given 'Changeset' into the history by creating a new tip 'Changeset'.
+    mergeIntoHistory :: Changeset -> [TypeHandler] -> IO ()
+    mergeIntoHistory changeset typeHandlers = do
+        -- FIXME Merge operations should be atomic.
+        -- Apply the give changeset.
+        cmds <- setCmdsFromChangeset store changeset typeHandlers
+        _ <- msetInternal store changeset cmds
+
+        -- Formulate the merge.
+        changesets <- changesetsAfter store (changesetBaseVersion changeset)
+        mergeChangeset <- mergeFromChangesets store
+                                              (changesetBaseVersion changeset)
+                                              changesets
+                                              [changeset]
+                                              typeHandlers
+        mergeCmds <- setCmdsFromChangeset store mergeChangeset typeHandlers
+        _ <- msetInternal store mergeChangeset mergeCmds
+
         return ()
 
 maybeUpdateRemoteClock :: Map NodeName (RemoteNode a)
@@ -433,9 +480,6 @@ maybeUpdateRemoteClock neighbours remoteName clock' =
 setCmdsFromChangeset :: (Store s) => s -> Changeset -> [TypeHandler] -> IO [SetCmd]
 setCmdsFromChangeset store changeset typeHandlers = do
     let changes = changesToList (getChanges changeset)
-        baseVersion = case changeset of
-            Update { getBeforeUpdateVersion = version } -> version
-            Merge { getMergeAncestorVersion = version } -> version
     catMaybes <$> forM changes (\(key, wireDiff) -> do
         let mTypeHandler =
                 find (\handler -> getType handler == getWireDiffType wireDiff)
@@ -445,7 +489,32 @@ setCmdsFromChangeset store changeset typeHandlers = do
                 warningM tag (printf "no type handler for %s" (show (getWireDiffType wireDiff)))
                 return Nothing
             Just typeHandler -> do
-                Just <$> (getSetCmdFromWireDiff typeHandler) store key baseVersion wireDiff)
+                Just <$> (getSetCmdFromWireDiff typeHandler) store
+                                                             key
+                                                             (changesetBaseVersion changeset)
+                                                             wireDiff)
+
+-- | Combine the given 'Changeset's into a single one based on the given 'Version', and
+-- return the merged 'Changeset'.
+mergeFromChangesets :: (Store s)
+                    => s -> Version -> [Changeset] -> [Changeset] -> [TypeHandler] -> IO Changeset
+mergeFromChangesets _store version changesetsLeft changesetsRight _typeHandlers = do
+    changes <- Changes <$> foldM combineChangesets M.empty (changesetsLeft ++ changesetsRight)
+    let versionLeft  = getAfterVersion (last changesetsLeft)
+        versionRight = getAfterVersion (last changesetsRight)
+        version' = VC.max versionLeft versionRight
+    return (Merge { getBeforeMergeVersions  = (versionLeft, versionRight)
+                  , getMergeAncestorVersion = version
+                  , getAfterVersion         = version'
+                  , getChanges              = changes
+                  })
+  where
+    -- | Combine the 'Changes' in a list of 'Changeset's.
+    combineChangesets :: Map Key WireDiff -> Changeset -> IO (Map Key WireDiff)
+    combineChangesets changes changeset = do
+        let newChanges = changesToList (getChanges changeset)
+        -- FIXME Magic
+        return changes
 
 -- | Make a function that transforms part of a 'WireDiff' into a `SetCmd`.
 makeSetCmdFromWireDiff :: forall a s. (Storable a, Store s)
