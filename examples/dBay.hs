@@ -49,14 +49,14 @@ instance Sexpable Bid
 instance ToJSON Bid
 
 instance Diffable Bid where
-    data Diff Bid = DiffBid Integer
+    data Diff Bid = ReBid Integer Integer
                   deriving ( Generic, Show, Eq )
 
-    diffFromTo (Bid n1) (Bid n2) = DiffBid (n2 - n1)
-    applyDiff (Bid n) (DiffBid d) = Bid (n + d)
-    reverseDiff (DiffBid d) = DiffBid (-d)
-
-    mergeDiffs (DiffBid d1) (DiffBid d2) = DiffBid (max d1 d2)
+    diffFromTo (Bid n1) (Bid n2) = ReBid n1 n2
+    applyDiff  _ (ReBid _ n2)    = Bid n2
+    reverseDiff (ReBid n1 n2)    = ReBid n2 n1
+    mergeDiffs (ReBid n1 n2) (ReBid n3 n4) =
+        ReBid (max n1 n3) (max n2 n4)
 
 instance Serialize (Diff Bid)
 
