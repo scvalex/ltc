@@ -2,7 +2,7 @@
 
 module Ltc.Changeset (
         -- * Changesets
-        Changeset(..),
+        Changeset(..), changesetBaseVersion,
         Changes(..), changesFromList, changesToList, wireDiffForKey,
 
         -- * Serializable diffs
@@ -55,6 +55,12 @@ instance Ord Changeset where
            else if vsn1 `VC.causes` vsn2
                 then LT
                 else GT
+
+-- | Get the 'Version' of the 'Changeset' that the given 'Changeset' is meant to be
+-- applied over.
+changesetBaseVersion :: Changeset -> Version
+changesetBaseVersion (Update { getBeforeUpdateVersion = version }) = version
+changesetBaseVersion (Merge { getMergeAncestorVersion = version }) = version
 
 ----------------------
 -- Changes

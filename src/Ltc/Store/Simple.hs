@@ -75,7 +75,7 @@ import Data.String ( fromString )
 import Data.Typeable ( TypeRep, typeOf )
 import GHC.Generics ( Generic )
 import Language.Sexp ( Sexpable(..), parse, parseExn, printHum )
-import Ltc.Changeset ( Changeset(..)
+import Ltc.Changeset ( Changeset(..), changesetBaseVersion
                      , changesFromList
                      , wireDiffForKey, wireDiffFromTo, diffFromWireDiff )
 import Ltc.Diff ( Diffable(..) )
@@ -344,10 +344,7 @@ doGet store key version = do
                             let Just diff = diffFromWireDiff wireDiff
                                 rdiff = reverseDiff diff
                             in applyDiff val rdiff
-                let beforeVersion = case changeset of
-                        Update { getBeforeUpdateVersion = vsn } -> vsn
-                        Merge { getMergeAncestorVersion = vsn } -> vsn
-                chash' <- changesetHashForVersion beforeVersion
+                chash' <- changesetHashForVersion (changesetBaseVersion changeset)
                 findVersion (rest |> (val', chash'))
             else do
                 return val
