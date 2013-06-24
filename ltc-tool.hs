@@ -51,7 +51,7 @@ data Modes = Fsck { dir :: FilePath }
            | Import { dir :: FilePath, file :: FilePath }
            | Populate { dir :: FilePath, count :: Int }
            | Redis { dir :: FilePath }
-           | Node { storeDir :: Maybe FilePath, nodeIndex :: Int, monkey :: Bool }
+           | Node { storeDir :: Maybe FilePath, nodeIndex :: Int, monkey :: Bool, neighbours :: [Int] }
            | WireClient { host :: String, port :: Int }
            deriving ( Show, Data, Typeable )
 
@@ -74,8 +74,9 @@ ltcModes =
     , Redis { dir = "redis-store" &= typDir }
       &= help "run a store with a Redis interface"
     , Node { storeDir = def &= typDir
-           , nodeIndex = 0 &= help "what is the index of this node on this machine"
-           , monkey = False &= help "randomly change data in the store" }
+           , nodeIndex = def &= help "what is the index of this node on this machine"
+           , monkey = def &= help "randomly change data in the store"
+           , neighbours = def &= help "which other nodes to connect to" }
       &= help "run a store with an LTc node interface"
     , WireClient { host = "localhost" &= typ "HOST"
                  , port = N.nodePort &= typ "PORT" }
@@ -128,7 +129,7 @@ main = do
             store <- open (openParameters d hostname 0 True)
             shutdown <- R.serve store
             shutdownOnInt store [shutdown]
-        Node mStoreDir idx monkeyEnabled -> do
+        Node mStoreDir idx monkeyEnabled ns -> do
             let myStoreDir = maybe (printf "node-store-%d" idx) id mStoreDir
             _ <- printf "Running Node on %d with %s\n" (N.nodePort + idx) myStoreDir
             hostname <- getHostName
@@ -139,11 +140,12 @@ main = do
                                         (makeNodeName hostname idx)
             N.handleType node (undefined :: Integer)
             N.handleType node (undefined :: BL.ByteString)
-            -- FIXME Remove hacky "connect to next node in the ring"
-            N.addNeighbour node
-                           (makeNodeName hostname (idx + 1))
-                           (U.UdpLocation { U.host = hostname
-                                          , U.port = N.nodePort + idx + 1 })
+
+            forM_ ns $ \n -> do
+                N.addNeighbour node
+                               (makeNodeName hostname (idx + n))
+                               (U.UdpLocation { U.host = hostname
+                                              , U.port = N.nodePort + idx + n })
             if monkeyEnabled
                then do
                   monkeey <- M.start store
