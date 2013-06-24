@@ -107,6 +107,7 @@ Executable dBay
                         ghc-prim,
                         ltc,
                         network,
+                        random,
                         sexp,
                         stm
 

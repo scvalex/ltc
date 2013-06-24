@@ -4,6 +4,8 @@
 module Main where
 
 import Control.Applicative
+import Control.Concurrent ( threadDelay )
+import Control.Monad ( forever )
 import Data.Default
 import Data.Maybe ( catMaybes )
 import Data.Serialize ( Serialize )
@@ -14,6 +16,7 @@ import Language.Sexp
 import Network.BSD ( getHostName )
 import qualified Data.Set as S
 import System.IO.Unsafe ( unsafePerformIO )
+import System.Random ( randomRIO )
 
 import Ltc.Store
 import Ltc.Store.Simple
@@ -70,6 +73,14 @@ setupNode = do
     -- FIXME Use real addresses
     Node.addNeighbour node "meh" undefined
     return store
+
+pennyBidder :: (Store s) => s -> AuctionName -> IO ()
+pennyBidder store auction = forever $ do
+    d <- randomRIO (1000000, 2000000)
+    threadDelay d
+    bids <- getBids store auction
+    let Bid bidAmount = maximum bids
+    placeBid store auction (Bid (bidAmount + 3))
 
 main :: IO ()
 main = do
