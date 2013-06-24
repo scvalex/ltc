@@ -107,6 +107,7 @@ Executable dBay
                         containers,
                         data-default,
                         ghc-prim,
+                        hslogger,
                         ltc,
                         network,
                         random,
