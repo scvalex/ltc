@@ -27,20 +27,19 @@ import Snap.Core
 import Snap.Http.Server
 import Snap.Util.FileServe ( serveFile, serveDirectory )
 
-
 import Ltc.Network.Interface.UDP
 import Ltc.Store
 import Ltc.Store.Simple
 import qualified Ltc.Network.NodeServer as Node
 import qualified Ltc.Network.StatusServer as S
 
-data Bid = Bid Integer
-           deriving ( Generic, Typeable, Eq, Ord )
+data Bid = Bid Integer String
+           deriving ( Generic, Typeable, Eq, Ord, Show )
 
 instance Storable Bid
 
 instance Default Bid where
-    def = Bid def
+    def = Bid def def
 
 instance Serialize Bid
 
@@ -49,14 +48,14 @@ instance Sexpable Bid
 instance ToJSON Bid
 
 instance Diffable Bid where
-    data Diff Bid = ReBid Integer Integer
+    data Diff Bid = ReBid Bid Bid
                   deriving ( Generic, Show, Eq )
 
-    diffFromTo (Bid n1) (Bid n2) = ReBid n1 n2
-    applyDiff  _ (ReBid _ n2)    = Bid n2
-    reverseDiff (ReBid n1 n2)    = ReBid n2 n1
-    mergeDiffs (ReBid n1 n2) (ReBid n3 n4) =
-        ReBid (max n1 n3) (max n2 n4)
+    diffFromTo n1 n2          = ReBid n1 n2
+    applyDiff  _ (ReBid _ n2) = n2
+    reverseDiff (ReBid n1 n2) = ReBid n2 n1
+    mergeDiffs (ReBid n1 n3) (ReBid _ n4) =
+        ReBid n1 (max n3 n4)
 
 instance Serialize (Diff Bid)
 
@@ -95,8 +94,8 @@ pennyBidder store auction = forever $ do
     d <- randomRIO (1000000, 2000000)
     threadDelay d
     bids <- getBids store auction
-    let Bid bidAmount = maximum bids
-    placeBid store auction (Bid (bidAmount + 3))
+    let Bid bidAmount _ = maximum bids
+    placeBid store auction (Bid (bidAmount + 3) myUniqueName)
 
 setupWebUi :: (Store s) => s -> IO ()
 setupWebUi store = do

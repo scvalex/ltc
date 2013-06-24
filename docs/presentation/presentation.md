@@ -422,7 +422,7 @@ placeBid store auction bid = do
 getBids :: Store -> AuctionName -> IO [Bid]
 getBids store auction = do
     bidKeys <- keys store (auction ++ ":bid:.*")
-    mapM bidKeys (getLatest store)
+    catMaybes (mapM bidKeys (getLatest store))
 ~~~~
 
 \begin{center}
@@ -437,19 +437,19 @@ item1:bid:nick & $\mapsto$ & 42\\
 # Distributed auction house --- data types
 
 ~~~~ {.haskell}
-data Bid = Bid Integer
+data Bid = Bid Integer String
            deriving ( Generic, Typeable )
 
 instance Serialize Bid
 
 instance Diffable Bid where
-    data Diff Bid = ReBid Integer Integer
+    data Diff Bid = ReBid Bid Bid
 
-    diffFromTo (Bid n1) (Bid n2) = ReBid n1 n2
-    applyDiff  _ (ReBid _ n2)    = Bid n2
-    reverseDiff (ReBid n1 n2)    = ReBid n2 n1
-    mergeDiffs (ReBid n1 n2) (ReBid n3 n4) =
-        ReBid (max n1 n3) (max n2 n4)
+    diffFromTo n1 n2          = ReBid n1 n2
+    applyDiff  _ (ReBid _ n2) = n2
+    reverseDiff (ReBid n1 n2) = ReBid n2 n1
+    mergeDiffs (ReBid n1 n3) (ReBid _ n4) =
+        ReBid n1 (max n3 n4)
 ~~~~
 
 # Performance
