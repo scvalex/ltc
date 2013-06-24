@@ -6,7 +6,7 @@
     <title>dBay</title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <link rel="stylesheet" href="/r/dbay.css" media="screen">
+    <link rel="stylesheet" href="/r/dBay.css" media="screen">
 
     <script src="/r/knockout-2.2.1.js"></script>
     <script src="/r/mootools-yui-compressed.js"></script>
@@ -15,14 +15,18 @@
   </head>
   <body>
     <header>
-      <h1>dBay</h1>
+      <h1>
+        <span style="color: #556270">d</span><span style="color: #4ECDC4">B</span><span style="color: #FF6B6B">a</span><span style="color: #C44D58">y</span>
+      </h1>
     </header>
 
-    <h3>Bids</h3>
-    <ul id="log" data-bind="foreach: bids">
-      <li class="bidSnapshot">
-        Bid!
-      </li>
-    </ul>
+    <div id="bidsContainer">
+      <h3>Bids</h3>
+      <ul id="bids" data-bind="foreach: bids">
+        <li class="bidSnapshot">
+          Bid!
+        </li>
+      </ul>
+    </div>
   </body>
 </html>

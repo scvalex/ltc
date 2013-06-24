@@ -1,0 +1,42 @@
+* {
+    font-family: inherit;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Palette: */
+/*   - Mighty Slate     :: #556270 */
+/*   - Pacifica         :: #4ECDC4 */
+/*   - apple chic       :: #C7F464 */
+/*   - Cheery Pink      :: #FF6B6B */
+/*   - grandma's pillow :: #C44D58 */
+
+body {
+    overflow-x: hidden;
+}
+
+header {
+    border-bottom: 4px solid #4ECDC4;
+    height: 100px;
+}
+
+h1 {
+    font-size: 4em;
+    font-family: sans;
+}
+
+#bidsContainer {
+    width: 300px;
+    margin: 100px auto 0;
+}
+
+#bidsContainer h3 {
+    font-size: 1.4em;
+    text-align: center;
+}
+
+#bids {
+    border: 1px solid #999;
+    margin-top: 0.4em;
+}
