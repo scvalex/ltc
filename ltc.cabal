@@ -100,7 +100,9 @@ Executable dBay
   Ghc-options:          -Wall
   Extensions:           ScopedTypeVariables, OverloadedStrings
   Main-is:              examples/dBay.hs
-  Build-depends:        base >= 4.6 && < 5,
+  Build-depends:        aeson,
+                        base >= 4.6 && < 5,
+                        bytestring,
                         cereal,
                         containers,
                         data-default,
@@ -109,7 +111,10 @@ Executable dBay
                         network,
                         random,
                         sexp,
-                        stm
+                        snap-core,
+                        snap-server,
+                        stm,
+                        transformers
 
 Test-suite store
   Hs-Source-Dirs:       test

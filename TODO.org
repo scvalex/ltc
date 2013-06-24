@@ -209,6 +209,7 @@
   - [X] Artificial delays
 * TODO dBay
   :LOGBOOK:
+  CLOCK: [2013-06-24 Mon 06:37]--[2013-06-24 Mon 06:47] =>  0:10
   CLOCK: [2013-06-24 Mon 05:52]--[2013-06-24 Mon 06:06] =>  0:14
   CLOCK: [2013-06-23 Sun 14:36]--[2013-06-23 Sun 15:04] =>  0:28
   :END:
