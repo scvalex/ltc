@@ -143,9 +143,9 @@ main = do
 
             forM_ ns $ \n -> do
                 N.addNeighbour node
-                               (makeNodeName hostname (idx + n))
+                               (makeNodeName hostname n)
                                (U.UdpLocation { U.host = hostname
-                                              , U.port = N.nodePort + idx + n })
+                                              , U.port = N.nodePort + n })
             if monkeyEnabled
                then do
                   monkeey <- M.start store

@@ -175,7 +175,7 @@ serveFromLocation location store nodeName = do
 shutdown :: (NetworkInterface a) => Node a -> IO ()
 shutdown node = do
     withMVar (getNodeData node) $ \nodeData -> do
-        debugM tag (printf "shutdown %s" (show (getLocation nodeData)))
+        debugM tag (printf "shutdown %s" (show (getNodeName nodeData)))
         getShutdown nodeData
 
 -- | Use a local 'Node' to connect to a remote 'Node'.  Since this is an asynchronous
@@ -593,7 +593,7 @@ sendChangesetsToNeighbours node store = do
         changesets <- changesetsNotBefore store (getRemoteClock remoteNode)
         debugM tag (printf "sending %d changesets to neighbour %s (est. %s)"
                            (length changesets)
-                           (show (getRemoteLocation remoteNode))
+                           (show (getRemoteName remoteNode))
                            (show (getRemoteClock remoteNode)))
         -- Send the changes we think the other node doesn't have.
         forM_ changesets $ \changeset -> do
