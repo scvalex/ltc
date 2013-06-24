@@ -15,12 +15,15 @@ import GHC.Generics ( Generic )
 import Language.Sexp
 import Network.BSD ( getHostName )
 import qualified Data.Set as S
+import System.Environment ( getArgs )
 import System.IO.Unsafe ( unsafePerformIO )
 import System.Random ( randomRIO )
 
+import Ltc.Network.Interface.UDP
 import Ltc.Store
 import Ltc.Store.Simple
 import qualified Ltc.Network.NodeServer as Node
+import qualified Ltc.Network.StatusServer as S
 
 data Bid = Bid Integer
            deriving ( Generic, Typeable, Eq, Ord )
@@ -63,15 +66,17 @@ getBids store auction = do
     bidKeys <- keys store (auction ++ ":bid:.*")
     map fst . catMaybes <$> mapM (getLatest store) (S.toList bidKeys)
 
-setupNode :: IO Simple
-setupNode = do
+setupLtc :: Node.Hostname -> IO Simple
+setupLtc otherHost = do
     store <- open (def { location = "dBay-store"
                        , nodeName = fromString myUniqueName
                        })
     node <- Node.serve store (fromString myUniqueName)
     Node.handleType node (undefined :: Bid)
-    -- FIXME Use real addresses
-    Node.addNeighbour node "meh" undefined
+    Node.addNeighbour node
+                      (fromString otherHost)
+                      (UdpLocation { host = otherHost
+                                   , port = Node.nodePort })
     return store
 
 pennyBidder :: (Store s) => s -> AuctionName -> IO ()
@@ -84,4 +89,14 @@ pennyBidder store auction = forever $ do
 
 main :: IO ()
 main = do
-    return ()
+    args <- getArgs
+    case args of
+        ["bidder", otherHost] -> do
+            store <- setupLtc otherHost
+            pennyBidder store "tophat"
+        ["observer", otherHost] -> do
+            store <- setupLtc otherHost
+            _ <- S.serveWithPort S.statusPort store Nothing
+            return ()
+        _ -> do
+            error "wrong command line"
