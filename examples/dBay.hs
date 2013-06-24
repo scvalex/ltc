@@ -95,12 +95,15 @@ setupLtc otherHost = do
     return store
 
 pennyBidder :: (Store s) => s -> AuctionName -> IO ()
-pennyBidder store auction = forever $ do
-    d <- randomRIO (1000000, 2000000)
-    threadDelay d
-    bids <- getBids store auction
-    let Bid bidAmount _ = maximum bids
-    placeBid store auction (Bid (bidAmount + 3) myUniqueName)
+pennyBidder store auction = do
+    b <- randomRIO (1, 100)
+    placeBid store auction (Bid b myUniqueName)
+    forever $ do
+        d <- randomRIO (8000000, 10000000)
+        threadDelay d
+        bids <- getBids store auction
+        let Bid bidAmount _ = maximum bids
+        placeBid store auction (Bid (bidAmount + 3) myUniqueName)
 
 setupWebUi :: (Store s) => s -> IO ()
 setupWebUi store = do
