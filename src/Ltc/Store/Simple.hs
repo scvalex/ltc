@@ -562,7 +562,7 @@ doHasVersion :: Simple -> Version -> IO Bool
 doHasVersion store version = do
     Changelog versions <- readMVar (getChangelog store)
     case find (\(oldVersion, _) -> oldVersion == version) versions of
-        Nothing -> return False
+        Nothing -> return (version == VC.empty)
         Just _  -> return True
 
 doAddEventChannel :: Simple -> EventChannel -> IO ()

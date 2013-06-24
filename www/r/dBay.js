@@ -16,6 +16,16 @@ function AppViewModel() {
     var self = this;
 
     self.bids = ko.observableArray();
+
+    setInterval(function () {
+        new Request({
+            url: "/bids",
+            onSuccess: function(data) {
+                var bids = JSON.parse(data);
+                log(bids);
+            }
+        }).get();
+    }, 1000);
 }
 
 document.addEventListener("DOMContentLoaded", function() {
