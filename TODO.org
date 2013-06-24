@@ -47,6 +47,7 @@
   - [X] Graph sets/gets
 * TODO UDP Connections
   :LOGBOOK:
+  CLOCK: [2013-06-24 Mon 04:49]--[2013-06-24 Mon 05:31] =>  0:42
   CLOCK: [2013-06-24 Mon 04:34]--[2013-06-24 Mon 04:46] =>  0:12
   CLOCK: [2013-06-24 Mon 04:26]--[2013-06-24 Mon 04:33] =>  0:07
   CLOCK: [2013-06-24 Mon 04:13]--[2013-06-24 Mon 04:21] =>  0:08
@@ -107,7 +108,7 @@
   - [X] SmallCheck tests for NodeProtocol
   - [X] Receive store changes from neighbours
   - [X] Store changes instead of values.
-  - [ ] Apply changes from neighbours
+  - [X] Apply changes from neighbours
   - [X] Keep track of suspected neighbour version clock
   - [ ] ChangeSets (replaces DiffPacks)
   - [X] Propagate store changes to neighbours

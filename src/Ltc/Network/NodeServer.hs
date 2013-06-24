@@ -25,7 +25,7 @@ import Control.Applicative ( (<$>) )
 import Control.Concurrent ( forkIO, threadDelay
                           , MVar, newMVar, withMVar, readMVar, modifyMVar, modifyMVar_ )
 import Control.Exception ( Exception )
-import Control.Monad ( unless, forever, forM, forM_, when, filterM, foldM )
+import Control.Monad ( unless, forever, forM, forM_, when, filterM )
 import Control.Proxy ( Proxy, ProxyFast, Pipe, Producer, Consumer
                      , runProxy, lift, runIdentityP, request, respond, (>->) )
 import Data.ByteString ( ByteString )
@@ -38,7 +38,7 @@ import Data.Typeable ( Typeable )
 import Language.Sexp ( printMach, toSexp )
 import Ltc.Changeset ( Changeset(..), changesetBaseVersion
                      , Changes(..), changesToList
-                     , WireDiff(..), diffFromWireDiff )
+                     , WireDiff(..), diffFromWireDiff, wireDiffFromDiff )
 import Ltc.Diff ( Diffable(..) )
 import Ltc.Network.Interface ( NetworkInterface, Sending, Receiving, NetworkLocation )
 import Ltc.Network.Interface.UDP ( UdpInterface )
@@ -84,6 +84,7 @@ instance Exception Shutdown
 
 data TypeHandler = TypeHandler
     { getSetCmdFromWireDiff :: forall s. (Store s) => s -> Key -> Version -> WireDiff -> IO SetCmd
+    , getMergeWireDiffs     :: WireDiff -> WireDiff -> WireDiff
     , getType               :: Type
     }
 
@@ -215,6 +216,7 @@ handleType :: (Storable b)
            -> IO ()
 handleType node dummy = do
     let typeHandler = TypeHandler { getType               = typeOf dummy
+                                  , getMergeWireDiffs     = makeMergeWireDiffs dummy
                                   , getSetCmdFromWireDiff = makeSetCmdFromWireDiff dummy }
     modifyMVar_ (getNodeData node) $ \nodeData ->
         return (nodeData { getTypeHandlers = typeHandler : getTypeHandlers nodeData })
@@ -389,8 +391,12 @@ tryApplyChangesets node store = do
                         mMergeCandidate <- findMergeCandidate [] changesets
                         case mMergeCandidate of
                             Just ((remoteName, changeset), changesets') -> do
-                                debugM tag (printf "merging %s" (show (getAfterVersion changeset)))
+                                debugM tag (printf "merging %s x %s"
+                                                   (show tip)
+                                                   (show (getAfterVersion changeset)))
                                 mergeIntoHistory changeset (getTypeHandlers nodeData)
+                                tip' <- tipVersion store
+                                debugM tag (printf "tip after merge %s" (show tip'))
                                 let neighbours' = maybeUpdateRemoteClock (getNeighbours nodeData)
                                                                          remoteName
                                                                          (getAfterVersion changeset)
@@ -454,18 +460,19 @@ tryApplyChangesets node store = do
     -- | Merge the given 'Changeset' into the history by creating a new tip 'Changeset'.
     mergeIntoHistory :: Changeset -> [TypeHandler] -> IO ()
     mergeIntoHistory changeset typeHandlers = do
+        changesets <- changesetsAfter store (changesetBaseVersion changeset)
+
         -- FIXME Merge operations should be atomic.
         -- Apply the give changeset.
         cmds <- setCmdsFromChangeset store changeset typeHandlers
         _ <- msetInternal store changeset cmds
 
         -- Formulate the merge.
-        changesets <- changesetsAfter store (changesetBaseVersion changeset)
-        mergeChangeset <- mergeFromChangesets store
-                                              (changesetBaseVersion changeset)
+        mergeChangeset <- mergeFromChangesets (changesetBaseVersion changeset)
                                               changesets
                                               [changeset]
                                               typeHandlers
+        debugM tag (printf "merged changeset: %s" (show mergeChangeset))
         mergeCmds <- setCmdsFromChangeset store mergeChangeset typeHandlers
         _ <- msetInternal store mergeChangeset mergeCmds
 
@@ -508,13 +515,12 @@ setCmdsFromChangeset store changeset typeHandlers = do
 
 -- | Combine the given 'Changeset's into a single one based on the given 'Version', and
 -- return the merged 'Changeset'.
-mergeFromChangesets :: (Store s)
-                    => s -> Version -> [Changeset] -> [Changeset] -> [TypeHandler] -> IO Changeset
-mergeFromChangesets _store version changesetsLeft changesetsRight _typeHandlers = do
-    changes <- Changes <$> foldM combineChangesets M.empty (changesetsLeft ++ changesetsRight)
+mergeFromChangesets :: Version -> [Changeset] -> [Changeset] -> [TypeHandler] -> IO Changeset
+mergeFromChangesets version changesetsLeft changesetsRight typeHandlers = do
     let versionLeft  = getAfterVersion (last changesetsLeft)
         versionRight = getAfterVersion (last changesetsRight)
         version' = VC.max versionLeft versionRight
+        changes = Changes (foldl combineChangesets M.empty (changesetsLeft ++ changesetsRight))
     return (Merge { getBeforeMergeVersions  = (versionLeft, versionRight)
                   , getMergeAncestorVersion = version
                   , getAfterVersion         = version'
@@ -522,11 +528,21 @@ mergeFromChangesets _store version changesetsLeft changesetsRight _typeHandlers 
                   })
   where
     -- | Combine the 'Changes' in a list of 'Changeset's.
-    combineChangesets :: Map Key WireDiff -> Changeset -> IO (Map Key WireDiff)
-    combineChangesets changes changeset = do
-        let newChanges = changesToList (getChanges changeset)
-        -- FIXME Magic
-        return changes
+    combineChangesets :: Map Key WireDiff -> Changeset -> Map Key WireDiff
+    combineChangesets changes changeset =
+        foldl addWireDiffToChanges changes (changesToList (getChanges changeset))
+
+    addWireDiffToChanges :: Map Key WireDiff -> (Key, WireDiff) -> Map Key WireDiff
+    addWireDiffToChanges changes (key, wireDiff) =
+        let mTypeHandler =
+                find (\handler -> getType handler == getWireDiffType wireDiff)
+                     typeHandlers
+        in case mTypeHandler of
+            Nothing ->
+                -- error (printf "no type handler for %s" (show (getWireDiffType wireDiff)))
+                changes
+            Just typeHandler ->
+                M.insertWith (getMergeWireDiffs typeHandler) key wireDiff changes
 
 -- | Make a function that transforms part of a 'WireDiff' into a `SetCmd`.
 makeSetCmdFromWireDiff :: forall a s. (Storable a, Store s)
@@ -552,6 +568,17 @@ makeSetCmdFromWireDiff _ = \store key version wireDiff -> do
     setCmdFromWireDiff key v wireDiff =
         let Just diff = diffFromWireDiff wireDiff
         in SetCmd key (applyDiff v diff)
+
+-- | Make a function that merges two 'WireDiff's.
+makeMergeWireDiffs :: forall a. (Storable a)
+                   => a         -- ^ dummy value to fix the type
+                   -> (WireDiff -> WireDiff -> WireDiff)
+makeMergeWireDiffs _ = \wireDiff1 wireDiff2 ->
+    case (diffFromWireDiff wireDiff1, diffFromWireDiff wireDiff2) of
+        (Just (diff1 :: Diff a), Just (diff2 :: Diff a)) ->
+            wireDiffFromDiff (mergeDiffs diff1 diff2)
+        _ ->
+            error "mergeWireDiffs applied to wrong type"
 
 ----------------------
 -- Change propagation
