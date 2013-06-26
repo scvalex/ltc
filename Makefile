@@ -6,7 +6,6 @@ all: build fasttest
 .PHONY: all build dist install clean doc site p ghci stores
 
 build: dist/setup-config resources
-	rm -rf _site _cache
 	$(CABAL) build
 
 dist: build test
